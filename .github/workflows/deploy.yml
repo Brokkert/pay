@@ -25,17 +25,16 @@ jobs:
           cache: npm
       - run: npm ci
         env:
-          # smoke.mjs gebruikt playwright, maar CI draait alleen vitest — geen
-          # reden om bij elke build een browser van honderd MB op te halen.
+          # smoke.mjs uses playwright, but CI runs vitest only — no reason to
+          # pull a hundred-megabyte browser on every build.
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       - run: npm test
       - run: npm run build
-      # Let op: "enablement: true" kan Pages niet zelf aanzetten als dat nog nooit
-      # gebeurd is — het standaard GITHUB_TOKEN mag geen Pages-site aanmaken en
-      # de stap faalt dan met "Resource not accessible by integration".
-      #
-      # Eenmalig met de hand: Settings -> Pages -> Build and deployment ->
-      # Source op "GitHub Actions". Daarna werkt deze stap gewoon.
+      # Note: "enablement: true" cannot switch Pages on for a repository where
+      # it has never been enabled — the default GITHUB_TOKEN may not create a
+      # Pages site, and the step then fails with "Resource not accessible by
+      # integration". That is a one-time manual step:
+      # Settings -> Pages -> Build and deployment -> Source = "GitHub Actions".
       - uses: actions/configure-pages@v5
         with:
           enablement: true

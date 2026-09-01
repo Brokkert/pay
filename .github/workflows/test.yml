@@ -22,19 +22,19 @@ jobs:
       - run: npm run build
 
   database:
-    # Draait schema.sql en de bijbehorende controles tegen een echte
-    # PostgreSQL, zodat het beveiligingsmodel niet stilletjes kan verschuiven.
+    # Runs schema.sql and its checks against a real PostgreSQL, so the
+    # security model cannot drift unnoticed.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: PostgreSQL installeren
+      - name: Install PostgreSQL
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql postgresql-client
-      - name: Schema en controles draaien
+      - name: Run schema and checks
         run: |
-          # initdb weigert als root te draaien, en de postgres-gebruiker komt
-          # niet in de workspace van de runner; vandaar de kopie.
+          # initdb refuses to run as root, and the postgres user cannot reach
+          # the runner's workspace; hence the copy.
           sudo cp -r supabase /var/tmp/pay-sql
           sudo chown -R postgres /var/tmp/pay-sql
           sudo -u postgres env \
