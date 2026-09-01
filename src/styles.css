@@ -1,19 +1,19 @@
-/* Pay — stil en strak.
+/* Pay — quiet and tight.
    ----------------------------------------------------------------------------
-   Een app over geld hoort niet te schreeuwen. De vormgeving doet daarom bijna
-   niets, en wat ze doet is dit:
+   An app about money should not shout. The design therefore does almost nothing,
+   and what it does is this:
 
-     - één accentkleur, en verder alleen grijstinten. Rood en groen zijn
-       gereserveerd voor richting: dat je in het krijt staat, of tegoed hebt.
-       Als álles kleur heeft, betekent kleur niets meer;
-     - bedragen in cijfers van gelijke breedte, rechts uitgelijnd, zodat een rij
-       getallen een kolom wordt die je kunt scannen in plaats van moet lezen;
-     - haarlijnen binnen een vlak in plaats van een kadertje om elke regel. Tien
-       omlijnde kaartjes onder elkaar leest als tien losse dingen; tien regels in
-       één vlak leest als een lijst;
-     - ruimte doet het werk dat randen anders doen.
+     - one accent colour, and otherwise only greys. Red and green are reserved
+       for direction: you are in debt, or you are owed. If everything has colour,
+       colour stops meaning anything;
+     - amounts in equal-width digits, right-aligned, so a stack of numbers
+       becomes a column you can scan instead of read;
+     - hairlines inside one surface rather than a little box around every row.
+       Ten outlined cards read as ten separate things; ten rows in one surface
+       read as a list;
+     - space does the work that borders would otherwise do.
 
-   Geen webfonts en geen plaatjes: de hele app is één bestand dat overal opent. */
+   No webfonts and no images: the whole app is one file that opens anywhere. */
 
 :root {
   color-scheme: light;
@@ -32,8 +32,8 @@
   --accent-soft: #e2f0eb;
   --accent-ink: #ffffff;
 
-  --plus: #0b6b46;      /* je hebt tegoed */
-  --min: #b3261e;       /* je staat in het krijt */
+  --credit: #0b6b46;    /* you are owed */
+  --debt: #b3261e;      /* you are in debt */
   --warn: #8a6100;
   --info: #2c5282;
 
@@ -65,8 +65,8 @@
   --accent-soft: #143029;
   --accent-ink: #04140f;
 
-  --plus: #4cc38a;
-  --min: #f2685c;
+  --credit: #4cc38a;
+  --debt: #f2685c;
   --warn: #d3a341;
   --info: #7fa8d8;
 
@@ -95,7 +95,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: inherit;
 a { color: var(--accent); }
 svg { display: block; }
 
-/* ---------- raamwerk ---------- */
+/* ---------- frame ---------- */
 
 .app {
   min-height: 100dvh;
@@ -119,17 +119,12 @@ svg { display: block; }
   backdrop-filter: saturate(1.6) blur(12px);
   border-bottom: 1px solid var(--line-soft);
 }
-.topbar h1 {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-}
+.topbar h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; }
 .topbar .spacer { flex: 1; }
 
 .main { flex: 1; padding: 8px 20px calc(104px + var(--safe-b)); }
 
-/* ---------- onderbalk ---------- */
+/* ---------- tab bar ---------- */
 
 .tabbar {
   position: fixed;
@@ -160,10 +155,10 @@ svg { display: block; }
 }
 .tabbar button.on { color: var(--accent); }
 
-/* ---------- vlakken ---------- */
+/* ---------- surfaces ---------- */
 
-/* Eén vlak met haarlijnen erbinnen, niet tien kadertjes onder elkaar. */
-.paneel {
+/* One surface with hairlines inside it, not ten little cards stacked up. */
+.panel {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -171,15 +166,14 @@ svg { display: block; }
   overflow: hidden;
   margin-bottom: 12px;
 }
-.paneel > * + * { border-top: 1px solid var(--line-soft); }
-.paneel.los { background: none; border: none; box-shadow: none; border-radius: 0; }
+.panel > * + * { border-top: 1px solid var(--line-soft); }
 
-.vak { padding: 14px 16px; }
-.vak.krap { padding: 11px 16px; }
-.vak.ruim { padding: 20px 18px; }
+.box { padding: 14px 16px; }
+.box.tight { padding: 11px 16px; }
+.box.roomy { padding: 20px 18px; }
 
-/* Aanraakbare regel binnen een paneel. */
-.regel {
+/* A tappable row inside a panel. */
+.item {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -188,14 +182,14 @@ svg { display: block; }
   text-align: left;
   transition: background 0.12s;
 }
-button.regel:active { background: var(--sunk); }
-.regel .mid { flex: 1; min-width: 0; }
-.regel .titel { font-size: 14.5px; font-weight: 500; letter-spacing: -0.1px; }
-.regel .onder { font-size: 12px; color: var(--text-3); margin-top: 1px; }
-.regel .rechts { text-align: right; flex-shrink: 0; }
-.regel .pijltje { color: var(--text-3); flex-shrink: 0; }
+button.item:active { background: var(--sunk); }
+.item .mid { flex: 1; min-width: 0; }
+.item .title { font-size: 14.5px; font-weight: 500; letter-spacing: -0.1px; }
+.item .sub { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+.item .right { text-align: right; flex-shrink: 0; }
+.item .chev { color: var(--text-3); flex-shrink: 0; }
 
-.kop {
+.section {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.09em;
@@ -203,26 +197,26 @@ button.regel:active { background: var(--sunk); }
   color: var(--text-3);
   margin: 26px 2px 9px;
 }
-.kop:first-child { margin-top: 8px; }
+.section:first-child { margin-top: 8px; }
 
-.rij { display: flex; align-items: center; gap: 10px; }
-.rij.wikkel { flex-wrap: wrap; }
-.rij .groei { flex: 1; min-width: 0; }
-.kolom { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row.wrap { flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.col { display: flex; flex-direction: column; gap: 10px; }
 
-.zacht { color: var(--text-2); }
-.vaag { color: var(--text-3); }
-.klein { font-size: 12.5px; }
-.mini { font-size: 11.5px; }
-.dik { font-weight: 600; }
-.kort { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.midden { text-align: center; }
+.muted { color: var(--text-2); }
+.dim { color: var(--text-3); }
+.small { font-size: 12.5px; }
+.tiny { font-size: 11.5px; }
+.bold { font-weight: 600; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.center { text-align: center; }
 
-/* ---------- bedragen ---------- */
+/* ---------- amounts ---------- */
 
-/* Cijfers van gelijke breedte zetten de komma's onder elkaar. Zonder dat leest
-   een kolom bedragen als losse woorden in plaats van als getallen. */
-.bedrag {
+/* Equal-width digits line the commas up. Without that a column of amounts reads
+   as loose words instead of numbers. */
+.amount {
   font-family: var(--num);
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
@@ -230,38 +224,38 @@ button.regel:active { background: var(--sunk); }
   letter-spacing: -0.4px;
   white-space: nowrap;
 }
-.bedrag.groot {
+.amount.hero {
   font-size: 40px;
   font-weight: 600;
   letter-spacing: -1.8px;
   line-height: 1.05;
   display: block;
 }
-.bedrag.mid { font-size: 16px; font-weight: 600; letter-spacing: -0.5px; }
-.bedrag.krijt { color: var(--min); }
-.bedrag.tegoed { color: var(--plus); }
+.amount.mid { font-size: 16px; font-weight: 600; letter-spacing: -0.5px; }
+.amount.debt { color: var(--debt); }
+.amount.credit { color: var(--credit); }
 
-/* Regel met een bedrag: omschrijving links, getal rechts. Geen stippellijn —
-   uitlijning doet dat werk al. */
-.post {
+/* A line with an amount: description left, number right. No dotted leader —
+   alignment already does that job. */
+.line {
   display: flex;
   align-items: baseline;
   gap: 14px;
   padding: 11px 16px;
 }
-.post .wat { flex: 1; min-width: 0; }
-.post .wat .n { font-size: 14px; font-weight: 450; }
-.post .wat .s { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
+.line .what { flex: 1; min-width: 0; }
+.line .what .n { font-size: 14px; font-weight: 450; }
+.line .what .s { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
 
-/* Een totaal staat iets zwaarder en op de zachte ondergrond. */
-.som {
+/* A total sits a little heavier, on the sunken surface. */
+.total {
   display: flex;
   align-items: baseline;
   gap: 14px;
   padding: 13px 16px;
   background: var(--sunk);
 }
-.som .k {
+.total .k {
   flex: 1;
   font-size: 11px;
   font-weight: 600;
@@ -270,9 +264,9 @@ button.regel:active { background: var(--sunk); }
   color: var(--text-2);
 }
 
-/* ---------- knoppen ---------- */
+/* ---------- buttons ---------- */
 
-.knop {
+.btn {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
@@ -286,18 +280,18 @@ button.regel:active { background: var(--sunk); }
   gap: 8px;
   transition: background 0.12s, border-color 0.12s, opacity 0.12s;
 }
-.knop:active { background: var(--sunk); }
-.knop:disabled { opacity: 0.38; cursor: default; }
-.knop.hoofd { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
-.knop.stil { border-color: transparent; background: none; color: var(--text-2); }
-.knop.stil:active { background: var(--sunk); }
-.knop.gevaar { color: var(--min); border-color: color-mix(in srgb, var(--min) 30%, transparent); }
-.knop.breed { width: 100%; }
-.knop.groei { flex: 1; }
-.knop.sm { padding: 7px 12px; font-size: 13px; border-radius: var(--r-sm); }
-.knop.icoon { padding: 8px; min-width: 36px; }
+.btn:active { background: var(--sunk); }
+.btn:disabled { opacity: 0.38; cursor: default; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.btn.quiet { border-color: transparent; background: none; color: var(--text-2); }
+.btn.quiet:active { background: var(--sunk); }
+.btn.danger { color: var(--debt); border-color: color-mix(in srgb, var(--debt) 30%, transparent); }
+.btn.wide { width: 100%; }
+.btn.grow { flex: 1; }
+.btn.sm { padding: 7px 12px; font-size: 13px; border-radius: var(--r-sm); }
+.btn.icon { padding: 8px; min-width: 36px; }
 
-.zwever {
+.fab {
   position: fixed;
   right: max(20px, calc(50vw - 340px));
   bottom: calc(84px + var(--safe-b));
@@ -313,10 +307,10 @@ button.regel:active { background: var(--sunk); }
   justify-content: center;
 }
 
-/* ---------- invoer ---------- */
+/* ---------- input ---------- */
 
-.veld { margin-bottom: 18px; }
-.veld > label {
+.field { margin-bottom: 18px; }
+.field > label {
   display: block;
   font-size: 11px;
   font-weight: 600;
@@ -325,10 +319,10 @@ button.regel:active { background: var(--sunk); }
   color: var(--text-3);
   margin-bottom: 7px;
 }
-.tip { font-size: 12px; color: var(--text-3); margin-top: 7px; line-height: 1.5; }
-.tip.let { color: var(--warn); }
+.hint { font-size: 12px; color: var(--text-3); margin-top: 7px; line-height: 1.5; }
+.hint.warn { color: var(--warn); }
 
-.invoer, .keuze, .tekstvak {
+.input, .select, .textarea {
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -337,15 +331,15 @@ button.regel:active { background: var(--sunk); }
   outline: none;
   transition: border-color 0.12s, box-shadow 0.12s;
 }
-[data-theme='dark'] .invoer,
-[data-theme='dark'] .keuze,
-[data-theme='dark'] .tekstvak { background: var(--sunk); }
-.invoer:focus, .keuze:focus, .tekstvak:focus {
+[data-theme='dark'] .input,
+[data-theme='dark'] .select,
+[data-theme='dark'] .textarea { background: var(--sunk); }
+.input:focus, .select:focus, .textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
 }
-.tekstvak { min-height: 80px; resize: vertical; line-height: 1.55; }
-.keuze {
+.textarea { min-height: 80px; resize: vertical; line-height: 1.55; }
+.select {
   appearance: none;
   background-image: linear-gradient(45deg, transparent 50%, var(--text-3) 50%),
                     linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
@@ -355,9 +349,9 @@ button.regel:active { background: var(--sunk); }
   padding-right: 34px;
 }
 
-/* Bedrag invullen: euroteken vast, cijfers groot en rechts. */
-.euro { display: flex; align-items: stretch; }
-.euro .teken {
+/* Entering an amount: currency sign fixed, digits large and right-aligned. */
+.money-input { display: flex; align-items: stretch; }
+.money-input .sign {
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -369,7 +363,7 @@ button.regel:active { background: var(--sunk); }
   font-family: var(--num);
   font-size: 14px;
 }
-.euro .invoer {
+.money-input .input {
   border-radius: 0 var(--r-md) var(--r-md) 0;
   text-align: right;
   font-family: var(--num);
@@ -377,12 +371,12 @@ button.regel:active { background: var(--sunk); }
   font-size: 17px;
   letter-spacing: -0.5px;
 }
-.euro .invoer:focus { box-shadow: none; }
+.money-input .input:focus { box-shadow: none; }
 
-/* ---------- keuzeblokjes ---------- */
+/* ---------- chips ---------- */
 
-.blokjes { display: flex; flex-wrap: wrap; gap: 7px; }
-.blokje {
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -395,17 +389,17 @@ button.regel:active { background: var(--sunk); }
   gap: 7px;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
-.blokje.aan {
+.chip.on {
   background: var(--accent-soft);
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   color: var(--text);
   font-weight: 550;
 }
-.blokje.stil { cursor: default; background: var(--sunk); border-color: transparent; }
-.blokje.mini { padding: 4px 9px; font-size: 11.5px; }
+.chip.static { cursor: default; background: var(--sunk); border-color: transparent; }
+.chip.tiny { padding: 4px 9px; font-size: 11.5px; }
 
-/* Een keuze met uitleg eronder: geen pil maar een blok. */
-.optie {
+/* A choice with an explanation under it: not a pill but a block. */
+.option {
   display: flex;
   gap: 12px;
   align-items: flex-start;
@@ -417,8 +411,8 @@ button.regel:active { background: var(--sunk); }
   background: var(--surface);
   transition: border-color 0.12s, background 0.12s;
 }
-.optie.aan { border-color: var(--accent); background: var(--accent-soft); }
-.optie .stip {
+.option.on { border-color: var(--accent); background: var(--accent-soft); }
+.option .dot {
   width: 15px;
   height: 15px;
   border-radius: 50%;
@@ -427,11 +421,11 @@ button.regel:active { background: var(--sunk); }
   margin-top: 2px;
   flex-shrink: 0;
 }
-.optie.aan .stip { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surface); }
-.optie .t { font-size: 14px; font-weight: 550; }
-.optie .b { font-size: 12px; color: var(--text-2); margin-top: 2px; line-height: 1.45; }
+.option.on .dot { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surface); }
+.option .t { font-size: 14px; font-weight: 550; }
+.option .b { font-size: 12px; color: var(--text-2); margin-top: 2px; line-height: 1.45; }
 
-.balkje {
+.scroller {
   display: flex;
   overflow-x: auto;
   gap: 7px;
@@ -439,13 +433,13 @@ button.regel:active { background: var(--sunk); }
   margin: 0 -20px;
   scrollbar-width: none;
 }
-.balkje::-webkit-scrollbar { display: none; }
+.scroller::-webkit-scrollbar { display: none; }
 
-/* ---------- personen ---------- */
+/* ---------- people ---------- */
 
-/* Initialen in de kleur van die persoon. Emoji leken op een spelletje; dit
-   leest als een naam en blijft leesbaar op elk formaat. */
-.wie {
+/* Initials in that person's colour. Emoji looked like a board game; this reads
+   as a name and stays legible at any size. */
+.avatar {
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -460,14 +454,14 @@ button.regel:active { background: var(--sunk); }
   background: var(--text-3);
   user-select: none;
 }
-.wie.groot { width: 38px; height: 38px; font-size: 13.5px; }
-.wie.klein { width: 22px; height: 22px; font-size: 9.5px; letter-spacing: 0; }
+.avatar.lg { width: 38px; height: 38px; font-size: 13.5px; }
+.avatar.sm { width: 22px; height: 22px; font-size: 9.5px; letter-spacing: 0; }
 
-.stapel { display: flex; }
-.stapel .wie + .wie { margin-left: -7px; box-shadow: 0 0 0 2px var(--surface); }
+.stack { display: flex; }
+.stack .avatar + .avatar { margin-left: -7px; box-shadow: 0 0 0 2px var(--surface); }
 
-/* Categorie: een gekleurde stip, geen plaatje. */
-.stip-cat {
+/* Category: a coloured dot, not a picture. */
+.cat-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -475,19 +469,19 @@ button.regel:active { background: var(--sunk); }
   background: var(--text-3);
 }
 
-/* ---------- verrekening ---------- */
+/* ---------- transfers ---------- */
 
-.stroom {
+.transfer {
   display: flex;
   align-items: center;
   gap: 11px;
   padding: 13px 16px;
 }
-.stroom .pijl { color: var(--text-3); flex-shrink: 0; }
-.stroom .naam { min-width: 0; display: flex; align-items: center; gap: 7px; }
+.transfer .arrow { color: var(--text-3); flex-shrink: 0; }
+.transfer .who { min-width: 0; display: flex; align-items: center; gap: 7px; }
 
-/* Verhoudingsbalkje onder een verdeling. */
-.verhouding {
+/* The proportion bar under a split. */
+.split-bar {
   display: flex;
   height: 6px;
   border-radius: 3px;
@@ -495,9 +489,9 @@ button.regel:active { background: var(--sunk); }
   background: var(--sunk);
   gap: 2px;
 }
-.verhouding span { display: block; height: 100%; border-radius: 2px; }
+.split-bar span { display: block; height: 100%; border-radius: 2px; }
 
-/* ---------- paneel dat opkomt ---------- */
+/* ---------- sheet ---------- */
 
 .overlay {
   position: fixed;
@@ -508,11 +502,11 @@ button.regel:active { background: var(--sunk); }
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  animation: op 0.16s ease;
+  animation: fade 0.16s ease;
 }
 [data-theme='dark'] .overlay { background: rgba(0, 0, 0, 0.66); }
 
-.blad {
+.sheet {
   background: var(--bg);
   width: 100%;
   max-width: 720px;
@@ -520,25 +514,25 @@ button.regel:active { background: var(--sunk); }
   border-radius: 18px 18px 0 0;
   display: flex;
   flex-direction: column;
-  animation: omhoog 0.22s cubic-bezier(0.2, 0.8, 0.28, 1);
+  animation: rise 0.22s cubic-bezier(0.2, 0.8, 0.28, 1);
 }
-.blad-greep { width: 36px; height: 4px; background: var(--line); border-radius: 2px; margin: 9px auto 0; }
-.blad-kop {
+.sheet-grip { width: 36px; height: 4px; background: var(--line); border-radius: 2px; margin: 9px auto 0; }
+.sheet-head {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px 18px 13px;
   border-bottom: 1px solid var(--line-soft);
 }
-.blad-kop h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; flex: 1; }
-.blad-lijf { padding: 18px 18px calc(26px + var(--safe-b)); overflow-y: auto; }
+.sheet-head h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; flex: 1; }
+.sheet-body { padding: 18px 18px calc(26px + var(--safe-b)); overflow-y: auto; }
 
-@keyframes op { from { opacity: 0; } }
-@keyframes omhoog { from { transform: translateY(18px); opacity: 0.5; } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes rise { from { transform: translateY(18px); opacity: 0.5; } }
 
-/* ---------- meldingen ---------- */
+/* ---------- notices ---------- */
 
-.melding {
+.notice {
   border-radius: var(--r-md);
   padding: 12px 14px;
   font-size: 13px;
@@ -546,54 +540,54 @@ button.regel:active { background: var(--sunk); }
   margin-bottom: 12px;
   border: 1px solid;
 }
-.melding.info { background: color-mix(in srgb, var(--info) 7%, var(--surface)); border-color: color-mix(in srgb, var(--info) 28%, transparent); }
-.melding.let  { background: color-mix(in srgb, var(--warn) 9%, var(--surface)); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
-.melding.mis  { background: color-mix(in srgb, var(--min) 7%, var(--surface)); border-color: color-mix(in srgb, var(--min) 30%, transparent); }
-.melding.goed { background: color-mix(in srgb, var(--plus) 8%, var(--surface)); border-color: color-mix(in srgb, var(--plus) 30%, transparent); }
+.notice.info  { background: color-mix(in srgb, var(--info) 7%, var(--surface)); border-color: color-mix(in srgb, var(--info) 28%, transparent); }
+.notice.warn  { background: color-mix(in srgb, var(--warn) 9%, var(--surface)); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+.notice.error { background: color-mix(in srgb, var(--debt) 7%, var(--surface)); border-color: color-mix(in srgb, var(--debt) 30%, transparent); }
+.notice.ok    { background: color-mix(in srgb, var(--credit) 8%, var(--surface)); border-color: color-mix(in srgb, var(--credit) 30%, transparent); }
 
-.leeg { text-align: center; padding: 64px 24px; color: var(--text-2); }
-.leeg .beeld { color: var(--text-3); display: flex; justify-content: center; margin-bottom: 18px; }
-.leeg h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
-.leeg p { margin: 0 auto; font-size: 13.5px; line-height: 1.6; max-width: 320px; }
+.empty { text-align: center; padding: 64px 24px; color: var(--text-2); }
+.empty .art { color: var(--text-3); display: flex; justify-content: center; margin-bottom: 18px; }
+.empty h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
+.empty p { margin: 0 auto; font-size: 13.5px; line-height: 1.6; max-width: 320px; }
 
-.draai {
+.spinner {
   width: 15px;
   height: 15px;
   border: 2px solid color-mix(in srgb, var(--text-3) 40%, transparent);
   border-top-color: var(--accent);
   border-radius: 50%;
-  animation: rond 0.7s linear infinite;
+  animation: spin 0.7s linear infinite;
   display: inline-block;
 }
-@keyframes rond { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.staat {
+.status {
   font-size: 11.5px;
   color: var(--text-3);
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.staat .lamp { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
-.staat.online .lamp { background: var(--plus); }
-.staat.offline .lamp { background: var(--warn); }
+.status .lamp { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
+.status.online .lamp { background: var(--credit); }
+.status.offline .lamp { background: var(--warn); }
 
-/* ---------- maandkiezer ---------- */
+/* ---------- month picker ---------- */
 
-.maand {
+.month {
   display: flex;
   align-items: center;
   gap: 4px;
   justify-content: center;
   padding: 6px 0 16px;
 }
-.maand .naam { font-size: 14px; font-weight: 550; min-width: 150px; text-align: center; }
-.maand button { padding: 7px 10px; color: var(--text-3); border-radius: var(--r-sm); }
-.maand button:active { background: var(--sunk); }
+.month .name { font-size: 14px; font-weight: 550; min-width: 150px; text-align: center; }
+.month button { padding: 7px 10px; color: var(--text-3); border-radius: var(--r-sm); }
+.month button:active { background: var(--sunk); }
 
-/* ---------- inloggen ---------- */
+/* ---------- sign-in and unlock ---------- */
 
-.inlog {
+.auth {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -602,23 +596,23 @@ button.regel:active { background: var(--sunk); }
   max-width: 400px;
   margin: 0 auto;
 }
-.inlog.midden { justify-content: center; align-items: center; }
-.inlog .merk { display: flex; justify-content: center; color: var(--accent); margin-bottom: 20px; }
-.inlog h1 { text-align: center; font-size: 30px; font-weight: 650; letter-spacing: -0.8px; margin: 0 0 8px; }
-.inlog .onderschrift { text-align: center; color: var(--text-2); font-size: 14px; margin: 0 0 32px; line-height: 1.55; }
+.auth.center { justify-content: center; align-items: center; }
+.auth .brand { display: flex; justify-content: center; color: var(--accent); margin-bottom: 20px; }
+.auth h1 { text-align: center; font-size: 30px; font-weight: 650; letter-spacing: -0.8px; margin: 0 0 8px; }
+.auth .tagline { text-align: center; color: var(--text-2); font-size: 14px; margin: 0 0 32px; line-height: 1.55; }
 
-.uitklap {
+.disclose {
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: 12px 14px;
   margin-top: 10px;
 }
-.uitklap > summary { cursor: pointer; font-size: 13px; color: var(--text-2); list-style: none; font-weight: 500; }
-.uitklap > summary::-webkit-details-marker { display: none; }
-.uitklap > summary::before { content: '›'; display: inline-block; margin-right: 8px; color: var(--text-3); transition: transform 0.15s; }
-.uitklap[open] > summary::before { transform: rotate(90deg); }
+.disclose > summary { cursor: pointer; font-size: 13px; color: var(--text-2); list-style: none; font-weight: 500; }
+.disclose > summary::-webkit-details-marker { display: none; }
+.disclose > summary::before { content: '›'; display: inline-block; margin-right: 8px; color: var(--text-3); transition: transform 0.15s; }
+.disclose[open] > summary::before { transform: rotate(90deg); }
 
-.link {
+.link-row {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -626,7 +620,7 @@ button.regel:active { background: var(--sunk); }
   border-radius: var(--r-md);
   padding: 10px 12px;
 }
-.link .url {
+.link-row .url {
   flex: 1;
   min-width: 0;
   font-family: var(--num);

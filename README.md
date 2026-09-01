@@ -199,6 +199,25 @@ Er staan geen gegevens in. Het voorbeeldhuishouden in de app is verzonnen: ronde
 getallen die nergens op slaan. Dat is een expliciete regel — een openbare repo is
 geen plek voor iets wat op iemands werkelijke lasten lijkt.
 
+## Twee talen, met opzet
+
+De **code** is Engels: variabelen, functies, bestandsnamen, CSS-klassen,
+tabelnamen, commentaar. De **app** is Nederlands: alles wat jij en je huisgenoot
+op het scherm lezen.
+
+Dat is geen slordigheid maar de scheidslijn die het duidelijkst is. Code is voor
+wie eraan werkt, en Engels houdt hem leesbaar naast de bibliotheken en de
+foutmeldingen eromheen. Schermtekst is inhoud, en die hoort in de taal van wie
+hem leest. Waar de twee elkaar raken — een categorie, een ritme — staat er een
+Engelse `id` in de gegevens met een Nederlands `label` ernaast:
+
+```js
+{ id: 'quarter', label: 'per kwartaal', short: '/kwt', perYear: 4 }
+```
+
+Zo verandert er niets aan je opgeslagen gegevens als een label ooit anders komt
+te staan.
+
 ## Ontwikkelen
 
 ```bash

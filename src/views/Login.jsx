@@ -1,128 +1,128 @@
-// Het inlogscherm. Aanmelden gaat via een uitnodiging; de voorpagina biedt het
-// niet uit zichzelf aan.
+// The sign-in screen. Signing up goes through an invite; the front page does not
+// offer it on its own.
 
 import { useEffect, useState } from 'react';
-import { Veld, Melding, Icoon } from '../components/ui.jsx';
+import { Field, Notice, Icon } from '../components/ui.jsx';
 import { sendMagicLink, verifyCode, needsBootstrap } from '../lib/auth.js';
 
-export default function Login({ configured, joinCode, onOverslaan }) {
+export default function Login({ configured, joinCode, onSkip }) {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
-  const [verstuurd, setVerstuurd] = useState(false);
-  const [bezig, setBezig] = useState(false);
-  const [fout, setFout] = useState(null);
-  const [eersteMag, setEersteMag] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [firstAllowed, setFirstAllowed] = useState(false);
 
   useEffect(() => {
-    if (configured) needsBootstrap().then(setEersteMag).catch(() => {});
+    if (configured) needsBootstrap().then(setFirstAllowed).catch(() => {});
   }, [configured]);
 
-  const versturen = async (metAanmelden) => {
-    setBezig(true);
-    setFout(null);
+  const send = async (withSignUp) => {
+    setBusy(true);
+    setError(null);
     try {
-      await sendMagicLink(email, { invite: joinCode, allowCreate: metAanmelden });
-      setVerstuurd(true);
+      await sendMagicLink(email, { invite: joinCode, allowCreate: withSignUp });
+      setSent(true);
     } catch (err) {
-      setFout(err.message || String(err));
+      setError(err.message || String(err));
     }
-    setBezig(false);
+    setBusy(false);
   };
 
-  const codeInvoeren = async () => {
-    setBezig(true);
-    setFout(null);
+  const enterCode = async () => {
+    setBusy(true);
+    setError(null);
     try {
       await verifyCode(email, code);
     } catch (err) {
-      setFout(err.message || String(err));
+      setError(err.message || String(err));
     }
-    setBezig(false);
+    setBusy(false);
   };
 
   return (
-    <div className="inlog">
-      <div className="merk"><Icoon naam="bon" maat={38} /></div>
+    <div className="auth">
+      <div className="brand"><Icon name="receipt" size={38} /></div>
       <h1>Pay</h1>
-      <p className="onderschrift">
+      <p className="tagline">
         Wat er loopt, waar het vanaf gaat,
         <br />
         en wie wie wat schuldig is.
       </p>
 
-      {fout && <Melding toon="mis">{fout}</Melding>}
+      {error && <Notice tone="error">{error}</Notice>}
 
       {!configured ? (
         <>
-          <Melding toon="info">
-            Pay is nog niet aan een Supabase-project gekoppeld. Dat hoeft ook niet: als lokale kluis
-            werkt alles meteen, alleen blijft het dan in deze browser en kan je vriendin niet
-            meekijken.
-          </Melding>
-          <button className="knop hoofd breed" onClick={onOverslaan}>Beginnen zonder account</button>
+          <Notice tone="info">
+            Pay is nog niet aan een Supabase-project gekoppeld. Dat hoeft ook niet: lokaal werkt
+            alles meteen, alleen blijft het dan in deze browser en kan je huisgenoot niet meekijken.
+          </Notice>
+          <button className="btn primary wide" onClick={onSkip}>Beginnen zonder account</button>
         </>
-      ) : verstuurd ? (
+      ) : sent ? (
         <>
-          <Melding toon="goed">
+          <Notice tone="ok">
             Er is een mail onderweg naar <strong>{email}</strong>. Klik op de link en je bent binnen.
-          </Melding>
-          <details className="uitklap">
+          </Notice>
+          <details className="disclose">
             <summary>Mail op je telefoon, app op je laptop?</summary>
             <div style={{ marginTop: 14 }}>
-              <Veld label="Code uit de mail">
-                <input className="invoer" inputMode="numeric" placeholder="123456" value={code}
-                  onChange={(e) => setCode(e.target.value)} />
-              </Veld>
-              <button className="knop breed" disabled={bezig || code.length < 6} onClick={codeInvoeren}>
+              <Field label="Code uit de mail" htmlFor="pay-code">
+                <input id="pay-code" className="input" inputMode="numeric" placeholder="123456"
+                  value={code} onChange={(e) => setCode(e.target.value)} />
+              </Field>
+              <button className="btn wide" disabled={busy || code.length < 6} onClick={enterCode}>
                 Invoeren
               </button>
             </div>
           </details>
-          <button className="knop stil breed" style={{ marginTop: 14 }} onClick={() => setVerstuurd(false)}>
+          <button className="btn quiet wide" style={{ marginTop: 14 }} onClick={() => setSent(false)}>
             Ander adres gebruiken
           </button>
         </>
       ) : (
         <>
           {joinCode && (
-            <Melding toon="goed">
+            <Notice tone="ok">
               Je hebt een uitnodiging. Vul je e-mailadres in en je zit meteen in het juiste
               huishouden.
-            </Melding>
+            </Notice>
           )}
-          <Veld label="E-mailadres">
+          <Field label="E-mailadres" htmlFor="pay-email">
             <input
-              className="invoer"
+              id="pay-email"
+              className="input"
               type="email"
               autoComplete="email"
               inputMode="email"
               placeholder="jij@voorbeeld.nl"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && email.includes('@') && versturen(eersteMag)}
+              onKeyDown={(e) => e.key === 'Enter' && email.includes('@') && send(firstAllowed)}
             />
-          </Veld>
+          </Field>
           <button
-            className="knop hoofd breed"
-            disabled={bezig || !email.includes('@')}
-            onClick={() => versturen(eersteMag)}
+            className="btn primary wide"
+            disabled={busy || !email.includes('@')}
+            onClick={() => send(firstAllowed)}
           >
-            {bezig ? <span className="draai" /> : joinCode ? 'Account aanmaken' : 'Stuur me een link'}
+            {busy ? <span className="spinner" /> : joinCode ? 'Account aanmaken' : 'Stuur me een link'}
           </button>
 
-          {eersteMag && !joinCode && (
-            <Melding toon="info">
+          {firstAllowed && !joinCode && (
+            <Notice tone="info">
               Nog niemand hier. Het eerste account mag zonder uitnodiging binnen — daarna heeft
               iedereen er een nodig, jij incluis.
-            </Melding>
+            </Notice>
           )}
-          {!eersteMag && !joinCode && (
-            <div className="tip midden">
+          {!firstAllowed && !joinCode && (
+            <div className="hint center">
               Aanmelden gaat via een uitnodiging. Heb je er een, open dan die link.
             </div>
           )}
 
-          <button className="knop stil breed" style={{ marginTop: 22 }} onClick={onOverslaan}>
+          <button className="btn quiet wide" style={{ marginTop: 22 }} onClick={onSkip}>
             Liever zonder account, alleen in deze browser
           </button>
         </>

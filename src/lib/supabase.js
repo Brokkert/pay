@@ -3,7 +3,7 @@ import { readConfig } from './config.js';
 
 let client = null;
 
-/** De Supabase-client, of null als Pay in lokale-kluis-stand draait. */
+/** The Supabase client, or null when Pay runs in local mode. */
 export function getClient() {
   if (client) return client;
   const { url, key } = readConfig();
@@ -12,7 +12,7 @@ export function getClient() {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      // De magic link komt binnen als #access_token=... in de URL.
+      // The magic link comes back as #access_token=... in the URL.
       detectSessionInUrl: true,
       flowType: 'pkce',
     },
@@ -20,7 +20,7 @@ export function getClient() {
   return client;
 }
 
-/** Na het wijzigen van de instellingen opnieuw opbouwen. */
+/** Rebuild after the settings change. */
 export function resetClient() {
   client = null;
 }

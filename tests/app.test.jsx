@@ -1,17 +1,17 @@
-// Eén doorlopende test door de app heen, in de lokale stand.
+// One continuous test through the app, in local mode.
 //
-// De rekenkern en de versleuteling hebben hun eigen tests; deze controleert dat
-// de uitkomsten ook echt op het scherm belanden, dat de kluis dicht zit tot je
-// hem opent, en dat er niets leesbaars in de browser achterblijft.
+// The ledger and the encryption have their own tests; this one checks that the
+// results actually reach the screen, that the vault stays shut until you open
+// it, and that nothing readable is left behind in the browser.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, within, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';
-import { voorbeeldKasboek } from '../src/data/voorbeeld.js';
-import { nieuweHuissleutel, sleutelNaarRuw, versleutel, naarB64 } from '../src/lib/kluis.js';
+import { exampleHousehold } from '../src/data/example.js';
+import { newHouseholdKey, keyToRaw, encrypt, toB64 } from '../src/lib/crypto.js';
 
-const ZIN = 'zes wilde ganzen boven de dijk';
+const PHRASE = 'zes wilde ganzen boven de dijk';
 
 beforeEach(() => {
   localStorage.clear();
@@ -19,138 +19,137 @@ beforeEach(() => {
 afterEach(cleanup);
 
 /**
- * Zet een ontgrendelde kluis klaar met gegevens erin.
+ * Puts an unlocked vault in place with data in it.
  *
- * Het instellen van een wachtwoordzin heeft hieronder een eigen test; overal
- * elders zou PBKDF2 met 310.000 rondes de tests alleen maar traag maken zonder
- * iets extra's te bewijzen.
+ * Setting a passphrase has its own test below; everywhere else PBKDF2 with
+ * 310,000 rounds would only make the tests slow without proving anything extra.
  */
-async function metGegevens(set) {
-  const sleutel = await nieuweHuissleutel();
-  localStorage.setItem('pay:sleutel:open', JSON.stringify(naarB64(await sleutelNaarRuw(sleutel))));
+async function withData(set) {
+  const key = await newHouseholdKey();
+  localStorage.setItem('pay:key:open', JSON.stringify(toB64(await keyToRaw(key))));
 
-  const versleuteld = { personen: [], rekeningen: [], posten: [] };
-  for (const soort of ['personen', 'rekeningen', 'posten']) {
-    for (const rij of set[soort]) {
-      const { id, ...inhoud } = rij;
-      versleuteld[soort].push({ id, geheim: await versleutel(sleutel, inhoud) });
+  const encrypted = { people: [], accounts: [], expenses: [] };
+  for (const kind of ['people', 'accounts', 'expenses']) {
+    for (const record of set[kind]) {
+      const { id, ...content } = record;
+      encrypted[kind].push({ id, secret: await encrypt(key, content) });
     }
   }
-  localStorage.setItem('pay:kluis:v2', JSON.stringify(versleuteld));
-  return sleutel;
+  localStorage.setItem('pay:store', JSON.stringify(encrypted));
+  return key;
 }
 
 const start = async () => {
-  const gebruiker = userEvent.setup();
+  const user = userEvent.setup();
   render(<App />);
-  await gebruiker.click(await screen.findByRole('button', { name: /zonder account/i }));
-  return gebruiker;
+  await user.click(await screen.findByRole('button', { name: /zonder account/i }));
+  return user;
 };
 
-describe('de kluis', () => {
-  it('vraagt eerst om een wachtwoordzin', async () => {
+describe('the vault', () => {
+  it('asks for a passphrase first', async () => {
     await start();
     expect(await screen.findByRole('heading', { name: /kies een wachtwoordzin/i })).toBeTruthy();
-    // En zegt er duidelijk bij dat je hem niet kunt herstellen.
+    // And says plainly that you cannot recover it.
     expect(screen.getByText(/kan niet hersteld worden/i)).toBeTruthy();
   });
 
-  it('opent pas als de twee zinnen gelijk en lang genoeg zijn', async () => {
-    const gebruiker = await start();
-    const zinVeld = await screen.findByLabelText('Wachtwoordzin');
-    const herhaalVeld = screen.getByLabelText('Nog een keer');
-    const knop = screen.getByRole('button', { name: 'Instellen' });
+  it('only opens once the two phrases match and are long enough', async () => {
+    const user = await start();
+    const phrase = await screen.findByLabelText('Wachtwoordzin');
+    const repeat = screen.getByLabelText('Nog een keer');
+    const button = screen.getByRole('button', { name: 'Instellen' });
 
-    expect(knop.disabled).toBe(true);
+    expect(button.disabled).toBe(true);
 
-    await gebruiker.type(zinVeld, 'kort');
-    expect(knop.disabled).toBe(true);
+    await user.type(phrase, 'kort');
+    expect(button.disabled).toBe(true);
 
-    await gebruiker.clear(zinVeld);
-    await gebruiker.type(zinVeld, ZIN);
-    await gebruiker.type(herhaalVeld, 'iets anders wat lang genoeg is');
-    expect(knop.disabled).toBe(true);
+    await user.clear(phrase);
+    await user.type(phrase, PHRASE);
+    await user.type(repeat, 'iets anders wat lang genoeg is');
+    expect(button.disabled).toBe(true);
 
-    await gebruiker.clear(herhaalVeld);
-    await gebruiker.type(herhaalVeld, ZIN);
-    expect(knop.disabled).toBe(false);
+    await user.clear(repeat);
+    await user.type(repeat, PHRASE);
+    expect(button.disabled).toBe(false);
   }, 30000);
 
-  it('laat niets leesbaars achter in de browser', async () => {
-    await metGegevens(voorbeeldKasboek());
-    const opgeslagen = localStorage.getItem('pay:kluis:v2');
-    for (const woord of ['Energie', 'Internet', 'Partner', 'Vaste lasten', '9000', '5000']) {
-      expect(opgeslagen).not.toContain(woord);
+  it('leaves nothing readable behind in the browser', async () => {
+    await withData(exampleHousehold());
+    const stored = localStorage.getItem('pay:store');
+    for (const word of ['Energie', 'Internet', 'Partner', 'Vaste lasten', '9000', '5000']) {
+      expect(stored).not.toContain(word);
     }
   });
 });
 
-describe('Pay in de lokale stand', () => {
-  it('begint zonder gegevens', async () => {
-    await metGegevens({ personen: [], rekeningen: [], posten: [] });
+describe('Pay in local mode', () => {
+  it('starts without data', async () => {
+    await withData({ people: [], accounts: [], expenses: [] });
     await start();
     expect(await screen.findByText(/lokale kluis/i)).toBeTruthy();
     expect(screen.getByText(/nog niets geboekt/i)).toBeTruthy();
   });
 
-  it('rekent het voorbeeldhuishouden door tot op de cent', async () => {
-    await metGegevens(voorbeeldKasboek());
+  it('works the example household out to the cent', async () => {
+    await withData(exampleHousehold());
     await start();
 
     // 90 + 15 + 12 + 8 + 90/3 + 50 + 20 + 12 + 16 + 25
     expect((await screen.findAllByText('€ 278,00')).length).toBeGreaterThan(0);
-    // Een kwart van de bankkosten draagt de zaak, en die maakt dat zelf over.
+    // A quarter of the bank charges is borne by the business, which transfers it.
     expect(screen.getAllByText('€ 4,00').length).toBeGreaterThan(0);
-    // De streamingdienst (20 door vier, ik betaal) tegen de muziekdienst
-    // (12 door twee, de vriend betaalt): netto € 1,00 van mij naar hem.
+    // The streaming service (20 over four, I pay) against the music service
+    // (12 over two, the friend pays): net € 1,00 from me to him.
     expect(screen.getAllByText('€ 1,00').length).toBeGreaterThan(0);
-    // De twee verzekeringsposten staan samen op één incasso.
+    // The two insurance expenses sit on one charge.
     expect(screen.getAllByText('Verzekeringen').length).toBeGreaterThan(0);
   });
 
-  it('bewaart een nieuwe post versleuteld en telt hem meteen mee', async () => {
-    await metGegevens(voorbeeldKasboek());
-    const gebruiker = await start();
-    await gebruiker.click(await screen.findByRole('button', { name: /Lasten/ }));
+  it('saves a new expense encrypted and counts it right away', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
 
-    await gebruiker.click(screen.getByRole('button', { name: 'Nieuwe post' }));
-    await gebruiker.type(screen.getByPlaceholderText(/Energie, internet/), 'Krant');
-    await gebruiker.type(screen.getByPlaceholderText('0,00'), '12,50');
+    await user.click(screen.getByRole('button', { name: 'Nieuwe post' }));
+    await user.type(screen.getByPlaceholderText(/Energie, internet/), 'Krant');
+    await user.type(screen.getByPlaceholderText('0,00'), '12,50');
 
-    const paneel = screen.getByRole('heading', { name: 'Nieuwe post' }).closest('.blad');
-    await gebruiker.click(within(paneel).getByRole('button', { name: /Vaste lasten/ }));
-    await gebruiker.click(within(paneel).getByRole('button', { name: 'Bewaren' }));
+    const sheet = screen.getByRole('heading', { name: 'Nieuwe post' }).closest('.sheet');
+    await user.click(within(sheet).getByRole('button', { name: /Vaste lasten/ }));
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
     expect(await screen.findByText('Krant')).toBeTruthy();
-    // Op het scherm wel, in de opslag niet.
-    expect(localStorage.getItem('pay:kluis:v2')).not.toContain('Krant');
+    // On screen yes, in storage no.
+    expect(localStorage.getItem('pay:store')).not.toContain('Krant');
   }, 30000);
 
-  it('waarschuwt als er niemand als "ik" is aangewezen', async () => {
-    const zonderMij = voorbeeldKasboek();
-    zonderMij.personen = zonderMij.personen.map((p) => ({ ...p, is_mij: false }));
-    await metGegevens(zonderMij);
-    const gebruiker = await start();
+  it('warns when nobody is marked as "me"', async () => {
+    const withoutMe = exampleHousehold();
+    withoutMe.people = withoutMe.people.map((p) => ({ ...p, isMe: false }));
+    await withData(withoutMe);
+    const user = await start();
 
-    await gebruiker.click(await screen.findByRole('button', { name: /Verrekenen/ }));
+    await user.click(await screen.findByRole('button', { name: /Verrekenen/ }));
     expect(screen.getByText(/wie van de personen jij bent/i)).toBeTruthy();
   });
 });
 
-describe('afsluiten', () => {
-  it('laat geen sleutel en geen kopie achter na het uitloggen', async () => {
-    localStorage.setItem('pay:cache:iemand', '{"posten":[]}');
-    localStorage.setItem('pay:sleutel:open', '"ruw"');
-    localStorage.setItem('pay:sleutel', '{"ct":"..."}');
-    localStorage.setItem('pay:thema', 'dark');
+describe('signing out', () => {
+  it('leaves no key and no copy behind', async () => {
+    localStorage.setItem('pay:cache:someone', '{"expenses":[]}');
+    localStorage.setItem('pay:key:open', '"raw"');
+    localStorage.setItem('pay:key', '{"ct":"..."}');
+    localStorage.setItem('pay:theme', 'dark');
 
-    const { wisLokaleKopie } = await import('../src/lib/auth.js');
-    wisLokaleKopie();
+    const { clearLocalCopy } = await import('../src/lib/auth.js');
+    clearLocalCopy();
 
-    expect(localStorage.getItem('pay:cache:iemand')).toBe(null);
-    expect(localStorage.getItem('pay:sleutel:open')).toBe(null);
-    expect(localStorage.getItem('pay:sleutel')).toBe(null);
-    // Voorkeuren zijn geen gegevens en mogen blijven staan.
-    expect(localStorage.getItem('pay:thema')).toBe('dark');
+    expect(localStorage.getItem('pay:cache:someone')).toBe(null);
+    expect(localStorage.getItem('pay:key:open')).toBe(null);
+    expect(localStorage.getItem('pay:key')).toBe(null);
+    // Preferences are not data and may stay.
+    expect(localStorage.getItem('pay:theme')).toBe('dark');
   });
 });

@@ -1,115 +1,113 @@
-// In en uit. Twee richtingen, allebei zonder gedoe.
+// In and out. Two directions, both without fuss.
 //
-// Uit: een CSV die je zo in Excel opent, met alles al doorgerekend — per post
-// het maandbedrag, het jaarbedrag en het aandeel van iedere persoon in een
-// eigen kolom. Dat is precies het blad dat je nu met de hand bijhoudt.
+// Out: a CSV you open straight in Excel, with everything worked out — per
+// expense the monthly amount, the yearly amount, and every bearer's share in its
+// own column. That is exactly the sheet people keep by hand.
 //
-// In: plakken. Je bestaande overzicht heeft een kolom met namen en een kolom
-// met bedragen; die twee sleep je hierheen en de rest vul je één keer in.
+// In: pasting. Your existing overview has a column of names and a column of
+// amounts; you drag those two over here and fill in the rest once.
 
-import { perMaand, perJaar, ritmeVan, RITMES } from './ritme.js';
-import { verdeel } from './verdeel.js';
-import { betalerPartij, isPot, partijId } from './saldo.js';
-import { parseGeld } from './geld.js';
-import { categorieVan } from '../data/categorieen.js';
-import { mogelijkeDragers } from './verdeel.js';
+import { perMonth, perYear, cadenceOf, CADENCES } from './cadence.js';
+import { split, possibleBearers } from './split.js';
+import { payerParty, isAccountParty, partyId } from './ledger.js';
+import { parseMoney } from './money.js';
+import { categoryOf } from '../data/categories.js';
 
-const veld = (waarde) => {
-  const tekst = String(waarde ?? '');
-  return /[";\n]/.test(tekst) ? `"${tekst.replace(/"/g, '""')}"` : tekst;
+const cell = (value) => {
+  const text = String(value ?? '');
+  return /[";\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 
-// Excel in het Nederlands verwacht een puntkomma en een decimale komma. Met
-// een punt-komma-combinatie belandt alles anders in één kolom.
-const bedrag = (centen) => String((centen / 100).toFixed(2)).replace('.', ',');
+// Excel in Dutch expects a semicolon and a decimal comma. With a dot-and-comma
+// combination everything lands in one column.
+const amount = (cents) => String((cents / 100).toFixed(2)).replace('.', ',');
 
-export function naarCsv({ posten, personen, rekeningen }) {
-  const dragers = mogelijkeDragers(personen, rekeningen);
-  const kop = [
+export function toCsv({ expenses, people, accounts }) {
+  const bearers = possibleBearers(people, accounts);
+  const header = [
     'Post', 'Categorie', 'Incasso', 'Bedrag', 'Ritme', 'Per maand', 'Per jaar',
     'Betaald door', 'Zakelijk', 'Loopt vanaf', 'Loopt tot', 'Notitie',
-    ...dragers.map((d) => `Aandeel ${d.naam}`),
+    ...bearers.map((b) => `Aandeel ${b.name}`),
   ];
 
-  const regels = posten.map((post) => {
-    const maandbedrag = perMaand(post.bedrag, post.ritme);
-    const partij = betalerPartij(post, rekeningen);
-    const { delen } = verdeel(post.ritme === 'eenmalig' ? post.bedrag : maandbedrag, post.verdeling);
-    const betaler = isPot(partij)
-      ? rekeningen.find((r) => r.id === partijId(partij))?.naam
-      : personen.find((p) => p.id === partijId(partij))?.naam;
+  const rows = expenses.map((expense) => {
+    const monthly = perMonth(expense.amount, expense.cadence);
+    const party = payerParty(expense, accounts);
+    const { parts } = split(expense.cadence === 'once' ? expense.amount : monthly, expense.split);
+    const payer = isAccountParty(party)
+      ? accounts.find((a) => a.id === partyId(party))?.name
+      : people.find((p) => p.id === partyId(party))?.name;
 
     return [
-      post.naam,
-      categorieVan(post.categorie).label,
-      post.bundel || '',
-      bedrag(post.bedrag),
-      ritmeVan(post.ritme).label,
-      bedrag(maandbedrag),
-      bedrag(perJaar(post.bedrag, post.ritme)),
-      betaler || '',
-      post.zakelijk ? 'ja' : '',
-      post.vanaf || '',
-      post.tot || '',
-      post.notitie || '',
-      ...dragers.map((d) => bedrag(delen[d.sleutel] || 0)),
+      expense.name,
+      categoryOf(expense.category).label,
+      expense.charge || '',
+      amount(expense.amount),
+      cadenceOf(expense.cadence).label,
+      amount(monthly),
+      amount(perYear(expense.amount, expense.cadence)),
+      payer || '',
+      expense.business ? 'ja' : '',
+      expense.from || '',
+      expense.until || '',
+      expense.note || '',
+      ...bearers.map((b) => amount(parts[b.key] || 0)),
     ];
   });
 
-  return [kop, ...regels].map((rij) => rij.map(veld).join(';')).join('\r\n');
+  return [header, ...rows].map((row) => row.map(cell).join(';')).join('\r\n');
 }
 
 /**
- * Leest een geplakt stuk tabel.
+ * Reads a pasted piece of table.
  *
- * Excel geeft tabs mee als je een selectie kopieert, een export geeft
- * puntkomma's of komma's. We kijken per regel welke het vaakst voorkomt en
- * gebruiken die — je hoeft dus niets in te stellen.
+ * Excel gives you tabs when you copy a selection; an export gives semicolons or
+ * commas. We look at which one occurs most per line and use that — so there is
+ * nothing to configure.
  *
- * De eerste kolom met tekst is de naam, de eerste kolom die als bedrag te lezen
- * is het bedrag. Een kopregel ("Omschrijving  Bedrag") heeft geen bedrag en
- * valt daarmee vanzelf af.
+ * The first column with text is the name, the first column that reads as an
+ * amount is the amount. A header row ("Omschrijving  Bedrag") has no amount and
+ * drops out by itself.
  */
-export function leesPlak(tekst) {
-  const regels = String(tekst || '').split(/\r?\n/).map((r) => r.trim()).filter(Boolean);
-  const uit = [];
+export function parsePaste(text) {
+  const lines = String(text || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const out = [];
 
-  for (const regel of regels) {
-    const scheider = ['\t', ';', ','].sort(
-      (a, b) => (regel.split(b).length - regel.split(a).length)
-    )[0];
-    const kolommen = regel.split(scheider).map((k) => k.trim().replace(/^"|"$/g, ''));
+  for (const line of lines) {
+    const separator = ['\t', ';', ','].sort((a, b) => line.split(b).length - line.split(a).length)[0];
+    const columns = line.split(separator).map((c) => c.trim().replace(/^"|"$/g, ''));
 
-    let naam = '';
-    let centen = null;
-    let ritme = 'maand';
+    let name = '';
+    let cents = null;
+    let cadence = 'month';
 
-    for (const kolom of kolommen) {
-      if (!kolom) continue;
-      const alsBedrag = /\d/.test(kolom) ? parseGeld(kolom) : null;
-      // Een kolom die alleen maar cijfers en scheidingstekens bevat is een
-      // bedrag; staat er ook tekst in, dan is het de naam (of het ritme).
-      const puurGetal = /^[^A-Za-z]*$/.test(kolom.replace(/€|EUR/gi, ''));
-      if (alsBedrag !== null && puurGetal && centen === null) centen = alsBedrag;
-      else if (!naam) naam = kolom;
+    for (const column of columns) {
+      if (!column) continue;
+      const asAmount = /\d/.test(column) ? parseMoney(column) : null;
+      // A column holding only digits and separators is an amount; if there is
+      // text in it too, it is the name (or the cadence).
+      const numericOnly = /^[^A-Za-z]*$/.test(column.replace(/€|EUR/gi, ''));
+      if (asAmount !== null && numericOnly && cents === null) cents = asAmount;
+      else if (!name) name = column;
       else {
-        const gevonden = RITMES.find((r) => kolom.toLowerCase().includes(r.id));
-        if (gevonden) ritme = gevonden.id;
+        const lower = column.toLowerCase();
+        const found = CADENCES.find((c) => c.keywords.some((w) => lower.includes(w)));
+        if (found) cadence = found.id;
       }
     }
 
-    if (naam && centen) uit.push({ naam, bedrag: centen, ritme });
+    if (name && cents) out.push({ name, amount: cents, cadence });
   }
 
-  return uit;
+  return out;
 }
 
-export function download(naam, inhoud, type = 'text/csv;charset=utf-8') {
-  const blob = new Blob(['﻿', inhoud], { type });
+export function download(name, content, type = 'text/csv;charset=utf-8') {
+  const blob = new Blob(['﻿', content], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = naam;
+  link.download = name;
   link.click();
   URL.revokeObjectURL(url);
 }

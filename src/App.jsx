@@ -1,34 +1,34 @@
 import { useEffect, useState } from 'react';
-import Overzicht from './tabs/Overzicht.jsx';
-import Lasten from './tabs/Lasten.jsx';
-import Verrekenen from './tabs/Verrekenen.jsx';
-import Mensen from './tabs/Mensen.jsx';
-import Instellingen from './tabs/Instellingen.jsx';
+import Overview from './tabs/Overview.jsx';
+import Expenses from './tabs/Expenses.jsx';
+import Settle from './tabs/Settle.jsx';
+import People from './tabs/People.jsx';
+import Settings from './tabs/Settings.jsx';
 import Login from './views/Login.jsx';
-import Ontgrendel from './views/Ontgrendel.jsx';
-import PostForm from './components/PostForm.jsx';
-import { Melding, Icoon } from './components/ui.jsx';
+import Unlock from './views/Unlock.jsx';
+import ExpenseForm from './components/ExpenseForm.jsx';
+import { Notice, Icon } from './components/ui.jsx';
 import { useSession, signOut } from './lib/auth.js';
-import { useKasboek } from './lib/kasboek.js';
-import { useSleutelring } from './lib/sleutelring.js';
+import { useStore } from './lib/store.js';
+import { useKeyring } from './lib/keyring.js';
 import { isConfigured } from './lib/config.js';
-import { dezeMaand } from './lib/ritme.js';
+import { thisMonth } from './lib/cadence.js';
 
 const TABS = [
-  { id: 'overzicht', label: 'Overzicht' },
-  { id: 'lasten', label: 'Lasten' },
-  { id: 'verrekenen', label: 'Verrekenen' },
-  { id: 'mensen', label: 'Mensen' },
-  { id: 'meer', label: 'Meer' },
+  { id: 'overview', label: 'Overzicht' },
+  { id: 'expenses', label: 'Lasten' },
+  { id: 'settle', label: 'Verrekenen' },
+  { id: 'people', label: 'Mensen' },
+  { id: 'more', label: 'Meer' },
 ];
 
-/** Hash-routing: op GitHub Pages is er geen server die paden kan afhandelen. */
+/** Hash routing: on GitHub Pages there is no server to handle paths. */
 function useHashRoute() {
   const [hash, setHash] = useState(() => window.location.hash);
   useEffect(() => {
-    const opWissel = () => setHash(window.location.hash);
-    window.addEventListener('hashchange', opWissel);
-    return () => window.removeEventListener('hashchange', opWissel);
+    const onChange = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
   }, []);
   return { joinCode: hash.match(/^#\/join\/(.+)$/)?.[1] || null };
 }
@@ -36,61 +36,57 @@ function useHashRoute() {
 export default function App() {
   const { ready, session, user } = useSession();
   const { joinCode } = useHashRoute();
-  const [tab, setTab] = useState('overzicht');
-  const [maand, setMaand] = useState(dezeMaand);
-  const [bewerken, setBewerken] = useState(null);
-  const [thema, setThema] = useState(() => localStorage.getItem('pay:thema') || 'light');
-  const [zonderAccount, setZonderAccount] = useState(
-    () => localStorage.getItem('pay:lokaal') === 'ja'
+  const [tab, setTab] = useState('overview');
+  const [month, setMonth] = useState(thisMonth);
+  const [editing, setEditing] = useState(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem('pay:theme') || 'light');
+  const [withoutAccount, setWithoutAccount] = useState(
+    () => localStorage.getItem('pay:local') === 'yes'
   );
 
-  const ring = useSleutelring(user);
-  const kasboek = useKasboek(user, ring.sleutel);
+  const keyring = useKeyring(user);
+  const store = useStore(user, keyring.key);
   const configured = isConfigured();
 
   useEffect(() => {
-    document.documentElement.dataset.theme = thema;
-    localStorage.setItem('pay:thema', thema);
-  }, [thema]);
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('pay:theme', theme);
+  }, [theme]);
 
   if (!ready) {
     return (
-      <div className="inlog midden">
-        <span className="draai" />
+      <div className="auth center">
+        <span className="spinner" />
       </div>
     );
   }
 
-  // Een uitnodigingslink gaat voor op "ik klikte laatst weg naar de lokale
-  // kluis": anders krijgt de uitgenodigde het aanmeldscherm nooit te zien.
-  if (!session && (!zonderAccount || joinCode)) {
+  // An invite link beats "I once clicked away to local mode": otherwise the
+  // invitee would never see the sign-up screen.
+  if (!session && (!withoutAccount || joinCode)) {
     return (
       <Login
         configured={configured}
         joinCode={joinCode}
-        onOverslaan={() => {
-          localStorage.setItem('pay:lokaal', 'ja');
-          setZonderAccount(true);
+        onSkip={() => {
+          localStorage.setItem('pay:local', 'yes');
+          setWithoutAccount(true);
         }}
       />
     );
   }
 
-  if (ring.staat === 'laden') {
+  if (keyring.state === 'loading') {
     return (
-      <div className="inlog midden">
-        <span className="draai" />
+      <div className="auth center">
+        <span className="spinner" />
       </div>
     );
   }
 
-  if (ring.staat !== 'open') {
+  if (keyring.state !== 'open') {
     return (
-      <Ontgrendel
-        ring={ring}
-        email={user?.email}
-        onUitloggen={session ? () => signOut() : null}
-      />
+      <Unlock keyring={keyring} email={user?.email} onSignOut={session ? () => signOut() : null} />
     );
   }
 
@@ -99,57 +95,57 @@ export default function App() {
       <div className="topbar">
         <h1>Pay</h1>
         <div className="spacer" />
-        <span className={`staat ${kasboek.offline ? 'offline' : kasboek.cloud ? 'online' : ''}`}>
+        <span className={`status ${store.offline ? 'offline' : store.cloud ? 'online' : ''}`}>
           <span className="lamp" />
-          {kasboek.offline ? 'geen bereik' : kasboek.cloud ? 'gesynchroniseerd' : 'lokale kluis'}
+          {store.offline ? 'geen bereik' : store.cloud ? 'gesynchroniseerd' : 'lokale kluis'}
         </span>
       </div>
 
       <div className="main">
-        {kasboek.fout && <Melding toon="mis">{kasboek.fout}</Melding>}
-        {kasboek.laden && !kasboek.posten.length && (
-          <div className="midden" style={{ padding: 48 }}><span className="draai" /></div>
+        {store.error && <Notice tone="error">{store.error}</Notice>}
+        {store.loading && !store.expenses.length && (
+          <div className="center" style={{ padding: 48 }}><span className="spinner" /></div>
         )}
 
-        {tab === 'overzicht' && <Overzicht kasboek={kasboek} maand={maand} onMaand={setMaand} />}
+        {tab === 'overview' && <Overview store={store} month={month} onMonth={setMonth} />}
 
-        {tab === 'lasten' && (
-          <Lasten
-            kasboek={kasboek}
-            maand={maand}
-            onOpen={setBewerken}
-            onNieuw={() => setBewerken({})}
-            onBewaar={(post) => kasboek.bewaar('posten', post)}
+        {tab === 'expenses' && (
+          <Expenses
+            store={store}
+            month={month}
+            onOpen={setEditing}
+            onNew={() => setEditing({})}
+            onSave={(expense) => store.save('expenses', expense)}
           />
         )}
 
-        {tab === 'verrekenen' && <Verrekenen kasboek={kasboek} maand={maand} />}
+        {tab === 'settle' && <Settle store={store} month={month} />}
 
-        {tab === 'mensen' && <Mensen kasboek={kasboek} />}
+        {tab === 'people' && <People store={store} />}
 
-        {tab === 'meer' && (
-          <Instellingen user={user} kasboek={kasboek} ring={ring} thema={thema} onThema={setThema} />
+        {tab === 'more' && (
+          <Settings user={user} store={store} keyring={keyring} theme={theme} onTheme={setTheme} />
         )}
       </div>
 
       <nav className="tabbar">
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
-            <Icoon naam={t.id} maat={21} />
+            <Icon name={t.id} size={21} />
             {t.label}
           </button>
         ))}
       </nav>
 
-      {bewerken && (
-        <PostForm
-          post={bewerken}
-          personen={kasboek.personen}
-          rekeningen={kasboek.rekeningen}
-          bundels={[...new Set(kasboek.posten.map((p) => p.bundel).filter(Boolean))].sort()}
-          onBewaar={(post) => kasboek.bewaar('posten', post)}
-          onVerwijder={(id) => kasboek.verwijder('posten', id)}
-          onSluit={() => setBewerken(null)}
+      {editing && (
+        <ExpenseForm
+          expense={editing}
+          people={store.people}
+          accounts={store.accounts}
+          charges={[...new Set(store.expenses.map((e) => e.charge).filter(Boolean))].sort()}
+          onSave={(expense) => store.save('expenses', expense)}
+          onRemove={(id) => store.remove('expenses', id)}
+          onClose={() => setEditing(null)}
         />
       )}
     </div>

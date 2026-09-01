@@ -1,52 +1,56 @@
 import { describe, it, expect } from 'vitest';
-import { naarCsv, leesPlak } from '../src/lib/csv.js';
+import { toCsv, parsePaste } from '../src/lib/csv.js';
 
-const personen = [{ id: 'a', naam: 'Ik', is_mij: true }, { id: 'b', naam: 'Anne' }];
-const rekeningen = [{ id: 'r', naam: 'Gezamenlijk', soort: 'gezamenlijk', deelnemers: ['a', 'b'] }];
-const posten = [{
-  id: '1', naam: 'Huur', bedrag: 140000, ritme: 'maand', categorie: 'wonen',
-  bundel: 'Hypotheek', betaler: { soort: 'rekening', id: 'r' },
-  verdeling: { soort: 'gelijk', deelnemers: ['a', 'b'] },
+const people = [{ id: 'a', name: 'Ik', isMe: true }, { id: 'b', name: 'Partner' }];
+const accounts = [{ id: 'x', name: 'Vaste lasten', kind: 'shared', members: ['a', 'b'] }];
+const expenses = [{
+  id: '1', name: 'Energie', amount: 9000, cadence: 'month', category: 'utilities',
+  charge: 'Nutsbedrijf', payer: { kind: 'account', id: 'x' },
+  split: { kind: 'equal', participants: ['a', 'b'] },
 }];
 
-describe('naarCsv', () => {
-  it('schrijft een blad dat Excel meteen in kolommen zet', () => {
-    const regels = naarCsv({ posten, personen, rekeningen }).split('\r\n');
-    expect(regels[0].split(';')).toContain('Aandeel Anne');
-    expect(regels[0].split(';')).toContain('Incasso');
-    expect(regels[1]).toContain('Huur;Wonen;Hypotheek;1400,00');
-    expect(regels[1].endsWith('700,00;700,00')).toBe(true);
+describe('toCsv', () => {
+  it('writes a sheet Excel puts straight into columns', () => {
+    const rows = toCsv({ expenses, people, accounts }).split('\r\n');
+    expect(rows[0].split(';')).toContain('Aandeel Partner');
+    expect(rows[0].split(';')).toContain('Incasso');
+    expect(rows[1]).toContain('Energie;Energie & water;Nutsbedrijf;90,00');
+    expect(rows[1].endsWith('45,00;45,00')).toBe(true);
   });
 
-  it('zet aanhalingstekens om velden met een puntkomma erin', () => {
-    const raar = [{ ...posten[0], naam: 'Huur; incl. servicekosten' }];
-    expect(naarCsv({ posten: raar, personen, rekeningen })).toContain('"Huur; incl. servicekosten"');
+  it('quotes fields with a semicolon in them', () => {
+    const odd = [{ ...expenses[0], name: 'Energie; incl. vastrecht' }];
+    expect(toCsv({ expenses: odd, people, accounts })).toContain('"Energie; incl. vastrecht"');
   });
 });
 
-describe('leesPlak', () => {
-  it('leest wat je uit Excel kopieert', () => {
-    expect(leesPlak('Huur\t1400,00\nNetflix\t13,99')).toEqual([
-      { naam: 'Huur', bedrag: 140000, ritme: 'maand' },
-      { naam: 'Netflix', bedrag: 1399, ritme: 'maand' },
+describe('parsePaste', () => {
+  it('reads what you copy out of Excel', () => {
+    expect(parsePaste('Energie\t90,00\nInternet\t49,00')).toEqual([
+      { name: 'Energie', amount: 9000, cadence: 'month' },
+      { name: 'Internet', amount: 4900, cadence: 'month' },
     ]);
   });
 
-  it('gaat om met puntkomma\'s, euro-tekens en een kopregel', () => {
-    expect(leesPlak('Omschrijving;Bedrag\nInternet;€ 49,00')).toEqual([
-      { naam: 'Internet', bedrag: 4900, ritme: 'maand' },
+  it('copes with semicolons, currency signs and a header row', () => {
+    expect(parsePaste('Omschrijving;Bedrag\nInternet;€ 49,00')).toEqual([
+      { name: 'Internet', amount: 4900, cadence: 'month' },
     ]);
   });
 
-  it('pikt een ritme op als je dat erbij hebt staan', () => {
-    expect(leesPlak('Opstalverzekering;300,00;per jaar')).toEqual([
-      { naam: 'Opstalverzekering', bedrag: 30000, ritme: 'jaar' },
+  it('picks up a cadence when you paste one alongside', () => {
+    expect(parsePaste('Verzekering;300,00;per jaar')).toEqual([
+      { name: 'Verzekering', amount: 30000, cadence: 'year' },
+    ]);
+    // "half jaar" must not be read as "jaar".
+    expect(parsePaste('Verzekering;300,00;per half jaar')).toEqual([
+      { name: 'Verzekering', amount: 30000, cadence: 'halfyear' },
     ]);
   });
 
-  it('slaat regels zonder bedrag over', () => {
-    expect(leesPlak('\n VASTE LASTEN \nHuur;1400')).toEqual([
-      { naam: 'Huur', bedrag: 140000, ritme: 'maand' },
+  it('skips lines without an amount', () => {
+    expect(parsePaste('\n VASTE LASTEN \nEnergie;90')).toEqual([
+      { name: 'Energie', amount: 9000, cadence: 'month' },
     ]);
   });
 });

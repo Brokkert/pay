@@ -1,196 +1,199 @@
-// Kleine bouwstenen die overal terugkomen.
+// Small building blocks that come back everywhere.
 
 import { useEffect, useState } from 'react';
-import { toonGeld, parseGeld, alsInvoer } from '../lib/geld.js';
-import Icoon from './icons.jsx';
+import { formatMoney, parseMoney, toInput } from '../lib/money.js';
+import Icon from './icons.jsx';
 
-export function Blad({ titel, onSluit, children, acties = null }) {
-  // Achtergrond niet laten meescrollen zolang het paneel open staat.
+export function Sheet({ title, onClose, children, actions = null }) {
+  // Keep the background from scrolling along while the sheet is open.
   useEffect(() => {
-    const vorige = document.body.style.overflow;
+    const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const opToets = (e) => e.key === 'Escape' && onSluit?.();
-    window.addEventListener('keydown', opToets);
+    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    window.addEventListener('keydown', onKey);
     return () => {
-      document.body.style.overflow = vorige;
-      window.removeEventListener('keydown', opToets);
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', onKey);
     };
-  }, [onSluit]);
+  }, [onClose]);
 
   return (
-    <div className="overlay" onClick={onSluit}>
-      <div className="blad" onClick={(e) => e.stopPropagation()}>
-        <div className="blad-greep" />
-        <div className="blad-kop">
-          <h2>{titel}</h2>
-          {acties}
-          <button className="knop stil icoon" onClick={onSluit} aria-label="Sluiten">
-            <Icoon naam="kruis" maat={19} />
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-grip" />
+        <div className="sheet-head">
+          <h2>{title}</h2>
+          {actions}
+          <button className="btn quiet icon" onClick={onClose} aria-label="Sluiten">
+            <Icon name="close" size={19} />
           </button>
         </div>
-        <div className="blad-lijf">{children}</div>
+        <div className="sheet-body">{children}</div>
       </div>
     </div>
   );
 }
 
-export function Veld({ label, tip, voor = null, let: letOp = false, children }) {
+export function Field({ label, hint, warn = false, htmlFor = null, children }) {
   return (
-    <div className="veld">
-      {label && <label htmlFor={voor || undefined}>{label}</label>}
+    <div className="field">
+      {label && <label htmlFor={htmlFor || undefined}>{label}</label>}
       {children}
-      {tip && <div className={`tip${letOp ? ' let' : ''}`}>{tip}</div>}
+      {hint && <div className={`hint${warn ? ' warn' : ''}`}>{hint}</div>}
     </div>
   );
 }
 
-export const Melding = ({ toon = 'info', children }) => (
-  <div className={`melding ${toon}`}>{children}</div>
+export const Notice = ({ tone = 'info', children }) => (
+  <div className={`notice ${tone}`}>{children}</div>
 );
 
-export function Leeg({ icoon = 'leeg', titel, children }) {
+export function Empty({ icon = 'empty', title, children }) {
   return (
-    <div className="leeg">
-      <div className="beeld"><Icoon naam={icoon} maat={40} /></div>
-      <h3>{titel}</h3>
+    <div className="empty">
+      <div className="art"><Icon name={icon} size={40} /></div>
+      <h3>{title}</h3>
       <p>{children}</p>
     </div>
   );
 }
 
-/** Een bedrag. Altijd mono met cijfers van gelijke breedte — zie styles.css. */
-export const Geld = ({ centen, maat = '', toon = '' }) => (
-  <span className={`bedrag ${maat} ${toon}`.trim()}>{toonGeld(centen)}</span>
+/** An amount. Always mono with equal-width digits — see styles.css. */
+export const Money = ({ cents, size = '', tone = '' }) => (
+  <span className={`amount ${size} ${tone}`.trim()}>{formatMoney(cents)}</span>
 );
 
-/** Regel met een bedrag: omschrijving links, getal rechts. */
-export const Post = ({ wat, onder, centen, toon, links = null, rechts = null }) => (
-  <div className="post">
-    {links}
-    <div className="wat">
-      <div className="n kort">{wat}</div>
-      {onder && <div className="s kort">{onder}</div>}
+/** A line with an amount: description on the left, number on the right. */
+export const Line = ({ what, sub, cents, tone, left = null, right = null }) => (
+  <div className="line">
+    {left}
+    <div className="what">
+      <div className="n truncate">{what}</div>
+      {sub && <div className="s truncate">{sub}</div>}
     </div>
-    {centen != null && <Geld centen={centen} toon={toon} />}
-    {rechts}
+    {cents != null && <Money cents={cents} tone={tone} />}
+    {right}
   </div>
 );
 
-export const Som = ({ label, centen, toon }) => (
-  <div className="som">
+export const Total = ({ label, cents, tone }) => (
+  <div className="total">
     <span className="k">{label}</span>
-    <Geld centen={centen} maat="mid" toon={toon} />
+    <Money cents={cents} size="mid" tone={tone} />
   </div>
 );
 
-/** Initialen van een persoon, in zijn eigen kleur. */
-export function Wie({ persoon, maat = '' }) {
-  const letters = (persoon?.naam || '?')
+/** A person's initials, in their own colour. */
+export function Avatar({ person, size = '' }) {
+  const letters = (person?.name || '?')
     .split(/\s+/)
     .slice(0, 2)
-    .map((deel) => deel[0])
+    .map((part) => part[0])
     .join('')
     .toUpperCase();
   return (
     <span
-      className={`wie ${maat}`.trim()}
-      style={persoon?.kleur ? { background: persoon.kleur } : undefined}
-      title={persoon?.naam}
+      className={`avatar ${size}`.trim()}
+      style={person?.colour ? { background: person.colour } : undefined}
+      title={person?.name}
     >
       {letters}
     </span>
   );
 }
 
-/** Het rondje van een drager: initialen bij een persoon, een merkje bij een rekening. */
-export function Drager({ drager, maat = '' }) {
-  if (drager?.rekening) {
+/** The badge of a bearer: initials for a person, a mark for an account. */
+export function BearerAvatar({ bearer, size = '' }) {
+  if (bearer?.account) {
     return (
       <span
-        className={`wie ${maat}`.trim()}
+        className={`avatar ${size}`.trim()}
         style={{ background: 'var(--text-2)', borderRadius: 7 }}
-        title={drager.naam}
+        title={bearer.name}
       >
-        <Icoon naam="sleutel" maat={maat === 'klein' ? 12 : 15} />
+        <Icon name="key" size={size === 'sm' ? 12 : 15} />
       </span>
     );
   }
-  return <Wie persoon={drager} maat={maat} />;
+  return <Avatar person={bearer} size={size} />;
 }
 
-export const WieMetNaam = ({ persoon, maat = 'klein' }) => (
-  <span className="rij" style={{ gap: 7, minWidth: 0 }}>
-    <Wie persoon={persoon} maat={maat} />
-    <span className="klein kort">{persoon?.naam || 'onbekend'}</span>
+export const NamedAvatar = ({ person, size = 'sm' }) => (
+  <span className="row" style={{ gap: 7, minWidth: 0 }}>
+    <Avatar person={person} size={size} />
+    <span className="small truncate">{person?.name || 'onbekend'}</span>
   </span>
 );
 
-/** Invoerveld voor een bedrag. Werkt in centen naar buiten, tekst naar binnen. */
-export function Bedrag({ centen, onChange, autoFocus = false, plaatshouder = '0,00' }) {
-  // Nul is een leeg veld, geen "0,00". Anders staat er in een nieuw formulier al
-  // iets waar je overheen moet, en typ je er in de praktijk achter.
-  const alsTekst = (c) => (c ? alsInvoer(c) : '');
-  const [tekst, setTekst] = useState(() => alsTekst(centen));
+/** Input for an amount. Cents on the outside, text on the inside. */
+export function AmountInput({ cents, onChange, autoFocus = false, placeholder = '0,00', id = null }) {
+  // Zero is an empty field, not "0,00". Otherwise a new form already has
+  // something in it that you have to clear, and in practice you type behind it.
+  const asText = (c) => (c ? toInput(c) : '');
+  const [text, setText] = useState(() => asText(cents));
 
-  // Van buitenaf gewijzigd (ander formulier geopend): veld meenemen. Tijdens het
-  // typen niet, anders kun je geen komma zetten.
+  // Changed from the outside (another form opened): follow along. Not while
+  // typing, or you could never enter a comma.
   useEffect(() => {
-    setTekst((huidig) => ((parseGeld(huidig) ?? 0) === centen ? huidig : alsTekst(centen)));
-  }, [centen]);
+    setText((current) => ((parseMoney(current) ?? 0) === cents ? current : asText(cents)));
+  }, [cents]);
 
   return (
-    <div className="euro">
-      <span className="teken">€</span>
+    <div className="money-input">
+      <span className="sign">€</span>
       <input
-        className="invoer"
+        id={id || undefined}
+        className="input"
         inputMode="decimal"
         autoFocus={autoFocus}
-        placeholder={plaatshouder}
-        value={tekst}
+        placeholder={placeholder}
+        value={text}
         onChange={(e) => {
-          setTekst(e.target.value);
-          onChange(parseGeld(e.target.value) ?? 0);
+          setText(e.target.value);
+          onChange(parseMoney(e.target.value) ?? 0);
         }}
-        onBlur={() => setTekst(alsTekst(parseGeld(tekst) ?? 0))}
+        onBlur={() => setText(asText(parseMoney(text) ?? 0))}
       />
     </div>
   );
 }
 
-export function Bevestig({ titel, tekst, knop = 'Verwijderen', onJa, onSluit }) {
+export function Confirm({ title, body, confirmLabel = 'Verwijderen', onConfirm, onClose }) {
   return (
-    <Blad titel={titel} onSluit={onSluit}>
-      <p className="klein zacht" style={{ marginTop: 0, lineHeight: 1.6 }}>{tekst}</p>
-      <div className="rij" style={{ gap: 8 }}>
-        <button className="knop groei" onClick={onSluit}>Annuleren</button>
-        <button className="knop gevaar groei" onClick={() => { onJa(); onSluit(); }}>{knop}</button>
+    <Sheet title={title} onClose={onClose}>
+      <p className="small muted" style={{ marginTop: 0, lineHeight: 1.6 }}>{body}</p>
+      <div className="row" style={{ gap: 8 }}>
+        <button className="btn grow" onClick={onClose}>Annuleren</button>
+        <button className="btn danger grow" onClick={() => { onConfirm(); onClose(); }}>
+          {confirmLabel}
+        </button>
       </div>
-    </Blad>
+    </Sheet>
   );
 }
 
-/** Kopieert naar het klembord en geeft terug of het lukte. */
-export async function kopieer(tekst) {
+/** Copies to the clipboard and reports whether it worked. */
+export async function copyText(text) {
   try {
-    await navigator.clipboard.writeText(tekst);
+    await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    // Zonder https of zonder toestemming: ouderwets via een tekstveld.
-    const vak = document.createElement('textarea');
-    vak.value = tekst;
-    vak.style.position = 'fixed';
-    vak.style.opacity = '0';
-    document.body.appendChild(vak);
-    vak.select();
+    // Without https or without permission: the old-fashioned way, via a textarea.
+    const box = document.createElement('textarea');
+    box.value = text;
+    box.style.position = 'fixed';
+    box.style.opacity = '0';
+    document.body.appendChild(box);
+    box.select();
     let ok = false;
     try {
       ok = document.execCommand('copy');
     } catch {
       ok = false;
     }
-    vak.remove();
+    box.remove();
     return ok;
   }
 }
 
-export { Icoon };
+export { Icon };

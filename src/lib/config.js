@@ -1,29 +1,28 @@
-// Verbinding met je eigen (gratis) Supabase-project.
+// Connection to your own (free) Supabase project.
 //
-// Vul deze twee waarden in met wat er in Supabase onder Settings → API staat.
-// De publishable key hoort in de broncode thuis: hij is bedoeld om openbaar te
-// zijn en geeft in zijn eentje nergens toegang toe — dat regelt Row Level
-// Security in de database (zie supabase/schema.sql).
+// Fill in the two values from Supabase under Settings → API. The publishable key
+// belongs in source code: it is meant to be public and grants nothing on its own
+// — Row Level Security handles that (see supabase/schema.sql).
 //
-// Zolang hier niets staat draait Pay als lokale kluis: alles blijft in deze
-// browser, en samen bijhouden is uit.
+// While these are empty, Pay runs in local mode: everything stays in this
+// browser and sharing is off.
 export const SUPABASE_URL = '';
 export const SUPABASE_KEY = '';
 
-// Handig om zonder herbouwen te testen: wat je in Instellingen invult, wint.
+// Handy for testing without a rebuild: what you fill in under Settings wins.
 const OVERRIDE = 'pay:supabase';
 
 export function readConfig() {
   try {
-    const bewaard = JSON.parse(localStorage.getItem(OVERRIDE) || 'null');
-    if (bewaard?.url && bewaard?.key) return { url: bewaard.url, key: bewaard.key, bron: 'lokaal' };
+    const saved = JSON.parse(localStorage.getItem(OVERRIDE) || 'null');
+    if (saved?.url && saved?.key) return { url: saved.url, key: saved.key, source: 'local' };
   } catch {
-    /* kapotte localStorage negeren we gewoon */
+    /* broken localStorage is simply ignored */
   }
   if (SUPABASE_URL && SUPABASE_KEY) {
-    return { url: SUPABASE_URL, key: SUPABASE_KEY, bron: 'ingebouwd' };
+    return { url: SUPABASE_URL, key: SUPABASE_KEY, source: 'built-in' };
   }
-  return { url: '', key: '', bron: 'geen' };
+  return { url: '', key: '', source: 'none' };
 }
 
 export function writeConfig(url, key) {

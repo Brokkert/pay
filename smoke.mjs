@@ -1,84 +1,83 @@
-// Klikt de gebouwde app door in een echte browser en meldt elke fout in de
-// console. Vitest draait in jsdom en mist daardoor precies de dingen die een
-// echte browser wél doet — vandaar deze.
+// Clicks through the built app in a real browser and reports every console
+// error. Vitest runs in jsdom and therefore misses exactly the things a real
+// browser does do — hence this.
 //
 //   npm run build && node smoke.mjs [--shots]
 //
-// Draait niet mee in CI: dat scheelt bij elke build een browser van honderd MB.
+// Not part of CI: that saves fetching a hundred-megabyte browser on every build.
 
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 
 const SHOTS = process.argv.includes('--shots');
-const PAGINA = readFileSync(new URL('./dist/index.html', import.meta.url), 'utf8');
+const PAGE = readFileSync(new URL('./dist/index.html', import.meta.url), 'utf8');
 
-const server = createServer((_verzoek, antwoord) => {
-  antwoord.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-  antwoord.end(PAGINA);
+const server = createServer((_request, response) => {
+  response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  response.end(PAGE);
 }).listen(4321);
 
-// PLAYWRIGHT_CHROMIUM laat je een browser aanwijzen die er al staat, zodat je
-// er niet nog eens honderd megabyte naast hoeft te zetten.
+// PLAYWRIGHT_CHROMIUM lets you point at a browser that is already there, so you
+// do not have to put another hundred megabytes next to it.
 const browser = await chromium.launch(
   process.env.PLAYWRIGHT_CHROMIUM ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM } : {}
 );
-const pagina = await browser.newPage({ viewport: { width: 420, height: 900 } });
+const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
 
-const fouten = [];
-pagina.on('pageerror', (e) => fouten.push(String(e)));
-pagina.on('console', (m) => m.type() === 'error' && fouten.push(m.text()));
+const errors = [];
+page.on('pageerror', (e) => errors.push(String(e)));
+page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
-const kiek = (naam) => (SHOTS ? pagina.screenshot({ path: `/tmp/pay-${naam}.png`, fullPage: true }) : null);
+const shot = (name) => (SHOTS ? page.screenshot({ path: `/tmp/pay-${name}.png`, fullPage: true }) : null);
 
+await page.goto('http://localhost:4321/');
+await page.getByRole('button', { name: /zonder account/i }).first().click();
 
-await pagina.goto('http://localhost:4321/');
-await pagina.getByRole('button', { name: /zonder account/i }).first().click();
+// The vault stays shut until you set a passphrase. That doubles as a check on
+// the heaviest computation in the app: PBKDF2 with 310,000 rounds, in a real
+// browser.
+await page.getByLabel('Wachtwoordzin').fill('zes wilde ganzen boven de dijk');
+await page.getByLabel('Nog een keer').fill('zes wilde ganzen boven de dijk');
+await shot('unlock');
+await page.getByRole('button', { name: 'Instellen' }).click();
+await page.waitForTimeout(1200);
 
-// De kluis staat dicht tot je een wachtwoordzin instelt. Dat is meteen een
-// controle op het zwaarste stukje rekenwerk in de app: PBKDF2 met 310.000
-// rondes, in een echte browser.
-await pagina.getByLabel('Wachtwoordzin').fill('zes wilde ganzen boven de dijk');
-await pagina.getByLabel('Nog een keer').fill('zes wilde ganzen boven de dijk');
-await kiek('sleutel');
-await pagina.getByRole('button', { name: 'Instellen' }).click();
-await pagina.waitForTimeout(1200);
-
-await pagina.getByRole('button', { name: /Meer/ }).click();
-await pagina.getByRole('button', { name: /voorbeeldhuishouden/i }).click();
-await pagina.waitForTimeout(300);
+await page.getByRole('button', { name: /Meer/ }).click();
+await page.getByRole('button', { name: /voorbeeldhuishouden/i }).click();
+await page.waitForTimeout(400);
 
 for (const tab of ['Overzicht', 'Lasten', 'Verrekenen', 'Mensen']) {
-  await pagina.getByRole('button', { name: new RegExp(tab) }).click();
-  await pagina.waitForTimeout(200);
-  await kiek(tab.toLowerCase());
+  await page.getByRole('button', { name: new RegExp(tab) }).click();
+  await page.waitForTimeout(200);
+  await shot(tab.toLowerCase());
 }
 
-// Een post openen en weer sluiten.
-await pagina.getByRole('button', { name: /Lasten/ }).click();
-await pagina.getByText('Streamingdienst').first().click();
-await pagina.waitForTimeout(200);
-await kiek('post');
-await pagina.getByRole('button', { name: 'Sluiten' }).click();
+// Open an expense and close it again.
+await page.getByRole('button', { name: /Lasten/ }).click();
+await page.getByText('Streamingdienst').first().click();
+await page.waitForTimeout(200);
+await shot('expense');
+await page.getByRole('button', { name: 'Sluiten' }).click();
 
-// En het scherm waar je in het echt begint: een lege post invullen.
-await pagina.getByRole('button', { name: 'Nieuwe post' }).click();
-await pagina.getByPlaceholder(/Energie, internet/).fill('Krant');
-await pagina.getByPlaceholder('0,00').fill('12,50');
-await pagina.waitForTimeout(150);
-await kiek('nieuw');
+// And the screen you actually start on: filling in a blank expense.
+await page.getByRole('button', { name: 'Nieuwe post' }).click();
+await page.getByPlaceholder(/Energie, internet/).fill('Krant');
+await page.getByPlaceholder('0,00').fill('12,50');
+await page.waitForTimeout(150);
+await shot('new');
 
-// Wat er in de browser is blijven staan, hoort onleesbaar te zijn.
-const opslag = await pagina.evaluate(() => localStorage.getItem('pay:kluis:v2') || '');
-for (const woord of ['Energie', 'Internet', 'Partner', 'Krant']) {
-  if (opslag.includes(woord)) fouten.push(`"${woord}" staat leesbaar in localStorage`);
+// Whatever is left in the browser should be unreadable.
+const stored = await page.evaluate(() => localStorage.getItem('pay:store') || '');
+for (const word of ['Energie', 'Internet', 'Partner', 'Krant']) {
+  if (stored.includes(word)) errors.push(`"${word}" is readable in localStorage`);
 }
 
 await browser.close();
 server.close();
 
-if (fouten.length) {
-  console.error('Fouten in de console:\n' + fouten.join('\n'));
+if (errors.length) {
+  console.error('Console errors:\n' + errors.join('\n'));
   process.exit(1);
 }
-console.log('Doorgeklikt zonder fouten.');
+console.log('Clicked through without errors.');
