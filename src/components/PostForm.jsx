@@ -1,10 +1,10 @@
 // Een post aanmaken of wijzigen.
 
 import { useState } from 'react';
-import { Sheet, Field, Note, BedragVeld, Penning, Confirm } from './ui.jsx';
+import { Blad, Veld, Melding, Bedrag, Wie, Bevestig } from './ui.jsx';
 import VerdeelKiezer from './VerdeelKiezer.jsx';
 import { RITMES } from '../lib/ritme.js';
-import { CATEGORIEEN, soortVan } from '../data/categorieen.js';
+import { CATEGORIEEN } from '../data/categorieen.js';
 
 const leegPost = (mij) => ({
   naam: '',
@@ -20,23 +20,22 @@ const leegPost = (mij) => ({
   notitie: '',
 });
 
-export default function PostForm({ post, personen, rekeningen, onBewaar, onVerwijder, onClose }) {
+export default function PostForm({ post, personen, rekeningen, onBewaar, onVerwijder, onSluit }) {
   const mij = personen.find((p) => p.is_mij)?.id;
   const [concept, setConcept] = useState(() => ({ ...leegPost(mij), ...post }));
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState(null);
-  const [vraagVerwijderen, setVraagVerwijderen] = useState(false);
+  const [vraag, setVraag] = useState(false);
   const zet = (patch) => setConcept((c) => ({ ...c, ...patch }));
 
-  const betalerGekozen = Boolean(concept.betaler?.id);
-  const kanBewaren = concept.naam.trim() && concept.bedrag > 0 && betalerGekozen;
+  const kanBewaren = concept.naam.trim() && concept.bedrag > 0 && Boolean(concept.betaler?.id);
 
   const bewaren = async () => {
     setBezig(true);
     setFout(null);
     try {
       await onBewaar({ ...concept, naam: concept.naam.trim() });
-      onClose();
+      onSluit();
     } catch (err) {
       setFout(err.message || String(err));
       setBezig(false);
@@ -44,72 +43,70 @@ export default function PostForm({ post, personen, rekeningen, onBewaar, onVerwi
   };
 
   return (
-    <Sheet title={post?.id ? 'Post wijzigen' : 'Nieuwe post'} onClose={onClose}>
-      {fout && <Note tone="bad">{fout}</Note>}
+    <Blad titel={post?.id ? 'Post wijzigen' : 'Nieuwe post'} onSluit={onSluit}>
+      {fout && <Melding toon="mis">{fout}</Melding>}
 
-      <Field label="Wat is het">
+      <Veld label="Wat is het">
         <input
-          className="input"
+          className="invoer"
           autoFocus
-          placeholder="Huur, Netflix, autoverzekering…"
+          placeholder="Gas/Stroom, YouTube Family, zorgverzekering…"
           value={concept.naam}
           onChange={(e) => zet({ naam: e.target.value })}
         />
-      </Field>
+      </Veld>
 
-      <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
-        <div className="grow">
-          <Field label="Bedrag">
-            <BedragVeld centen={concept.bedrag} onChange={(c) => zet({ bedrag: c })} />
-          </Field>
+      <div className="rij" style={{ gap: 12, alignItems: 'flex-start' }}>
+        <div className="groei">
+          <Veld label="Bedrag">
+            <Bedrag centen={concept.bedrag} onChange={(c) => zet({ bedrag: c })} />
+          </Veld>
         </div>
-        <div style={{ width: 150 }}>
-          <Field label="Hoe vaak">
-            <select
-              className="select"
-              value={concept.ritme}
-              onChange={(e) => zet({ ritme: e.target.value })}
-            >
-              {RITMES.map((r) => (
-                <option key={r.id} value={r.id}>{r.label}</option>
-              ))}
+        <div style={{ width: 148 }}>
+          <Veld label="Hoe vaak">
+            <select className="keuze" value={concept.ritme} onChange={(e) => zet({ ritme: e.target.value })}>
+              {RITMES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
             </select>
-          </Field>
+          </Veld>
         </div>
       </div>
 
-      <Field
-        label="Wie betaalt het echt"
-        hint="De rekening waar het daadwerkelijk van afgeschreven wordt. Dat hoeft niet dezelfde te zijn als wie het uiteindelijk draagt — daar is de verdeling hieronder voor."
+      <Veld
+        label="Waar gaat het vanaf"
+        tip="De rekening waar het daadwerkelijk van afgeschreven wordt. Dat hoeft niet dezelfde te zijn als wie het uiteindelijk draagt — daar is de verdeling hieronder voor."
       >
-        <div className="chips">
+        <div className="blokjes">
           {rekeningen.map((r) => (
             <button
               key={r.id}
               type="button"
-              className={`chip${concept.betaler?.soort === 'rekening' && concept.betaler.id === r.id ? ' on' : ''}`}
+              className={`blokje${concept.betaler?.soort === 'rekening' && concept.betaler.id === r.id ? ' aan' : ''}`}
               onClick={() => zet({ betaler: { soort: 'rekening', id: r.id } })}
             >
-              {r.emoji || soortVan(r.soort).emoji} {r.naam}
+              {r.naam}
             </button>
           ))}
         </div>
-        <div className="tiny faint" style={{ margin: '10px 0 6px' }}>
-          Of iemand anders betaalt het en jij doet mee:
-        </div>
-        <div className="chips">
-          {personen.filter((p) => !p.is_mij).map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className={`chip${concept.betaler?.soort === 'persoon' && concept.betaler.id === p.id ? ' on' : ''}`}
-              onClick={() => zet({ betaler: { soort: 'persoon', id: p.id } })}
-            >
-              <Penning persoon={p} maat="klein" /> {p.naam}
-            </button>
-          ))}
-        </div>
-      </Field>
+        {personen.filter((p) => !p.is_mij).length > 0 && (
+          <>
+            <div className="mini vaag" style={{ margin: '12px 0 7px' }}>
+              Of iemand anders betaalt het en jij doet mee:
+            </div>
+            <div className="blokjes">
+              {personen.filter((p) => !p.is_mij).map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`blokje${concept.betaler?.soort === 'persoon' && concept.betaler.id === p.id ? ' aan' : ''}`}
+                  onClick={() => zet({ betaler: { soort: 'persoon', id: p.id } })}
+                >
+                  <Wie persoon={p} maat="klein" /> {p.naam}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </Veld>
 
       <VerdeelKiezer
         bedrag={concept.bedrag}
@@ -119,93 +116,71 @@ export default function PostForm({ post, personen, rekeningen, onBewaar, onVerwi
         onChange={(verdeling) => zet({ verdeling })}
       />
 
-      <Field label="Categorie">
-        <select
-          className="select"
-          value={concept.categorie}
-          onChange={(e) => zet({ categorie: e.target.value })}
-        >
-          {CATEGORIEEN.map((c) => (
-            <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>
-          ))}
+      <Veld label="Categorie">
+        <select className="keuze" value={concept.categorie} onChange={(e) => zet({ categorie: e.target.value })}>
+          {CATEGORIEEN.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
         </select>
-      </Field>
+      </Veld>
 
-      <details className="fallback" style={{ marginBottom: 14 }}>
+      <details className="uitklap" style={{ marginBottom: 18 }}>
         <summary>Looptijd, notitie en zakelijk</summary>
-        <div style={{ marginTop: 12 }}>
-          <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
-            <div className="grow">
-              <Field label="Loopt vanaf" hint="Leeg = loopt al">
-                <input
-                  className="input"
-                  type="date"
-                  value={concept.vanaf || ''}
-                  onChange={(e) => zet({ vanaf: e.target.value })}
-                />
-              </Field>
+        <div style={{ marginTop: 16 }}>
+          <div className="rij" style={{ gap: 12, alignItems: 'flex-start' }}>
+            <div className="groei">
+              <Veld label="Loopt vanaf" tip="Leeg = loopt al">
+                <input className="invoer" type="date" value={concept.vanaf || ''}
+                  onChange={(e) => zet({ vanaf: e.target.value })} />
+              </Veld>
             </div>
-            <div className="grow">
-              <Field label="Loopt tot" hint="Leeg = doorlopend">
-                <input
-                  className="input"
-                  type="date"
-                  value={concept.tot || ''}
-                  onChange={(e) => zet({ tot: e.target.value })}
-                />
-              </Field>
+            <div className="groei">
+              <Veld label="Loopt tot" tip="Leeg = doorlopend">
+                <input className="invoer" type="date" value={concept.tot || ''}
+                  onChange={(e) => zet({ tot: e.target.value })} />
+              </Veld>
             </div>
           </div>
 
-          <Field label="Notitie">
+          <Veld label="Notitie">
             <textarea
-              className="textarea"
-              placeholder="Opzegtermijn, klantnummer, wat je ook wilt onthouden."
+              className="tekstvak"
+              placeholder="Opzegtermijn, klantnummer, op welke incasso hij meelift — wat je ook wilt onthouden."
               value={concept.notitie || ''}
               onChange={(e) => zet({ notitie: e.target.value })}
             />
-          </Field>
+          </Veld>
 
-          <label className="row" style={{ gap: 9, marginBottom: 10 }}>
-            <input
-              type="checkbox"
-              checked={Boolean(concept.zakelijk)}
-              onChange={(e) => zet({ zakelijk: e.target.checked })}
-            />
-            <span className="small">Zakelijk — apart optellen voor de boekhouding</span>
+          <label className="rij" style={{ gap: 10, marginBottom: 12 }}>
+            <input type="checkbox" checked={Boolean(concept.zakelijk)}
+              onChange={(e) => zet({ zakelijk: e.target.checked })} />
+            <span className="klein">Zakelijk — apart optellen voor de boekhouding</span>
           </label>
 
-          <label className="row" style={{ gap: 9 }}>
-            <input
-              type="checkbox"
-              checked={Boolean(concept.gepauzeerd)}
-              onChange={(e) => zet({ gepauzeerd: e.target.checked })}
-            />
-            <span className="small">Even gepauzeerd — telt tijdelijk niet mee</span>
+          <label className="rij" style={{ gap: 10 }}>
+            <input type="checkbox" checked={Boolean(concept.gepauzeerd)}
+              onChange={(e) => zet({ gepauzeerd: e.target.checked })} />
+            <span className="klein">Even gepauzeerd — telt tijdelijk niet mee</span>
           </label>
         </div>
       </details>
 
-      <div className="row" style={{ gap: 8 }}>
-        {post?.id && (
-          <button className="btn danger" onClick={() => setVraagVerwijderen(true)}>Verwijderen</button>
-        )}
-        <button className="btn primary grow" disabled={!kanBewaren || bezig} onClick={bewaren}>
-          {bezig ? <span className="spinner" /> : 'Bewaren'}
+      <div className="rij" style={{ gap: 8 }}>
+        {post?.id && <button className="knop gevaar" onClick={() => setVraag(true)}>Verwijderen</button>}
+        <button className="knop hoofd groei" disabled={!kanBewaren || bezig} onClick={bewaren}>
+          {bezig ? <span className="draai" /> : 'Bewaren'}
         </button>
       </div>
       {!kanBewaren && (
-        <div className="hint">Een naam, een bedrag en een betalende rekening zijn het minimum.</div>
+        <div className="tip">Een naam, een bedrag en een rekening waar het vanaf gaat zijn het minimum.</div>
       )}
 
-      {vraagVerwijderen && (
-        <Confirm
-          title={`"${concept.naam}" verwijderen?`}
-          body="De post verdwijnt uit alle overzichten en berekeningen. Wil je hem alleen tijdelijk stopzetten, gebruik dan 'gepauzeerd' of vul een einddatum in."
-          onConfirm={() => { onVerwijder(post.id); onClose(); }}
-          onClose={() => setVraagVerwijderen(false)}
+      {vraag && (
+        <Bevestig
+          titel={`"${concept.naam}" verwijderen?`}
+          tekst="De post verdwijnt uit alle overzichten en berekeningen. Wil je hem alleen tijdelijk stopzetten, gebruik dan 'gepauzeerd' of vul een einddatum in."
+          onJa={() => { onVerwijder(post.id); onSluit(); }}
+          onSluit={() => setVraag(false)}
         />
       )}
-    </Sheet>
+    </Blad>
   );
 }

@@ -53,7 +53,7 @@ await pagina.getByRole('button', { name: 'Sluiten' }).click();
 
 // En het scherm waar je in het echt begint: een lege post invullen.
 await pagina.getByRole('button', { name: 'Nieuwe post' }).click();
-await pagina.getByPlaceholder(/Huur, Netflix/).fill('Krant');
+await pagina.getByPlaceholder(/Gas\/Stroom/).fill('Krant');
 await pagina.getByPlaceholder('0,00').fill('12,50');
 await pagina.waitForTimeout(150);
 await kiek('nieuw');

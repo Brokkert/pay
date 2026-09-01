@@ -2,17 +2,17 @@
 //
 // Het belangrijkste onderdeel van het formulier, en daarom staat er meteen
 // onder wat de gekozen verdeling in euro's betekent. Een percentage zegt niets;
-// "Anne € 612,50 per maand" wel.
+// "Mau € 310,25 per maand" wel.
 
 import { VERDELINGEN, verdeel, deelnemersVan } from '../lib/verdeel.js';
-import { perMaand, ritmeVan } from '../lib/ritme.js';
-import { Field, Geld, Penning, BedragVeld } from './ui.jsx';
+import { perMaand } from '../lib/ritme.js';
+import { Veld, Geld, Wie, Bedrag } from './ui.jsx';
 
 export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, onChange }) {
   const v = verdeling || { soort: 'gelijk', deelnemers: [], gewichten: {} };
-  const meedoen = new Set(deelnemersVan(v));
-  const maandbedrag = perMaand(bedrag, ritme);
-  const toonbedrag = ritme === 'eenmalig' ? bedrag : maandbedrag;
+  const meedoen = deelnemersVan(v);
+  const inSet = new Set(meedoen);
+  const toonbedrag = ritme === 'eenmalig' ? bedrag : perMaand(bedrag, ritme);
   const { delen, restant } = verdeel(toonbedrag, v);
 
   const zetSoort = (soort) => {
@@ -34,125 +34,123 @@ export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, onCh
   };
 
   const wissel = (id) => {
-    const aan = meedoen.has(id);
+    const aan = inSet.has(id);
     if (v.soort === 'gelijk') {
-      const ids = aan ? v.deelnemers.filter((x) => x !== id) : [...(v.deelnemers || []), id];
+      const ids = aan ? (v.deelnemers || []).filter((x) => x !== id) : [...(v.deelnemers || []), id];
       return onChange({ ...v, deelnemers: ids });
     }
     const gewichten = { ...(v.gewichten || {}) };
     if (aan) delete gewichten[id];
-    else gewichten[id] = v.soort === 'bedrag' ? 0 : v.soort === 'procent' ? 0 : 1;
+    else gewichten[id] = v.soort === 'delen' ? 1 : 0;
     return onChange({ ...v, gewichten });
   };
 
   const zetGewicht = (id, waarde) =>
     onChange({ ...v, gewichten: { ...(v.gewichten || {}), [id]: waarde } });
 
-  const eenheid = ritme === 'eenmalig' ? 'eenmalig' : ritmeVan('maand').kort;
-  const somProcent = v.soort === 'procent'
-    ? Object.values(v.gewichten || {}).reduce((s, g) => s + (Number(g) || 0), 0)
-    : 100;
+  const somProcent = Object.values(v.gewichten || {}).reduce((s, g) => s + (Number(g) || 0), 0);
 
   return (
     <>
-      <Field label="Wie draagt het">
-        <div className="chips">
+      <Veld
+        label="Wie draagt het"
+        tip={!meedoen.length ? 'Kies minstens één persoon, anders telt deze post nergens mee.' : null}
+        let={!meedoen.length}
+      >
+        <div className="blokjes">
           {personen.map((p) => (
             <button
               key={p.id}
               type="button"
-              className={`chip${meedoen.has(p.id) ? ' on' : ''}`}
+              className={`blokje${inSet.has(p.id) ? ' aan' : ''}`}
               onClick={() => wissel(p.id)}
             >
-              <Penning persoon={p} maat="klein" /> {p.naam}
+              <Wie persoon={p} maat="klein" /> {p.naam}
             </button>
           ))}
         </div>
-        {!meedoen.size && (
-          <div className="hint">Kies minstens één persoon, anders telt deze post nergens mee.</div>
-        )}
-      </Field>
+      </Veld>
 
-      {meedoen.size > 1 && (
-        <Field label="Hoe">
-          <div className="chips">
+      {meedoen.length > 1 && (
+        <Veld label="Hoe" tip={VERDELINGEN.find((s) => s.id === v.soort)?.blurb}>
+          <div className="blokjes">
             {VERDELINGEN.map((s) => (
               <button
                 key={s.id}
                 type="button"
-                className={`chip${v.soort === s.id ? ' on' : ''}`}
+                className={`blokje${v.soort === s.id ? ' aan' : ''}`}
                 onClick={() => zetSoort(s.id)}
               >
                 {s.label}
               </button>
             ))}
           </div>
-          <div className="hint">{VERDELINGEN.find((s) => s.id === v.soort)?.blurb}</div>
-        </Field>
+        </Veld>
       )}
 
-      {meedoen.size > 0 && (
-        <div className="card tight" style={{ marginBottom: 14 }}>
-          <div className="tiny faint" style={{ textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>
-            Komt neer op ({eenheid})
-          </div>
-          <div style={{ marginTop: 6 }}>
-            {[...meedoen].map((id) => {
+      {meedoen.length > 0 && (
+        <div className="veld">
+          <label>Komt neer op {ritme === 'eenmalig' ? '(eenmalig)' : '(per maand)'}</label>
+          <div className="paneel">
+            {meedoen.map((id) => {
               const persoon = personen.find((p) => p.id === id);
               return (
-                <div key={id} className="boekregel">
-                  <div className="wat row" style={{ gap: 7 }}>
-                    <Penning persoon={persoon} maat="klein" />
-                    <span className="small">{persoon?.naam || 'onbekend'}</span>
-                  </div>
+                <div key={id} className="post">
+                  <Wie persoon={persoon} maat="klein" />
+                  <div className="wat"><div className="n kort">{persoon?.naam || 'onbekend'}</div></div>
+
                   {v.soort === 'delen' && (
                     <input
-                      className="input"
+                      className="invoer"
                       type="number"
                       min="0"
                       step="1"
-                      style={{ width: 62, padding: '5px 7px', textAlign: 'right' }}
+                      aria-label={`Aantal delen voor ${persoon?.naam}`}
+                      style={{ width: 58, padding: '5px 8px', textAlign: 'right', fontSize: 14 }}
                       value={v.gewichten?.[id] ?? 1}
                       onChange={(e) => zetGewicht(id, Number(e.target.value))}
                     />
                   )}
                   {v.soort === 'procent' && (
-                    <div className="row" style={{ gap: 3 }}>
+                    <span className="rij" style={{ gap: 4 }}>
                       <input
-                        className="input"
+                        className="invoer"
                         type="number"
                         min="0"
                         max="100"
                         step="1"
-                        style={{ width: 62, padding: '5px 7px', textAlign: 'right' }}
+                        aria-label={`Percentage voor ${persoon?.naam}`}
+                        style={{ width: 58, padding: '5px 8px', textAlign: 'right', fontSize: 14 }}
                         value={v.gewichten?.[id] ?? 0}
                         onChange={(e) => zetGewicht(id, Number(e.target.value))}
                       />
-                      <span className="tiny faint">%</span>
-                    </div>
+                      <span className="mini vaag">%</span>
+                    </span>
                   )}
                   {v.soort === 'bedrag' && (
-                    <div style={{ width: 130 }}>
-                      <BedragVeld centen={v.gewichten?.[id] ?? 0} onChange={(c) => zetGewicht(id, c)} />
-                    </div>
+                    <span style={{ width: 128 }}>
+                      <Bedrag centen={v.gewichten?.[id] ?? 0} onChange={(c) => zetGewicht(id, c)} />
+                    </span>
                   )}
-                  <div className="vul" />
+
                   <Geld centen={delen[id] || 0} />
                 </div>
               );
             })}
+
+            <div className="vak krap">
+              <Verhouding delen={delen} personen={personen} />
+            </div>
           </div>
 
-          <Balk delen={delen} personen={personen} />
-
-          {v.soort === 'procent' && somProcent !== 100 && (
-            <div className="hint" style={{ color: 'var(--oker)' }}>
-              De percentages tellen op tot {somProcent}%. Het bedrag wordt naar verhouding
-              verdeeld, dus het klopt wel — maar waarschijnlijk bedoelde je 100.
+          {v.soort === 'procent' && meedoen.length > 1 && somProcent !== 100 && (
+            <div className="tip let">
+              De percentages tellen op tot {somProcent}%. Het bedrag wordt naar verhouding verdeeld,
+              dus het klopt wel — maar waarschijnlijk bedoelde je 100.
             </div>
           )}
           {restant !== 0 && (
-            <div className="hint" style={{ color: 'var(--oker)' }}>
+            <div className="tip let">
               Er blijft <Geld centen={restant} /> over. Dat deel komt bij de betaler te liggen.
             </div>
           )}
@@ -162,19 +160,18 @@ export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, onCh
   );
 }
 
-/** Het staafje eronder: één blokje per persoon, naar rato van het bedrag. */
-function Balk({ delen, personen }) {
+/** Het balkje eronder: één blokje per persoon, naar rato van het bedrag. */
+function Verhouding({ delen, personen }) {
   const totaal = Object.values(delen).reduce((s, c) => s + Math.abs(c), 0);
   if (!totaal) return null;
   return (
-    <div className="balk" style={{ marginTop: 8 }}>
-      {Object.entries(delen).map(([id, centen], i) => (
+    <div className="verhouding">
+      {Object.entries(delen).map(([id, centen]) => (
         <span
           key={id}
           style={{
             width: `${(Math.abs(centen) / totaal) * 100}%`,
-            background: personen.find((p) => p.id === id)?.kleur || `var(--groen)`,
-            opacity: 1 - i * 0.14,
+            background: personen.find((p) => p.id === id)?.kleur || 'var(--accent)',
           }}
         />
       ))}

@@ -6,18 +6,18 @@ import Mensen from './tabs/Mensen.jsx';
 import Instellingen from './tabs/Instellingen.jsx';
 import Login from './views/Login.jsx';
 import PostForm from './components/PostForm.jsx';
-import { Note } from './components/ui.jsx';
+import { Melding, Icoon } from './components/ui.jsx';
 import { useSession } from './lib/auth.js';
 import { useKasboek } from './lib/kasboek.js';
 import { isConfigured } from './lib/config.js';
 import { dezeMaand } from './lib/ritme.js';
 
 const TABS = [
-  { id: 'overzicht', label: 'Overzicht', icon: '🧾' },
-  { id: 'lasten', label: 'Lasten', icon: '🔁' },
-  { id: 'verrekenen', label: 'Verrekenen', icon: '🤝' },
-  { id: 'mensen', label: 'Mensen', icon: '👥' },
-  { id: 'meer', label: 'Meer', icon: '⚙️' },
+  { id: 'overzicht', label: 'Overzicht' },
+  { id: 'lasten', label: 'Lasten' },
+  { id: 'verrekenen', label: 'Verrekenen' },
+  { id: 'mensen', label: 'Mensen' },
+  { id: 'meer', label: 'Meer' },
 ];
 
 /** Hash-routing: op GitHub Pages is er geen server die paden kan afhandelen. */
@@ -52,8 +52,8 @@ export default function App() {
 
   if (!ready) {
     return (
-      <div className="login-wrap center">
-        <span className="spinner" />
+      <div className="inlog midden">
+        <span className="draai" />
       </div>
     );
   }
@@ -65,7 +65,7 @@ export default function App() {
       <Login
         configured={configured}
         joinCode={joinCode}
-        onSkip={() => {
+        onOverslaan={() => {
           localStorage.setItem('pay:lokaal', 'ja');
           setZonderAccount(true);
         }}
@@ -76,18 +76,18 @@ export default function App() {
   return (
     <div className="app">
       <div className="topbar">
-        <h1><span>🧾</span> Pay</h1>
+        <h1>Pay</h1>
         <div className="spacer" />
-        <span className={`sync ${kasboek.offline ? 'offline' : kasboek.cloud ? 'online' : 'local'}`}>
-          <span className="led" />
+        <span className={`staat ${kasboek.offline ? 'offline' : kasboek.cloud ? 'online' : ''}`}>
+          <span className="lamp" />
           {kasboek.offline ? 'geen bereik' : kasboek.cloud ? 'gesynchroniseerd' : 'lokale kluis'}
         </span>
       </div>
 
       <div className="main">
-        {kasboek.fout && <Note tone="bad">{kasboek.fout}</Note>}
+        {kasboek.fout && <Melding toon="mis">{kasboek.fout}</Melding>}
         {kasboek.laden && !kasboek.posten.length && (
-          <div className="center" style={{ padding: 40 }}><span className="spinner" /></div>
+          <div className="midden" style={{ padding: 48 }}><span className="draai" /></div>
         )}
 
         {tab === 'overzicht' && <Overzicht kasboek={kasboek} maand={maand} onMaand={setMaand} />}
@@ -114,7 +114,7 @@ export default function App() {
       <nav className="tabbar">
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
-            <span className="ico">{t.icon}</span>
+            <Icoon naam={t.id} maat={21} />
             {t.label}
           </button>
         ))}
@@ -127,7 +127,7 @@ export default function App() {
           rekeningen={kasboek.rekeningen}
           onBewaar={(post) => kasboek.bewaar('posten', post)}
           onVerwijder={(id) => kasboek.verwijder('posten', id)}
-          onClose={() => setBewerken(null)}
+          onSluit={() => setBewerken(null)}
         />
       )}
     </div>

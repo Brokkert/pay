@@ -34,8 +34,8 @@ export const nieuwId = () =>
 
 // --- welke velden de database kent -------------------------------------------
 const VELDEN = {
-  personen: ['naam', 'emoji', 'kleur', 'is_mij', 'gekoppeld_aan'],
-  rekeningen: ['naam', 'soort', 'eigenaar_id', 'deelnemers', 'stortingen', 'iban', 'emoji'],
+  personen: ['naam', 'kleur', 'is_mij', 'gekoppeld_aan'],
+  rekeningen: ['naam', 'soort', 'eigenaar_id', 'deelnemers', 'stortingen', 'iban'],
   posten: ['naam', 'bedrag', 'ritme', 'betaler', 'verdeling', 'categorie', 'vanaf', 'tot',
     'gepauzeerd', 'zakelijk', 'notitie', 'afgerekend'],
 };

@@ -1,128 +1,135 @@
 // Kleine bouwstenen die overal terugkomen.
 
 import { useEffect, useState } from 'react';
-import { toonGeld } from '../lib/geld.js';
-import { parseGeld, alsInvoer } from '../lib/geld.js';
+import { toonGeld, parseGeld, alsInvoer } from '../lib/geld.js';
+import Icoon from './icons.jsx';
 
-export function Sheet({ title, onClose, children, actions = null }) {
+export function Blad({ titel, onSluit, children, acties = null }) {
   // Achtergrond niet laten meescrollen zolang het paneel open staat.
   useEffect(() => {
     const vorige = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const opToets = (e) => e.key === 'Escape' && onClose?.();
+    const opToets = (e) => e.key === 'Escape' && onSluit?.();
     window.addEventListener('keydown', opToets);
     return () => {
       document.body.style.overflow = vorige;
       window.removeEventListener('keydown', opToets);
     };
-  }, [onClose]);
+  }, [onSluit]);
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-grip" />
-        <div className="sheet-head">
-          <h2>{title}</h2>
-          {actions}
-          <button className="btn ghost icon" onClick={onClose} aria-label="Sluiten">✕</button>
+    <div className="overlay" onClick={onSluit}>
+      <div className="blad" onClick={(e) => e.stopPropagation()}>
+        <div className="blad-greep" />
+        <div className="blad-kop">
+          <h2>{titel}</h2>
+          {acties}
+          <button className="knop stil icoon" onClick={onSluit} aria-label="Sluiten">
+            <Icoon naam="kruis" maat={19} />
+          </button>
         </div>
-        <div className="sheet-body">{children}</div>
+        <div className="blad-lijf">{children}</div>
       </div>
     </div>
   );
 }
 
-export function Field({ label, hint, children }) {
+export function Veld({ label, tip, let: letOp = false, children }) {
   return (
-    <div className="field">
+    <div className="veld">
       {label && <label>{label}</label>}
       {children}
-      {hint && <div className="hint">{hint}</div>}
+      {tip && <div className={`tip${letOp ? ' let' : ''}`}>{tip}</div>}
     </div>
   );
 }
 
-export const Note = ({ tone = 'info', children }) => <div className={`note ${tone}`}>{children}</div>;
+export const Melding = ({ toon = 'info', children }) => (
+  <div className={`melding ${toon}`}>{children}</div>
+);
 
-export function Empty({ art, title, children }) {
+export function Leeg({ icoon = 'leeg', titel, children }) {
   return (
-    <div className="empty">
-      <div className="art">{art}</div>
-      <h3>{title}</h3>
+    <div className="leeg">
+      <div className="beeld"><Icoon naam={icoon} maat={40} /></div>
+      <h3>{titel}</h3>
       <p>{children}</p>
     </div>
   );
 }
 
-/** Een bedrag. Altijd mono en rechts uitgelijnd — zie styles.css. */
-export const Geld = ({ centen, maat = '', toon = 'neutraal', ...rest }) => (
-  <span className={`geld ${maat} ${toon === 'neutraal' ? '' : toon}`} {...rest}>
-    {toonGeld(centen)}
-  </span>
+/** Een bedrag. Altijd mono met cijfers van gelijke breedte — zie styles.css. */
+export const Geld = ({ centen, maat = '', toon = '' }) => (
+  <span className={`bedrag ${maat} ${toon}`.trim()}>{toonGeld(centen)}</span>
 );
 
-/** Regel in het kasboek: omschrijving links, bedrag rechts. */
-export const Boekregel = ({ wat, onder, centen, toon, achter = null }) => (
-  <div className="boekregel">
+/** Regel met een bedrag: omschrijving links, getal rechts. */
+export const Post = ({ wat, onder, centen, toon, links = null, rechts = null }) => (
+  <div className="post">
+    {links}
     <div className="wat">
-      <div className="small strong truncate">{wat}</div>
-      {onder && <div className="tiny faint truncate">{onder}</div>}
+      <div className="n kort">{wat}</div>
+      {onder && <div className="s kort">{onder}</div>}
     </div>
-    <div className="vul" />
     {centen != null && <Geld centen={centen} toon={toon} />}
-    {achter}
+    {rechts}
   </div>
 );
 
-export const Totaal = ({ label, centen, toon }) => (
-  <div className="totaal">
+export const Som = ({ label, centen, toon }) => (
+  <div className="som">
     <span className="k">{label}</span>
-    <span className="vul" />
     <Geld centen={centen} maat="mid" toon={toon} />
   </div>
 );
 
-export function Penning({ persoon, maat = '' }) {
-  if (!persoon) return <span className={`penning ${maat}`}>?</span>;
+/** Initialen van een persoon, in zijn eigen kleur. */
+export function Wie({ persoon, maat = '' }) {
+  const letters = (persoon?.naam || '?')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((deel) => deel[0])
+    .join('')
+    .toUpperCase();
   return (
     <span
-      className={`penning ${maat}`}
-      style={persoon.kleur ? { background: `${persoon.kleur}22`, borderColor: persoon.kleur } : undefined}
-      title={persoon.naam}
+      className={`wie ${maat}`.trim()}
+      style={persoon?.kleur ? { background: persoon.kleur } : undefined}
+      title={persoon?.naam}
     >
-      {persoon.emoji || persoon.naam?.[0]?.toUpperCase() || '?'}
+      {letters}
     </span>
   );
 }
 
-export const Wie = ({ persoon, maat = 'klein' }) => (
-  <span className="row" style={{ gap: 6, minWidth: 0 }}>
-    <Penning persoon={persoon} maat={maat} />
-    <span className="small truncate">{persoon?.naam || 'onbekend'}</span>
+export const WieMetNaam = ({ persoon, maat = 'klein' }) => (
+  <span className="rij" style={{ gap: 7, minWidth: 0 }}>
+    <Wie persoon={persoon} maat={maat} />
+    <span className="klein kort">{persoon?.naam || 'onbekend'}</span>
   </span>
 );
 
 /** Invoerveld voor een bedrag. Werkt in centen naar buiten, tekst naar binnen. */
-export function BedragVeld({ centen, onChange, autoFocus = false, placeholder = '0,00' }) {
-  // Nul is een leeg veld, geen "0,00". Anders staat er in een nieuw formulier
-  // al iets waar je overheen moet, en typ je er in de praktijk achter.
+export function Bedrag({ centen, onChange, autoFocus = false, plaatshouder = '0,00' }) {
+  // Nul is een leeg veld, geen "0,00". Anders staat er in een nieuw formulier al
+  // iets waar je overheen moet, en typ je er in de praktijk achter.
   const alsTekst = (c) => (c ? alsInvoer(c) : '');
   const [tekst, setTekst] = useState(() => alsTekst(centen));
 
-  // Van buitenaf gewijzigd (ander formulier geopend): veld meenemen. Tijdens
-  // het typen niet, anders kun je geen komma zetten.
+  // Van buitenaf gewijzigd (ander formulier geopend): veld meenemen. Tijdens het
+  // typen niet, anders kun je geen komma zetten.
   useEffect(() => {
     setTekst((huidig) => ((parseGeld(huidig) ?? 0) === centen ? huidig : alsTekst(centen)));
   }, [centen]);
 
   return (
-    <div className="bedragveld">
+    <div className="euro">
       <span className="teken">€</span>
       <input
-        className="input geld"
+        className="invoer"
         inputMode="decimal"
         autoFocus={autoFocus}
-        placeholder={placeholder}
+        placeholder={plaatshouder}
         value={tekst}
         onChange={(e) => {
           setTekst(e.target.value);
@@ -134,17 +141,15 @@ export function BedragVeld({ centen, onChange, autoFocus = false, placeholder = 
   );
 }
 
-export function Confirm({ title, body, confirmLabel = 'Verwijderen', onConfirm, onClose }) {
+export function Bevestig({ titel, tekst, knop = 'Verwijderen', onJa, onSluit }) {
   return (
-    <Sheet title={title} onClose={onClose}>
-      <p className="small muted" style={{ marginTop: 0, lineHeight: 1.6 }}>{body}</p>
-      <div className="row" style={{ gap: 8 }}>
-        <button className="btn grow" onClick={onClose}>Annuleren</button>
-        <button className="btn danger grow" onClick={() => { onConfirm(); onClose(); }}>
-          {confirmLabel}
-        </button>
+    <Blad titel={titel} onSluit={onSluit}>
+      <p className="klein zacht" style={{ marginTop: 0, lineHeight: 1.6 }}>{tekst}</p>
+      <div className="rij" style={{ gap: 8 }}>
+        <button className="knop groei" onClick={onSluit}>Annuleren</button>
+        <button className="knop gevaar groei" onClick={() => { onJa(); onSluit(); }}>{knop}</button>
       </div>
-    </Sheet>
+    </Blad>
   );
 }
 
@@ -171,3 +176,5 @@ export async function kopieer(tekst) {
     return ok;
   }
 }
+
+export { Icoon };

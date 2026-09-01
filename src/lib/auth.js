@@ -87,6 +87,26 @@ export async function verifyCode(email, code) {
   if (error) throw error;
 }
 
+/**
+ * Uitloggen — en de lokale kopie meenemen.
+ *
+ * In de cloudstand bewaart Pay een kopie van je gegevens in localStorage, zodat
+ * de app ook zonder bereik iets kan laten zien. Die kopie is niet versleuteld en
+ * hoort dus niet achter te blijven op een computer waar je afscheid van neemt.
+ * Alleen de sessie weggooien en de bedragen laten staan zou het slot op de deur
+ * zetten terwijl het raam openstaat.
+ */
 export async function signOut() {
   await getClient()?.auth.signOut();
+  wisLokaleKopie();
+}
+
+export function wisLokaleKopie() {
+  try {
+    for (const sleutel of Object.keys(localStorage)) {
+      if (sleutel.startsWith('pay:cache:')) localStorage.removeItem(sleutel);
+    }
+  } catch {
+    /* geblokkeerde localStorage: dan staat er ook niets in */
+  }
 }

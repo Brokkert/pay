@@ -78,7 +78,7 @@ create table if not exists public.pay_personen (
   huishouden_id uuid not null default public.pay_mijn_huishouden()
                 references public.pay_huishoudens on delete cascade,
   naam          text not null,
-  emoji         text not null default '🙂',
+
   kleur         text not null default '#1f6f5c',
   is_mij        boolean not null default false,
   gekoppeld_aan uuid references auth.users on delete set null,
@@ -108,7 +108,7 @@ create table if not exists public.pay_rekeningen (
   deelnemers    uuid[] not null default '{}',
   stortingen    jsonb not null default '{}'::jsonb,
   iban          text not null default '',
-  emoji         text not null default '',
+
   created_at    timestamptz not null default now(),
   -- Een pot zonder deelnemers of een eigen rekening zonder eigenaar levert
   -- posten op die nergens terechtkomen. Dat vangen we hier af en niet pas in

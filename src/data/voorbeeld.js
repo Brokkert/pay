@@ -19,17 +19,17 @@ export function voorbeeldKasboek() {
   const zaak = nieuwId();
 
   const personen = [
-    { id: ik, naam: 'Ik', emoji: '🙂', kleur: '#1f6f5c', is_mij: true },
-    { id: partner, naam: 'Partner', emoji: '🌻', kleur: '#8a5b2b' },
-    { id: pieter, naam: 'Pieter', emoji: '🦊', kleur: '#3a5f8c' },
-    { id: sanne, naam: 'Sanne', emoji: '🐙', kleur: '#7a3f6d' },
+    { id: ik, naam: 'Ik', kleur: '#0d6e5c', is_mij: true },
+    { id: partner, naam: 'Partner', kleur: '#9a4f2c' },
+    { id: pieter, naam: 'Pieter', kleur: '#2f5fa8' },
+    { id: sanne, naam: 'Sanne', kleur: '#7a4a8f' },
   ];
 
   const rekeningen = [
-    { id: samen, naam: 'Gezamenlijk', soort: 'gezamenlijk', emoji: '🤝',
+    { id: samen, naam: 'Gezamenlijk', soort: 'gezamenlijk',
       deelnemers: [ik, partner], stortingen: { [ik]: 90000, [partner]: 90000 } },
-    { id: prive, naam: 'Privé', soort: 'prive', emoji: '👤', eigenaar_id: ik },
-    { id: zaak, naam: 'Zaak', soort: 'zakelijk', emoji: '🧑‍💼', eigenaar_id: ik },
+    { id: prive, naam: 'Privé', soort: 'prive', eigenaar_id: ik },
+    { id: zaak, naam: 'Zaak', soort: 'zakelijk', eigenaar_id: ik },
   ];
 
   const samenGelijk = { soort: 'gelijk', deelnemers: [ik, partner], gewichten: {} };

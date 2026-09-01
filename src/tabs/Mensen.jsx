@@ -1,8 +1,8 @@
 // Personen en rekeningen. De twee dingen waar alle berekeningen op leunen.
 
 import { useState } from 'react';
-import { Sheet, Field, Note, Penning, BedragVeld, Confirm, Totaal, Geld } from '../components/ui.jsx';
-import { SOORTEN_REKENING, soortVan, KLEUREN, EMOJI_KEUZE } from '../data/categorieen.js';
+import { Blad, Veld, Melding, Wie, Bedrag, Bevestig, Som, Geld, Icoon } from '../components/ui.jsx';
+import { SOORTEN_REKENING, soortVan, KLEUREN } from '../data/categorieen.js';
 
 export default function Mensen({ kasboek }) {
   const { personen, rekeningen, bewaar, verwijder, claim, cloud } = kasboek;
@@ -11,68 +11,71 @@ export default function Mensen({ kasboek }) {
 
   return (
     <>
-      <div className="section-title">Personen</div>
+      <div className="kop">Personen</div>
       {!personen.length && (
-        <Note tone="info">
+        <Melding toon="info">
           Voeg jezelf toe, je vriendin, en iedereen met wie je iets deelt. Vrienden hoeven geen
           account te hebben — je houdt gewoon bij wat er tussen jullie loopt.
-        </Note>
+        </Melding>
       )}
-      {personen.map((p) => (
-        <button key={p.id} className="card pressable tight" onClick={() => setPersoon(p)}>
-          <div className="row">
-            <Penning persoon={p} maat="groot" />
-            <div className="grow" style={{ minWidth: 0 }}>
-              <div className="strong truncate">{p.naam}</div>
-              <div className="tiny faint">
-                {p.is_mij ? 'dat ben jij' : p.gekoppeld_aan ? 'heeft een eigen account' : 'geen account'}
-              </div>
-            </div>
-            <span className="faint">›</span>
-          </div>
-        </button>
-      ))}
-      <button className="btn wide" onClick={() => setPersoon({})} style={{ marginTop: 4 }}>
-        + Persoon toevoegen
+      {personen.length > 0 && (
+        <div className="paneel">
+          {personen.map((p) => (
+            <button key={p.id} className="regel" onClick={() => setPersoon(p)}>
+              <Wie persoon={p} maat="groot" />
+              <span className="mid">
+                <span className="titel kort" style={{ display: 'block' }}>{p.naam}</span>
+                <span className="onder" style={{ display: 'block' }}>
+                  {p.is_mij ? 'dat ben jij' : p.gekoppeld_aan ? 'heeft een eigen account' : 'geen account'}
+                </span>
+              </span>
+              <span className="pijltje"><Icoon naam="rechts" maat={16} /></span>
+            </button>
+          ))}
+        </div>
+      )}
+      <button className="knop breed" onClick={() => setPersoon({})}>
+        <Icoon naam="plus" maat={16} /> Persoon toevoegen
       </button>
 
-      <div className="section-title">Rekeningen</div>
+      <div className="kop">Rekeningen</div>
       {!rekeningen.length && (
-        <Note tone="info">
+        <Melding toon="info">
           Een rekening is waar het geld daadwerkelijk vanaf gaat. Maak er in elk geval één
           gezamenlijke aan als jullie een gedeelde pot hebben.
-        </Note>
+        </Melding>
       )}
-      {rekeningen.map((r) => {
-        const soort = soortVan(r.soort);
-        const eigenaar = personen.find((p) => p.id === r.eigenaar_id);
-        const inleg = Object.values(r.stortingen || {}).reduce((s, c) => s + (Number(c) || 0), 0);
-        return (
-          <button key={r.id} className="card pressable tight" onClick={() => setRekening(r)}>
-            <div className="row">
-              <span className="penning groot">{r.emoji || soort.emoji}</span>
-              <div className="grow" style={{ minWidth: 0 }}>
-                <div className="strong truncate">{r.naam}</div>
-                <div className="tiny faint truncate">
-                  {soort.label}
-                  {r.soort === 'gezamenlijk'
-                    ? ` · ${(r.deelnemers || []).length} deelnemers`
-                    : eigenaar ? ` · van ${eigenaar.naam}` : ' · geen eigenaar'}
-                </div>
-              </div>
-              {inleg > 0 && (
-                <div style={{ textAlign: 'right' }}>
-                  <Geld centen={inleg} />
-                  <div className="tiny faint">inleg /mnd</div>
-                </div>
-              )}
-              <span className="faint">›</span>
-            </div>
-          </button>
-        );
-      })}
-      <button className="btn wide" onClick={() => setRekening({})} style={{ marginTop: 4 }}>
-        + Rekening toevoegen
+      {rekeningen.length > 0 && (
+        <div className="paneel">
+          {rekeningen.map((r) => {
+            const soort = soortVan(r.soort);
+            const eigenaar = personen.find((p) => p.id === r.eigenaar_id);
+            const inleg = Object.values(r.stortingen || {}).reduce((s, c) => s + (Number(c) || 0), 0);
+            return (
+              <button key={r.id} className="regel" onClick={() => setRekening(r)}>
+                <span className="mid">
+                  <span className="titel kort" style={{ display: 'block' }}>{r.naam}</span>
+                  <span className="onder kort" style={{ display: 'block' }}>
+                    {soort.label}
+                    {r.soort === 'gezamenlijk'
+                      ? ` · ${(r.deelnemers || []).length} deelnemers`
+                      : eigenaar ? ` · van ${eigenaar.naam}` : ' · geen eigenaar'}
+                  </span>
+                </span>
+                {inleg > 0 && (
+                  <span className="rechts">
+                    <Geld centen={inleg} />
+                    <span className="onder" style={{ display: 'block' }}>inleg /mnd</span>
+                  </span>
+                )}
+                <span className="pijltje"><Icoon naam="rechts" maat={16} /></span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <button className="knop breed" onClick={() => setRekening({})}>
+        <Icoon naam="plus" maat={16} /> Rekening toevoegen
       </button>
 
       {persoon && (
@@ -83,7 +86,7 @@ export default function Mensen({ kasboek }) {
           onClaim={claim}
           onBewaar={(rij) => bewaar('personen', rij)}
           onVerwijder={(id) => verwijder('personen', id)}
-          onClose={() => setPersoon(null)}
+          onSluit={() => setPersoon(null)}
         />
       )}
       {rekening && (
@@ -92,16 +95,19 @@ export default function Mensen({ kasboek }) {
           personen={personen}
           onBewaar={(rij) => bewaar('rekeningen', rij)}
           onVerwijder={(id) => verwijder('rekeningen', id)}
-          onClose={() => setRekening(null)}
+          onSluit={() => setRekening(null)}
         />
       )}
     </>
   );
 }
 
-function PersoonForm({ persoon, personen, cloud, onClaim, onBewaar, onVerwijder, onClose }) {
+function PersoonForm({ persoon, personen, cloud, onClaim, onBewaar, onVerwijder, onSluit }) {
   const [concept, setConcept] = useState(() => ({
-    naam: '', emoji: '🙂', kleur: KLEUREN[personen.length % KLEUREN.length], is_mij: false, ...persoon,
+    naam: '',
+    kleur: KLEUREN[personen.length % KLEUREN.length],
+    is_mij: false,
+    ...persoon,
   }));
   const [fout, setFout] = useState(null);
   const [vraag, setVraag] = useState(false);
@@ -111,129 +117,122 @@ function PersoonForm({ persoon, personen, cloud, onClaim, onBewaar, onVerwijder,
   const bewaren = async () => {
     try {
       await onBewaar({ ...concept, naam: concept.naam.trim() });
-      onClose();
+      onSluit();
     } catch (err) {
       setFout(err.message || String(err));
     }
   };
 
   return (
-    <Sheet title={persoon.id ? 'Persoon wijzigen' : 'Nieuwe persoon'} onClose={onClose}>
-      {fout && <Note tone="bad">{fout}</Note>}
+    <Blad titel={persoon.id ? 'Persoon wijzigen' : 'Nieuwe persoon'} onSluit={onSluit}>
+      {fout && <Melding toon="mis">{fout}</Melding>}
 
-      <Field label="Naam">
-        <input
-          className="input"
-          autoFocus
-          value={concept.naam}
-          onChange={(e) => zet({ naam: e.target.value })}
-        />
-      </Field>
-
-      <Field label="Poppetje">
-        <div className="chips">
-          {EMOJI_KEUZE.map((e) => (
-            <button
-              key={e}
-              type="button"
-              className={`chip${concept.emoji === e ? ' on' : ''}`}
-              onClick={() => zet({ emoji: e })}
-            >
-              {e}
-            </button>
-          ))}
+      <div className="rij" style={{ gap: 14, marginBottom: 18 }}>
+        <Wie persoon={concept} maat="groot" />
+        <div className="groei">
+          <input
+            className="invoer"
+            autoFocus
+            placeholder="Naam"
+            aria-label="Naam"
+            value={concept.naam}
+            onChange={(e) => zet({ naam: e.target.value })}
+          />
         </div>
-      </Field>
+      </div>
 
-      <Field label="Kleur" hint="Waar je deze persoon aan herkent in de verdeelbalkjes.">
-        <div className="chips">
+      <Veld label="Kleur" tip="Waar je deze persoon aan herkent in de lijsten en balkjes.">
+        <div className="blokjes">
           {KLEUREN.map((k) => (
             <button
               key={k}
               type="button"
-              className={`chip${concept.kleur === k ? ' on' : ''}`}
+              aria-label={`Kleur ${k}`}
               onClick={() => zet({ kleur: k })}
-              style={{ background: `${k}33`, borderColor: concept.kleur === k ? k : undefined }}
-            >
-              <span style={{ width: 12, height: 12, borderRadius: 999, background: k, display: 'inline-block' }} />
-            </button>
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: '50%',
+                background: k,
+                border: concept.kleur === k ? '2px solid var(--text)' : '2px solid transparent',
+                boxShadow: concept.kleur === k ? '0 0 0 2px var(--bg) inset' : 'none',
+              }}
+            />
           ))}
         </div>
-      </Field>
+      </Veld>
 
       {cloud ? (
         persoon.id && (
-          <div className="card tight" style={{ marginBottom: 14 }}>
-            {concept.is_mij ? (
-              <div className="small">✓ Dit ben jij — gekoppeld aan je account.</div>
-            ) : (
-              <>
-                <div className="small">
-                  {concept.gekoppeld_aan
-                    ? 'Deze persoon heeft een eigen account.'
-                    : 'Deze persoon heeft geen account.'}
-                </div>
-                {!concept.gekoppeld_aan && (
-                  <button
-                    className="btn sm"
-                    style={{ marginTop: 8 }}
-                    onClick={async () => {
-                      try {
-                        await onClaim(persoon.id);
-                        onClose();
-                      } catch (err) {
-                        setFout(err.message || String(err));
-                      }
-                    }}
-                  >
-                    Dit ben ik
-                  </button>
-                )}
-              </>
-            )}
+          <div className="paneel" style={{ marginBottom: 18 }}>
+            <div className="vak">
+              {concept.is_mij ? (
+                <div className="klein">Dit ben jij — gekoppeld aan je account.</div>
+              ) : (
+                <>
+                  <div className="klein zacht">
+                    {concept.gekoppeld_aan
+                      ? 'Deze persoon heeft een eigen account.'
+                      : 'Deze persoon heeft geen account.'}
+                  </div>
+                  {!concept.gekoppeld_aan && (
+                    <button
+                      className="knop sm"
+                      style={{ marginTop: 10 }}
+                      onClick={async () => {
+                        try {
+                          await onClaim(persoon.id);
+                          onSluit();
+                        } catch (err) {
+                          setFout(err.message || String(err));
+                        }
+                      }}
+                    >
+                      Dit ben ik
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )
       ) : (
-        <label className="row" style={{ gap: 9, marginBottom: 14 }}>
+        <label className="rij" style={{ gap: 10, marginBottom: 18 }}>
           <input
             type="checkbox"
             checked={Boolean(concept.is_mij)}
             disabled={alIemandIk && !concept.is_mij}
             onChange={(e) => zet({ is_mij: e.target.checked })}
           />
-          <span className="small">
+          <span className="klein">
             Dit ben ik
-            {alIemandIk && !concept.is_mij && (
-              <span className="faint"> — al aan iemand anders toegekend</span>
-            )}
+            {alIemandIk && !concept.is_mij && <span className="vaag"> — al aan iemand anders toegekend</span>}
           </span>
         </label>
       )}
 
-      <div className="row" style={{ gap: 8 }}>
-        {persoon.id && (
-          <button className="btn danger" onClick={() => setVraag(true)}>Verwijderen</button>
-        )}
-        <button className="btn primary grow" disabled={!concept.naam.trim()} onClick={bewaren}>
+      <div className="rij" style={{ gap: 8 }}>
+        {persoon.id && <button className="knop gevaar" onClick={() => setVraag(true)}>Verwijderen</button>}
+        <button className="knop hoofd groei" disabled={!concept.naam.trim()} onClick={bewaren}>
           Bewaren
         </button>
       </div>
 
       {vraag && (
-        <Confirm
-          title={`${concept.naam} verwijderen?`}
-          body="Posten waarin deze persoon meedeelt blijven bestaan, maar zijn aandeel verdwijnt uit de berekening. Loop de betreffende posten daarna even na."
-          onConfirm={() => { onVerwijder(persoon.id); onClose(); }}
-          onClose={() => setVraag(false)}
+        <Bevestig
+          titel={`${concept.naam} verwijderen?`}
+          tekst="Posten waarin deze persoon meedeelt blijven bestaan, maar zijn aandeel verdwijnt uit de berekening. Loop die posten daarna even na."
+          onJa={() => { onVerwijder(persoon.id); onSluit(); }}
+          onSluit={() => setVraag(false)}
         />
       )}
-    </Sheet>
+    </Blad>
   );
 }
 
-function RekeningForm({ rekening, personen, onBewaar, onVerwijder, onClose }) {
+function RekeningForm({ rekening, personen, onBewaar, onVerwijder, onSluit }) {
   const [concept, setConcept] = useState(() => ({
-    naam: '', soort: 'gezamenlijk', eigenaar_id: null, deelnemers: [], stortingen: {}, iban: '', emoji: '', ...rekening,
+    naam: '', soort: 'gezamenlijk', eigenaar_id: null, deelnemers: [], stortingen: {}, iban: '', ...rekening,
   }));
   const [fout, setFout] = useState(null);
   const [vraag, setVraag] = useState(false);
@@ -259,7 +258,7 @@ function RekeningForm({ rekening, personen, onBewaar, onVerwijder, onClose }) {
         stortingen: gezamenlijk ? stortingen : {},
         eigenaar_id: gezamenlijk ? null : concept.eigenaar_id,
       });
-      onClose();
+      onSluit();
     } catch (err) {
       setFout(err.message || String(err));
     }
@@ -268,148 +267,133 @@ function RekeningForm({ rekening, personen, onBewaar, onVerwijder, onClose }) {
   const kanBewaren = concept.naam.trim() && (gezamenlijk ? deelnemers.length > 0 : concept.eigenaar_id);
 
   return (
-    <Sheet title={rekening.id ? 'Rekening wijzigen' : 'Nieuwe rekening'} onClose={onClose}>
-      {fout && <Note tone="bad">{fout}</Note>}
+    <Blad titel={rekening.id ? 'Rekening wijzigen' : 'Nieuwe rekening'} onSluit={onSluit}>
+      {fout && <Melding toon="mis">{fout}</Melding>}
 
-      <Field label="Naam">
+      <Veld label="Naam">
         <input
-          className="input"
+          className="invoer"
           autoFocus
-          placeholder="Gezamenlijk, Privé, Zaak…"
+          placeholder="Gezamenlijk, BUNQ, RABO zakelijk…"
           value={concept.naam}
           onChange={(e) => zet({ naam: e.target.value })}
         />
-      </Field>
+      </Veld>
 
-      <Field label="Wat voor rekening">
-        <div className="col">
+      <Veld label="Wat voor rekening">
+        <div className="kolom">
           {SOORTEN_REKENING.map((s) => (
             <button
               key={s.id}
               type="button"
-              className={`chip${concept.soort === s.id ? ' on' : ''}`}
-              style={{ justifyContent: 'flex-start', textAlign: 'left', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}
+              className={`optie${concept.soort === s.id ? ' aan' : ''}`}
               onClick={() => zet({ soort: s.id })}
             >
-              <span>{s.emoji}</span>
+              <span className="stip" />
               <span>
-                <span className="strong">{s.label}</span>
-                <span className="tiny faint" style={{ display: 'block', marginTop: 2 }}>{s.blurb}</span>
+                <span className="t" style={{ display: 'block' }}>{s.label}</span>
+                <span className="b" style={{ display: 'block' }}>{s.blurb}</span>
               </span>
             </button>
           ))}
         </div>
-      </Field>
+      </Veld>
 
       {gezamenlijk ? (
         <>
-          <Field label="Wie storten erop">
-            <div className="chips">
+          <Veld label="Wie storten erop">
+            <div className="blokjes">
               {personen.map((p) => (
                 <button
                   key={p.id}
                   type="button"
-                  className={`chip${deelnemers.includes(p.id) ? ' on' : ''}`}
+                  className={`blokje${deelnemers.includes(p.id) ? ' aan' : ''}`}
                   onClick={() => wisselDeelnemer(p.id)}
                 >
-                  <Penning persoon={p} maat="klein" /> {p.naam}
+                  <Wie persoon={p} maat="klein" /> {p.naam}
                 </button>
               ))}
             </div>
-          </Field>
+          </Veld>
 
           {deelnemers.length > 0 && (
-            <Field
+            <Veld
               label="Vaste inleg per maand"
-              hint="Wat er nu daadwerkelijk maandelijks op gestort wordt. Pay zet dat naast het werkelijke aandeel, zodat je ziet of de pot uitkomt. Laat leeg als jullie precies het aandeel overmaken."
+              tip="Wat er nu daadwerkelijk maandelijks op gestort wordt. Pay zet dat naast het werkelijke aandeel, zodat je ziet of de pot uitkomt. Laat leeg als jullie precies het aandeel overmaken."
             >
-              <div className="card tight" style={{ marginBottom: 0 }}>
+              <div className="paneel" style={{ marginBottom: 0 }}>
                 {deelnemers.map((id) => {
                   const p = personen.find((x) => x.id === id);
                   return (
-                    <div key={id} className="boekregel">
-                      <div className="wat row" style={{ gap: 7 }}>
-                        <Penning persoon={p} maat="klein" />
-                        <span className="small">{p?.naam}</span>
-                      </div>
-                      <div className="vul" />
-                      <div style={{ width: 140 }}>
-                        <BedragVeld
+                    <div key={id} className="post">
+                      <Wie persoon={p} maat="klein" />
+                      <div className="wat"><div className="n">{p?.naam}</div></div>
+                      <span style={{ width: 132 }}>
+                        <Bedrag
                           centen={concept.stortingen?.[id] || 0}
                           onChange={(c) => zet({ stortingen: { ...(concept.stortingen || {}), [id]: c } })}
                         />
-                      </div>
+                      </span>
                     </div>
                   );
                 })}
-                <Totaal label="Samen per maand" centen={inleg} />
+                <Som label="Samen per maand" centen={inleg} />
               </div>
-            </Field>
+            </Veld>
           )}
         </>
       ) : (
-        <Field label="Van wie is deze rekening">
-          <div className="chips">
+        <Veld
+          label="Van wie is deze rekening"
+          tip="Wat anderen meegebruiken van deze rekening, staat bij deze persoon in het krijt."
+        >
+          <div className="blokjes">
             {personen.map((p) => (
               <button
                 key={p.id}
                 type="button"
-                className={`chip${concept.eigenaar_id === p.id ? ' on' : ''}`}
+                className={`blokje${concept.eigenaar_id === p.id ? ' aan' : ''}`}
                 onClick={() => zet({ eigenaar_id: p.id })}
               >
-                <Penning persoon={p} maat="klein" /> {p.naam}
+                <Wie persoon={p} maat="klein" /> {p.naam}
               </button>
             ))}
           </div>
-          <div className="hint">
-            Wat anderen meegebruiken van deze rekening, staat bij deze persoon in het krijt.
-          </div>
-        </Field>
+        </Veld>
       )}
 
-      <details className="fallback" style={{ marginBottom: 14 }}>
-        <summary>Rekeningnummer en icoon</summary>
-        <div style={{ marginTop: 12 }}>
-          <Field label="IBAN" hint="Alleen om over te tikken bij het overmaken. Blijft in je eigen huishouden.">
+      <details className="uitklap" style={{ marginBottom: 18 }}>
+        <summary>Rekeningnummer</summary>
+        <div style={{ marginTop: 16 }}>
+          <Veld label="IBAN" tip="Alleen om over te tikken bij het overmaken. Blijft in je eigen huishouden.">
             <input
-              className="input"
+              className="invoer"
               placeholder="NL00 BANK 0000 0000 00"
               value={concept.iban || ''}
               onChange={(e) => zet({ iban: e.target.value })}
             />
-          </Field>
-          <Field label="Icoon">
-            <input
-              className="input"
-              placeholder={soortVan(concept.soort).emoji}
-              maxLength={4}
-              value={concept.emoji || ''}
-              onChange={(e) => zet({ emoji: e.target.value })}
-            />
-          </Field>
+          </Veld>
         </div>
       </details>
 
-      <div className="row" style={{ gap: 8 }}>
-        {rekening.id && (
-          <button className="btn danger" onClick={() => setVraag(true)}>Verwijderen</button>
-        )}
-        <button className="btn primary grow" disabled={!kanBewaren} onClick={bewaren}>Bewaren</button>
+      <div className="rij" style={{ gap: 8 }}>
+        {rekening.id && <button className="knop gevaar" onClick={() => setVraag(true)}>Verwijderen</button>}
+        <button className="knop hoofd groei" disabled={!kanBewaren} onClick={bewaren}>Bewaren</button>
       </div>
       {!kanBewaren && (
-        <div className="hint">
+        <div className="tip">
           {gezamenlijk ? 'Kies minstens één deelnemer.' : 'Kies van wie deze rekening is.'}
         </div>
       )}
 
       {vraag && (
-        <Confirm
-          title={`${concept.naam} verwijderen?`}
-          body="Posten die van deze rekening afgingen houden geen betaler meer over en tellen dan niet mee. Pay waarschuwt daar wel over op het overzicht."
-          onConfirm={() => { onVerwijder(rekening.id); onClose(); }}
-          onClose={() => setVraag(false)}
+        <Bevestig
+          titel={`${concept.naam} verwijderen?`}
+          tekst="Posten die van deze rekening afgingen houden geen rekening meer over en tellen dan niet mee. Pay waarschuwt daar wel over op het overzicht."
+          onJa={() => { onVerwijder(rekening.id); onSluit(); }}
+          onSluit={() => setVraag(false)}
         />
       )}
-    </Sheet>
+    </Blad>
   );
 }

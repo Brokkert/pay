@@ -56,9 +56,9 @@ describe('Pay in de lokale kluis', () => {
     await gebruiker.click(screen.getByRole('button', { name: /Lasten/ }));
 
     await gebruiker.click(screen.getByRole('button', { name: 'Nieuwe post' }));
-    await gebruiker.type(screen.getByPlaceholderText(/Huur, Netflix/), 'Krant');
+    await gebruiker.type(screen.getByPlaceholderText(/Gas\/Stroom/), 'Krant');
     await gebruiker.type(screen.getByPlaceholderText('0,00'), '12,50');
-    const paneel = screen.getByRole('heading', { name: 'Nieuwe post' }).closest('.sheet');
+    const paneel = screen.getByRole('heading', { name: 'Nieuwe post' }).closest('.blad');
     await gebruiker.click(within(paneel).getByRole('button', { name: /Gezamenlijk/ }));
     await gebruiker.click(within(paneel).getByRole('button', { name: 'Bewaren' }));
 
@@ -75,5 +75,17 @@ describe('Pay in de lokale kluis', () => {
 
     await gebruiker.click(screen.getByRole('button', { name: /Verrekenen/ }));
     expect(screen.getByText(/wie van de personen jij bent/i)).toBeTruthy();
+  });
+});
+
+describe('afsluiten', () => {
+  it('laat geen bedragen achter in de browser na het uitloggen', async () => {
+    localStorage.setItem('pay:cache:iemand', JSON.stringify(voorbeeldKasboek()));
+    localStorage.setItem('pay:thema', 'dark');
+    const { wisLokaleKopie } = await import('../src/lib/auth.js');
+    wisLokaleKopie();
+    expect(localStorage.getItem('pay:cache:iemand')).toBe(null);
+    // Voorkeuren zijn geen gegevens en mogen blijven staan.
+    expect(localStorage.getItem('pay:thema')).toBe('dark');
   });
 });

@@ -2,7 +2,7 @@
 // en het in- en uitvoeren van gegevens.
 
 import { useEffect, useState } from 'react';
-import { Sheet, Field, Note, Boekregel, kopieer } from '../components/ui.jsx';
+import { Blad, Veld, Melding, Post, kopieer, Icoon } from '../components/ui.jsx';
 import { readConfig, writeConfig } from '../lib/config.js';
 import { resetClient } from '../lib/supabase.js';
 import { signOut } from '../lib/auth.js';
@@ -17,20 +17,7 @@ export default function Instellingen({ user, kasboek, thema, onThema }) {
   const [melding, setMelding] = useState(null);
   const config = readConfig();
 
-  const exporteer = () => {
-    const stempel = new Date().toISOString().slice(0, 10);
-    download(`pay-${stempel}.csv`, naarCsv(kasboek));
-  };
-
-  const backup = () => {
-    const stempel = new Date().toISOString().slice(0, 10);
-    const inhoud = JSON.stringify(
-      { versie: 1, personen: kasboek.personen, rekeningen: kasboek.rekeningen, posten: kasboek.posten },
-      null,
-      2
-    );
-    download(`pay-backup-${stempel}.json`, inhoud, 'application/json');
-  };
+  const stempel = () => new Date().toISOString().slice(0, 10);
 
   const vulVoorbeeld = async () => {
     setMelding('Bezig…');
@@ -44,59 +31,85 @@ export default function Instellingen({ user, kasboek, thema, onThema }) {
 
   return (
     <>
-      {melding && <Note tone="info">{melding}</Note>}
+      {melding && <Melding toon="info">{melding}</Melding>}
 
-      <div className="section-title">Weergave</div>
-      <div className="card tight">
-        <div className="row">
-          <span className="grow small">Thema</span>
-          <div className="chips">
-            {[['light', '☀️ Dag'], ['dark', '🌙 Nacht']].map(([id, label]) => (
-              <button key={id} className={`chip${thema === id ? ' on' : ''}`} onClick={() => onThema(id)}>
-                {label}
-              </button>
-            ))}
+      <div className="kop">Weergave</div>
+      <div className="paneel">
+        <div className="vak">
+          <div className="rij">
+            <span className="groei klein">Thema</span>
+            <div className="blokjes">
+              {[['light', 'Dag'], ['dark', 'Nacht']].map(([id, label]) => (
+                <button key={id} className={`blokje${thema === id ? ' aan' : ''}`} onClick={() => onThema(id)}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="section-title">Gegevens</div>
-      <div className="card tight">
-        <Boekregel wat="Personen" centen={null} achter={<span className="geld">{kasboek.personen.length}</span>} />
-        <Boekregel wat="Rekeningen" centen={null} achter={<span className="geld">{kasboek.rekeningen.length}</span>} />
-        <Boekregel wat="Posten" centen={null} achter={<span className="geld">{kasboek.posten.length}</span>} />
+      <div className="kop">Gegevens</div>
+      <div className="paneel">
+        <Post wat="Personen" rechts={<span className="bedrag">{kasboek.personen.length}</span>} />
+        <Post wat="Rekeningen" rechts={<span className="bedrag">{kasboek.rekeningen.length}</span>} />
+        <Post wat="Posten" rechts={<span className="bedrag">{kasboek.posten.length}</span>} />
       </div>
-      <div className="col" style={{ gap: 8 }}>
-        <button className="btn wide" onClick={() => setPaneel('plakken')}>
-          📋 Plakken uit Excel
+      <div className="kolom" style={{ gap: 8 }}>
+        <button className="knop breed" onClick={() => setPaneel('plakken')}>
+          <Icoon naam="plak" maat={17} /> Plakken uit Excel of Numbers
         </button>
-        <button className="btn wide" onClick={exporteer}>⬇️ Exporteren naar CSV</button>
-        <button className="btn wide" onClick={backup}>💾 Volledige reservekopie (JSON)</button>
+        <button className="knop breed" onClick={() => download(`pay-${stempel()}.csv`, naarCsv(kasboek))}>
+          <Icoon naam="omlaag" maat={17} /> Exporteren naar CSV
+        </button>
+        <button
+          className="knop breed"
+          onClick={() =>
+            download(
+              `pay-backup-${stempel()}.json`,
+              JSON.stringify(
+                {
+                  versie: 1,
+                  personen: kasboek.personen,
+                  rekeningen: kasboek.rekeningen,
+                  posten: kasboek.posten,
+                },
+                null,
+                2
+              ),
+              'application/json'
+            )
+          }
+        >
+          <Icoon naam="omlaag" maat={17} /> Volledige reservekopie (JSON)
+        </button>
         {!kasboek.posten.length && (
-          <button className="btn wide" onClick={vulVoorbeeld}>✨ Vul een voorbeeldhuishouden</button>
+          <button className="knop breed" onClick={vulVoorbeeld}>Vul een voorbeeldhuishouden</button>
         )}
       </div>
-      <div className="hint">
-        De CSV opent rechtstreeks in Excel, met per post het maandbedrag, het jaarbedrag en het
-        aandeel van iedereen in een eigen kolom — precies het blad dat je nu met de hand bijhoudt.
+      <div className="tip">
+        De CSV opent rechtstreeks in Excel en Numbers, met per post het maandbedrag, het jaarbedrag
+        en het aandeel van iedereen in een eigen kolom.
       </div>
 
-      <div className="section-title">Samen bijhouden</div>
+      <div className="kop">Samen bijhouden</div>
       {kasboek.cloud ? (
         <>
-          <div className="card tight">
-            <div className="small">Ingelogd als <strong>{user?.email}</strong></div>
-            <div className="tiny faint" style={{ marginTop: 3 }}>
-              Alles staat in je eigen Supabase-project, afgeschermd per huishouden.
+          <div className="paneel">
+            <div className="vak">
+              <div className="klein">Ingelogd als <strong>{user?.email}</strong></div>
+              <div className="mini vaag" style={{ marginTop: 3 }}>
+                Alles staat in je eigen Supabase-project, afgeschermd per huishouden.
+              </div>
             </div>
           </div>
-          <div className="col" style={{ gap: 8 }}>
-            <button className="btn wide" onClick={() => setPaneel('uitnodigen')}>
-              ✉️ Iemand toegang geven
+          <div className="kolom" style={{ gap: 8 }}>
+            <button className="knop breed" onClick={() => setPaneel('uitnodigen')}>
+              <Icoon naam="mail" maat={17} /> Iemand toegang geven
             </button>
             {kasboek.lokaalAantal > 0 && (
               <button
-                className="btn wide"
+                className="knop breed"
                 onClick={async () => {
                   setMelding('Bezig met overzetten…');
                   try {
@@ -107,46 +120,50 @@ export default function Instellingen({ user, kasboek, thema, onThema }) {
                   }
                 }}
               >
-                ⬆️ {kasboek.lokaalAantal} regels uit de lokale kluis overzetten
+                {kasboek.lokaalAantal} regels uit de lokale kluis overzetten
               </button>
             )}
-            <button className="btn wide danger" onClick={() => signOut()}>Uitloggen</button>
+            <button className="knop breed gevaar" onClick={() => signOut()}>Uitloggen</button>
           </div>
         </>
       ) : (
         <>
-          <Note tone="info">
+          <Melding toon="info">
             Pay draait nu als <strong>lokale kluis</strong>: alles staat in deze browser en gaat
             nergens heen. Wil je dat je vriendin meekijkt en dat het tussen je telefoon en laptop
-            gelijk loopt, dan koppel je een eigen (gratis) Supabase-project. Zie SUPABASE_SETUP.md.
-          </Note>
-          <button className="btn wide" onClick={() => setPaneel('verbinding')}>
-            🔌 Verbinding instellen
+            gelijkloopt, dan koppel je een eigen (gratis) Supabase-project. Zie SUPABASE_SETUP.md.
+          </Melding>
+          <button className="knop breed" onClick={() => setPaneel('verbinding')}>
+            <Icoon naam="sleutel" maat={17} /> Verbinding instellen
           </button>
         </>
       )}
       {config.bron === 'lokaal' && (
-        <div className="hint">
+        <div className="tip">
           Er staan verbindingsgegevens in deze browser, ingevuld bij Verbinding. Die winnen van wat
           er in de broncode staat.
         </div>
       )}
 
-      <div className="tiny faint center" style={{ marginTop: 28 }}>
+      <div className="mini vaag midden" style={{ marginTop: 32 }}>
         Pay · gebouwd {typeof __BUILD__ === 'string' ? __BUILD__ : 'lokaal'}
       </div>
 
       {paneel === 'plakken' && (
-        <PlakPaneel kasboek={kasboek} onKlaar={(n) => { setMelding(`${n} posten toegevoegd.`); setPaneel(null); }} onClose={() => setPaneel(null)} />
+        <PlakPaneel
+          kasboek={kasboek}
+          onKlaar={(n) => { setMelding(`${n} posten toegevoegd.`); setPaneel(null); }}
+          onSluit={() => setPaneel(null)}
+        />
       )}
-      {paneel === 'verbinding' && <VerbindingPaneel onClose={() => setPaneel(null)} />}
-      {paneel === 'uitnodigen' && <UitnodigenPaneel onClose={() => setPaneel(null)} />}
+      {paneel === 'verbinding' && <VerbindingPaneel onSluit={() => setPaneel(null)} />}
+      {paneel === 'uitnodigen' && <UitnodigenPaneel onSluit={() => setPaneel(null)} />}
     </>
   );
 }
 
 /** Plakken uit een bestaand overzicht. De snelste weg uit een grote spreadsheet. */
-function PlakPaneel({ kasboek, onKlaar, onClose }) {
+function PlakPaneel({ kasboek, onKlaar, onSluit }) {
   const { personen, rekeningen } = kasboek;
   const [tekst, setTekst] = useState('');
   const [rekening, setRekening] = useState(rekeningen[0]?.id || null);
@@ -156,7 +173,7 @@ function PlakPaneel({ kasboek, onKlaar, onClose }) {
   const [fout, setFout] = useState(null);
 
   const gevonden = leesPlak(tekst);
-  const kanImporteren = gevonden.length > 0 && rekening && deelnemers.length > 0;
+  const kan = gevonden.length > 0 && rekening && deelnemers.length > 0;
 
   const invoeren = async () => {
     setBezig(true);
@@ -183,124 +200,125 @@ function PlakPaneel({ kasboek, onKlaar, onClose }) {
   };
 
   return (
-    <Sheet title="Plakken uit Excel" onClose={onClose}>
-      {fout && <Note tone="bad">{fout}</Note>}
-      <Field
+    <Blad titel="Plakken uit Excel of Numbers" onSluit={onSluit}>
+      {fout && <Melding toon="mis">{fout}</Melding>}
+      <Veld
         label="Plak hier twee kolommen"
-        hint="Een kolom met de omschrijving en een kolom met het bedrag. Staat er een derde kolom met 'per jaar' of 'per kwartaal' bij, dan wordt die ook meegenomen. Kopregels vallen vanzelf af."
+        tip="Een kolom met de omschrijving en een kolom met het bedrag. Staat er een derde kolom met 'per jaar' of 'per kwartaal' bij, dan wordt die ook meegenomen. Kopregels vallen vanzelf af."
       >
         <textarea
-          className="textarea"
-          style={{ minHeight: 150, fontFamily: 'var(--mono)', fontSize: 13 }}
+          className="tekstvak"
+          style={{ minHeight: 160, fontFamily: 'var(--num)', fontSize: 13 }}
           autoFocus
-          placeholder={'Huur\t1325,00\nEnergie\t185,00\nInboedelverzekering\t186,00\tper jaar'}
+          placeholder={'Gas/Stroom\t117,00\nZorgverzekering\t158,07\nMotorverzekeringen\t107,58'}
           value={tekst}
           onChange={(e) => setTekst(e.target.value)}
         />
-      </Field>
+      </Veld>
 
       {gevonden.length > 0 && (
         <>
-          <div className="card tight">
-            <div className="tiny faint" style={{ textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700, marginBottom: 4 }}>
-              {gevonden.length} {gevonden.length === 1 ? 'post' : 'posten'} herkend
-            </div>
+          <div className="kop" style={{ marginTop: 4 }}>
+            {gevonden.length} {gevonden.length === 1 ? 'post' : 'posten'} herkend
+          </div>
+          <div className="paneel">
             {gevonden.slice(0, 8).map((r, i) => (
-              <Boekregel key={i} wat={r.naam} onder={RITMES.find((x) => x.id === r.ritme)?.label} centen={r.bedrag} />
+              <Post
+                key={`${r.naam}-${i}`}
+                wat={r.naam}
+                onder={RITMES.find((x) => x.id === r.ritme)?.label}
+                centen={r.bedrag}
+              />
             ))}
             {gevonden.length > 8 && (
-              <div className="tiny faint" style={{ marginTop: 6 }}>… en nog {gevonden.length - 8}.</div>
+              <div className="vak krap mini vaag">… en nog {gevonden.length - 8}.</div>
             )}
           </div>
 
-          <Field label="Alle posten gaan van" hint="Achteraf per post te wijzigen.">
-            <div className="chips">
+          <Veld label="Alle posten gaan van" tip="Achteraf per post te wijzigen.">
+            <div className="blokjes">
               {rekeningen.map((r) => (
-                <button key={r.id} className={`chip${rekening === r.id ? ' on' : ''}`} onClick={() => setRekening(r.id)}>
+                <button
+                  key={r.id}
+                  className={`blokje${rekening === r.id ? ' aan' : ''}`}
+                  onClick={() => setRekening(r.id)}
+                >
                   {r.naam}
                 </button>
               ))}
             </div>
-          </Field>
+          </Veld>
 
-          <Field label="En worden gedeeld door">
-            <div className="chips">
+          <Veld label="En worden gedeeld door">
+            <div className="blokjes">
               {personen.map((p) => (
                 <button
                   key={p.id}
-                  className={`chip${deelnemers.includes(p.id) ? ' on' : ''}`}
+                  className={`blokje${deelnemers.includes(p.id) ? ' aan' : ''}`}
                   onClick={() =>
                     setDeelnemers((d) => (d.includes(p.id) ? d.filter((x) => x !== p.id) : [...d, p.id]))
                   }
                 >
-                  {p.emoji} {p.naam}
+                  {p.naam}
                 </button>
               ))}
             </div>
-          </Field>
+          </Veld>
 
-          <Field label="Categorie">
-            <select className="select" value={categorie} onChange={(e) => setCategorie(e.target.value)}>
-              {CATEGORIEEN.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+          <Veld label="Categorie">
+            <select className="keuze" value={categorie} onChange={(e) => setCategorie(e.target.value)}>
+              {CATEGORIEEN.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
-          </Field>
+          </Veld>
 
-          <button className="btn primary wide" disabled={!kanImporteren || bezig} onClick={invoeren}>
-            {bezig ? <span className="spinner" /> : `${gevonden.length} posten toevoegen`}
+          <button className="knop hoofd breed" disabled={!kan || bezig} onClick={invoeren}>
+            {bezig ? <span className="draai" /> : `${gevonden.length} posten toevoegen`}
           </button>
-          {!kanImporteren && (
-            <div className="hint">Kies een rekening en minstens één persoon die het draagt.</div>
-          )}
+          {!kan && <div className="tip">Kies een rekening en minstens één persoon die het draagt.</div>}
         </>
       )}
-    </Sheet>
+    </Blad>
   );
 }
 
-function VerbindingPaneel({ onClose }) {
+function VerbindingPaneel({ onSluit }) {
   const huidig = readConfig();
   const [url, setUrl] = useState(huidig.url);
   const [key, setKey] = useState(huidig.key);
 
   return (
-    <Sheet title="Verbinding" onClose={onClose}>
-      <Note tone="info">
+    <Blad titel="Verbinding" onSluit={onSluit}>
+      <Melding toon="info">
         Deze twee waarden staan in je Supabase-project onder <strong>Settings → API</strong>. De
         publishable key hoort openbaar te zijn en geeft in zijn eentje nergens toegang toe — dat
         regelt Row Level Security in de database. Gebruik nooit de service_role-sleutel.
-      </Note>
-      <Field label="Project URL">
-        <input className="input" placeholder="https://xxxx.supabase.co" value={url} onChange={(e) => setUrl(e.target.value)} />
-      </Field>
-      <Field label="Publishable key">
-        <input className="input" placeholder="sb_publishable_…" value={key} onChange={(e) => setKey(e.target.value)} />
-      </Field>
+      </Melding>
+      <Veld label="Project URL">
+        <input className="invoer" placeholder="https://xxxx.supabase.co" value={url}
+          onChange={(e) => setUrl(e.target.value)} />
+      </Veld>
+      <Veld label="Publishable key">
+        <input className="invoer" placeholder="sb_publishable_…" value={key}
+          onChange={(e) => setKey(e.target.value)} />
+      </Veld>
       <button
-        className="btn primary wide"
-        onClick={() => {
-          writeConfig(url, key);
-          resetClient();
-          window.location.reload();
-        }}
+        className="knop hoofd breed"
+        onClick={() => { writeConfig(url, key); resetClient(); window.location.reload(); }}
       >
         Bewaren en herladen
       </button>
       <button
-        className="btn wide"
+        className="knop breed"
         style={{ marginTop: 8 }}
-        onClick={() => {
-          writeConfig('', '');
-          resetClient();
-          window.location.reload();
-        }}
+        onClick={() => { writeConfig('', ''); resetClient(); window.location.reload(); }}
       >
         Wissen — terug naar de lokale kluis
       </button>
-    </Sheet>
+    </Blad>
   );
 }
 
-function UitnodigenPaneel({ onClose }) {
+function UitnodigenPaneel({ onSluit }) {
   const [lijst, setLijst] = useState([]);
   const [nieuw, setNieuw] = useState(null);
   const [fout, setFout] = useState(null);
@@ -310,28 +328,25 @@ function UitnodigenPaneel({ onClose }) {
   useEffect(() => { laden(); }, []);
 
   return (
-    <Sheet title="Iemand toegang geven" onClose={onClose}>
-      {fout && <Note tone="bad">{fout}</Note>}
-      <Note tone="info">
+    <Blad titel="Iemand toegang geven" onSluit={onSluit}>
+      {fout && <Melding toon="mis">{fout}</Melding>}
+      <Melding toon="info">
         Wie deze link opent en zijn e-mailadres invult, komt in jóuw huishouden en ziet dezelfde
         posten en verrekeningen. Alleen de code staat in de link; de database bewaart er niet meer
         dan een hash van.
-      </Note>
+      </Melding>
 
       {nieuw && (
-        <div className="deel-link" style={{ marginBottom: 12 }}>
+        <div className="link" style={{ marginBottom: 14 }}>
           <span className="url">{nieuw.link}</span>
-          <button
-            className="btn sm"
-            onClick={async () => setGekopieerd(await kopieer(nieuw.link))}
-          >
+          <button className="knop sm" onClick={async () => setGekopieerd(await kopieer(nieuw.link))}>
             {gekopieerd ? 'Gekopieerd' : 'Kopieer'}
           </button>
         </div>
       )}
 
       <button
-        className="btn primary wide"
+        className="knop hoofd breed"
         onClick={async () => {
           setFout(null);
           try {
@@ -345,33 +360,35 @@ function UitnodigenPaneel({ onClose }) {
       >
         Nieuwe uitnodiging maken
       </button>
-      <div className="hint">Eén keer bruikbaar, veertien dagen geldig.</div>
+      <div className="tip">Eén keer bruikbaar, veertien dagen geldig.</div>
 
       {lijst.length > 0 && (
         <>
-          <div className="section-title">Uitstaand</div>
-          <div className="card tight">
+          <div className="kop">Uitstaand</div>
+          <div className="paneel">
             {lijst.map((u) => {
-              const dood = u.ingetrokken_op || (u.verloopt_op && u.verloopt_op < new Date().toISOString())
-                || (u.max_keer && u.gebruikt >= u.max_keer);
+              const dood =
+                u.ingetrokken_op ||
+                (u.verloopt_op && u.verloopt_op < new Date().toISOString()) ||
+                (u.max_keer && u.gebruikt >= u.max_keer);
               return (
-                <div key={u.id} className="boekregel">
-                  <div className="wat">
-                    <div className="small">{u.label || 'Uitnodiging'}</div>
-                    <div className="tiny faint">
-                      {dood ? 'niet meer bruikbaar' : `${u.gebruikt || 0} van ${u.max_keer ?? '∞'} gebruikt`}
-                    </div>
-                  </div>
-                  <div className="vul" />
-                  {!dood && (
-                    <button className="btn sm danger" onClick={() => trekIn(u.id).then(laden)}>Intrekken</button>
-                  )}
-                </div>
+                <Post
+                  key={u.id}
+                  wat={u.label || 'Uitnodiging'}
+                  onder={dood ? 'niet meer bruikbaar' : `${u.gebruikt || 0} van ${u.max_keer ?? '∞'} gebruikt`}
+                  rechts={
+                    dood ? null : (
+                      <button className="knop sm gevaar" onClick={() => trekIn(u.id).then(laden)}>
+                        Intrekken
+                      </button>
+                    )
+                  }
+                />
               );
             })}
           </div>
         </>
       )}
-    </Sheet>
+    </Blad>
   );
 }

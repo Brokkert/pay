@@ -6,15 +6,14 @@ wat schuldig is, ná wegstrepen.
 
 Zelfde opzet als [CATANIA](https://github.com/Brokkert/catan),
 [Paklijst](https://github.com/Brokkert/list) en
-[Camp](https://github.com/Brokkert/camp) — Vite + React, een gratis
-Supabase-project erachter, gratis hosting op GitHub Pages — maar met een eigen
-gezicht: **kasboek**. Kolommenpapier met groene inkt, liniatuur als watermerk,
-en alle bedragen in mono met cijfers van gelijke breedte, zodat de komma's onder
-elkaar staan. Onder een totaal de dubbele lijn van een grootboek. Rood is
-gereserveerd voor één ding: hier sta je in het krijt.
+[Camp](https://github.com/Brokkert/camp) — Vite + React, één HTML-bestand, een
+gratis Supabase-project erachter en gratis hosting op GitHub Pages.
 
-Geen webfonts. Het is één HTML-bestand van een paar honderd kilobyte en dat
-opent overal.
+De vormgeving doet bijna niets, en dat is de bedoeling: één accentkleur en
+verder grijstinten, met rood en groen uitsluitend voor richting — in het krijt
+of tegoed. Als álles kleur heeft betekent kleur niets meer. Bedragen staan in
+cijfers van gelijke breedte en rechts uitgelijnd, zodat een rij getallen een
+kolom wordt die je kunt scannen. Geen emoji, geen webfonts, geen plaatjes.
 
 ---
 
@@ -101,6 +100,40 @@ database alleen een SHA-256-hash. Setup staat in
 [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
 
 Wat je lokaal hebt opgebouwd til je na het inloggen in één klik over.
+
+## Wat er wel en niet openbaar is
+
+De repo is publiek — dat moet, want GitHub Pages is alleen gratis bij een
+publieke repo. **Er staan geen gegevens in.** Wat er in staat is code, en de
+publishable key van Supabase, die openbaar hoort te zijn en in zijn eentje
+nergens toegang toe geeft.
+
+Je eigen bedragen staan in je Supabase-project, achter Row Level Security per
+huishouden. Concreet:
+
+- Wie niet is ingelogd (`anon`) komt bij geen enkele tabel. Niet "ziet nul
+  rijen" — komt er niet bij.
+- Wie wel is ingelogd ziet uitsluitend het huishouden waar hij lid van is, en
+  kan er ook alleen in schrijven.
+- Aanmelden kan alleen met een geldige uitnodiging, afgedwongen door een trigger
+  op `auth.users` — dus ook als iemand het formulier overslaat en de
+  auth-endpoint rechtstreeks aanroept.
+- Van uitnodigingscodes staat alleen een SHA-256-hash in de database, en de code
+  zelf staat achter het hekje in de link, waar hij nooit naar een server gaat.
+- De pagina staat op `noindex` en stuurt geen verwijzer mee.
+
+Dat zijn geen beloftes maar tests: `./supabase/run-tests.sh` draait het schema
+tegen een echte PostgreSQL en laat de build vallen zodra een van deze punten
+niet meer klopt.
+
+Twee dingen om zelf te weten:
+
+- **Supabase kan je gegevens in principe lezen** (het is hun database). Wil je
+  dat ook uitsluiten, dan is er end-to-end versleuteling nodig; dat kost je
+  "wachtwoord vergeten" en vraagt om het delen van een sleutel.
+- **De lokale kopie in je browser is niet versleuteld.** Pay bewaart er een kopie
+  in zodat de app zonder bereik nog iets kan laten zien. Bij uitloggen wordt die
+  gewist; op een computer die niet van jou is, log dus ook echt uit.
 
 ## Ontwikkelen
 
