@@ -12,7 +12,7 @@ import { voorbeeldKasboek } from '../data/voorbeeld.js';
 import { RITMES } from '../lib/ritme.js';
 import { CATEGORIEEN } from '../data/categorieen.js';
 
-export default function Instellingen({ user, kasboek, thema, onThema }) {
+export default function Instellingen({ user, kasboek, ring, thema, onThema }) {
   const [paneel, setPaneel] = useState(null);
   const [melding, setMelding] = useState(null);
   const config = readConfig();
@@ -90,6 +90,48 @@ export default function Instellingen({ user, kasboek, thema, onThema }) {
       <div className="tip">
         De CSV opent rechtstreeks in Excel en Numbers, met per post het maandbedrag, het jaarbedrag
         en het aandeel van iedereen in een eigen kolom.
+      </div>
+
+      <div className="kop">Sleutel</div>
+      <div className="paneel">
+        <div className="vak">
+          <div className="klein">
+            Alles wat je hier invult wordt versleuteld voordat het je apparaat verlaat. De sleutel
+            komt uit je wachtwoordzin en staat nergens anders — ook niet bij Supabase.
+          </div>
+        </div>
+        {(ring?.wachtenden || []).map((rij) => (
+          <div key={rij.user_id} className="vak">
+            <div className="klein dik">Iemand wacht op toegang</div>
+            <div className="mini vaag" style={{ marginTop: 3 }}>
+              Er staat een sleutel klaar van een huisgenoot die net is ingelogd. Laat je haar
+              binnen, dan pakt jouw browser de huishoudsleutel in met háár sleutel — er gaat niets
+              leesbaars over de lijn.
+            </div>
+            <button
+              className="knop hoofd sm"
+              style={{ marginTop: 10 }}
+              onClick={async () => {
+                setMelding('Bezig\u2026');
+                try {
+                  await ring.geefToegang(rij);
+                  setMelding('Gelukt. Zij kan nu ontgrendelen met haar eigen wachtwoordzin.');
+                } catch (err) {
+                  setMelding(err.message || String(err));
+                }
+              }}
+            >
+              Binnenlaten
+            </button>
+          </div>
+        ))}
+      </div>
+      <button className="knop breed" onClick={() => ring?.vergrendel()}>
+        <Icoon naam="sleutel" maat={17} /> Vergrendelen
+      </button>
+      <div className="tip">
+        Gooit de sleutel van dit apparaat af. Je gegevens blijven staan, maar je hebt je
+        wachtwoordzin weer nodig om ze te openen.
       </div>
 
       <div className="kop">Samen bijhouden</div>
@@ -331,9 +373,10 @@ function UitnodigenPaneel({ onSluit }) {
     <Blad titel="Iemand toegang geven" onSluit={onSluit}>
       {fout && <Melding toon="mis">{fout}</Melding>}
       <Melding toon="info">
-        Wie deze link opent en zijn e-mailadres invult, komt in jóuw huishouden en ziet dezelfde
-        posten en verrekeningen. Alleen de code staat in de link; de database bewaart er niet meer
-        dan een hash van.
+        Wie deze link opent en zijn e-mailadres invult, komt in jóuw huishouden. Daarna moet je
+        hem nog één keer binnenlaten — dat staat hierboven zodra het zover is. In de link zit
+        alleen een code, nooit een sleutel: ook al onderschept iemand hem, dan valt er nog niets
+        te lezen.
       </Melding>
 
       {nieuw && (
@@ -350,7 +393,7 @@ function UitnodigenPaneel({ onSluit }) {
         onClick={async () => {
           setFout(null);
           try {
-            setNieuw(await maakUitnodiging({ label: '', maxKeer: 1, dagenGeldig: 14 }));
+            setNieuw(await maakUitnodiging({ maxKeer: 1, dagenGeldig: 14 }));
             setGekopieerd(false);
             laden();
           } catch (err) {
@@ -374,7 +417,7 @@ function UitnodigenPaneel({ onSluit }) {
               return (
                 <Post
                   key={u.id}
-                  wat={u.label || 'Uitnodiging'}
+                  wat="Uitnodiging"
                   onder={dood ? 'niet meer bruikbaar' : `${u.gebruikt || 0} van ${u.max_keer ?? '∞'} gebruikt`}
                   rechts={
                     dood ? null : (

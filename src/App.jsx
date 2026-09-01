@@ -5,10 +5,12 @@ import Verrekenen from './tabs/Verrekenen.jsx';
 import Mensen from './tabs/Mensen.jsx';
 import Instellingen from './tabs/Instellingen.jsx';
 import Login from './views/Login.jsx';
+import Ontgrendel from './views/Ontgrendel.jsx';
 import PostForm from './components/PostForm.jsx';
 import { Melding, Icoon } from './components/ui.jsx';
-import { useSession } from './lib/auth.js';
+import { useSession, signOut } from './lib/auth.js';
 import { useKasboek } from './lib/kasboek.js';
+import { useSleutelring } from './lib/sleutelring.js';
 import { isConfigured } from './lib/config.js';
 import { dezeMaand } from './lib/ritme.js';
 
@@ -42,7 +44,8 @@ export default function App() {
     () => localStorage.getItem('pay:lokaal') === 'ja'
   );
 
-  const kasboek = useKasboek(user);
+  const ring = useSleutelring(user);
+  const kasboek = useKasboek(user, ring.sleutel);
   const configured = isConfigured();
 
   useEffect(() => {
@@ -69,6 +72,24 @@ export default function App() {
           localStorage.setItem('pay:lokaal', 'ja');
           setZonderAccount(true);
         }}
+      />
+    );
+  }
+
+  if (ring.staat === 'laden') {
+    return (
+      <div className="inlog midden">
+        <span className="draai" />
+      </div>
+    );
+  }
+
+  if (ring.staat !== 'open') {
+    return (
+      <Ontgrendel
+        ring={ring}
+        email={user?.email}
+        onUitloggen={session ? () => signOut() : null}
       />
     );
   }
@@ -107,7 +128,7 @@ export default function App() {
         {tab === 'mensen' && <Mensen kasboek={kasboek} />}
 
         {tab === 'meer' && (
-          <Instellingen user={user} kasboek={kasboek} thema={thema} onThema={setThema} />
+          <Instellingen user={user} kasboek={kasboek} ring={ring} thema={thema} onThema={setThema} />
         )}
       </div>
 

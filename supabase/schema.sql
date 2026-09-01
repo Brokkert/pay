@@ -5,17 +5,25 @@
 -- idempotent: je kunt het opnieuw draaien na een update zonder data te
 -- verliezen.
 --
--- Uitgangspunt van het beveiligingsmodel:
+-- Uitgangspunt van het beveiligingsmodel, in twee lagen:
 --
---   1. Alles hangt aan een huishouden. Wie geen lid is van dat huishouden ziet
---      er niets van — geen posten, geen personen, geen bedragen.
---   2. Lid worden kan alleen met een geldige uitnodiging. Dat wordt afgedwongen
---      door een trigger op auth.users, niet door het formulier: iemand die de
---      auth-endpoint rechtstreeks aanroept komt er net zo goed niet in.
---   3. Van uitnodigingscodes staat alleen een SHA-256-hash in de database. Wie
---      de database leest, kan er geen werkende uitnodiging uit terugrekenen.
---   4. Je kunt jezelf alleen aan een persoon koppelen, nooit aan iemand anders:
---      gekoppeld_aan mag je uitsluitend op je eigen auth.uid() zetten.
+--   1. **De database kan niets lezen.** Elke naam, elk bedrag en elke notitie
+--      staat als één versleutelde blob in de kolom `geheim`. De sleutel wordt
+--      in de browser gemaakt en komt hier nooit langs. Wie deze database
+--      openmaakt — wij, Supabase, of iemand die er ooit inbreekt — ziet ruis.
+--      Wat wél zichtbaar is: hoeveel rijen er zijn en wanneer ze zijn gemaakt.
+--
+--   2. **Row Level Security bepaalt wie welke blob mag ophalen.** Ook al is het
+--      onleesbaar, het hoort niet rond te slingeren. Wie geen lid is van een
+--      huishouden komt er niet bij, en `anon` komt bij geen enkele tabel.
+--
+-- Verder:
+--
+--   * Lid worden kan alleen met een geldige uitnodiging, afgedwongen door een
+--     trigger op auth.users — dus ook als iemand het formulier overslaat en de
+--     auth-endpoint rechtstreeks aanroept.
+--   * Van uitnodigingscodes staat alleen een SHA-256-hash in de database.
+--   * Je kunt jezelf alleen aan een persoon koppelen, nooit aan iemand anders.
 -- ============================================================================
 
 -- Supabase heeft pgcrypto meestal al staan in het schema "extensions". Een
@@ -29,11 +37,14 @@ grant usage on schema extensions to anon, authenticated;
 -- ---------------------------------------------------------------------------
 -- Huishoudens en hun leden
 -- ---------------------------------------------------------------------------
+-- Een huishouden heeft geen naam in de database. Dat zou het enige leesbare
+-- stukje tekst zijn, en daarmee het enige wat je zonder sleutel over iemand te
+-- weten komt.
 create table if not exists public.pay_huishoudens (
   id         uuid primary key default gen_random_uuid(),
-  naam       text not null default 'Ons huishouden',
   created_at timestamptz not null default now()
 );
+alter table public.pay_huishoudens drop column if exists naam;
 
 create table if not exists public.pay_leden (
   huishouden_id uuid not null references public.pay_huishoudens on delete cascade,
@@ -68,20 +79,49 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
--- Personen
+-- Sleutels
 -- ---------------------------------------------------------------------------
--- Niet iedere persoon is een gebruiker. Je vriendin logt in en heeft een
--- account; de vriend met wie je een abonnement deelt staat er gewoon in zonder
--- ooit iets te hoeven aanmaken. gekoppeld_aan legt het verband als het er is.
+-- Twee tabellen, want ze hebben verschillende lezers.
+--
+-- pay_sleutels is leesbaar voor alle leden van het huishouden. Daar staat je
+-- publieke sleutel in — die hóórt openbaar te zijn — en het pakketje met de
+-- huishoudsleutel dat een ander lid speciaal voor jou heeft ingepakt. Dat
+-- laatste is met jouw publieke sleutel versleuteld, dus alleen jij kunt het
+-- openen; anderen zien er een blob.
+create table if not exists public.pay_sleutels (
+  huishouden_id uuid not null default public.pay_mijn_huishouden()
+                references public.pay_huishoudens on delete cascade,
+  user_id       uuid primary key references auth.users on delete cascade,
+  publiek       jsonb,
+  voor_mij      jsonb,
+  gedeeld_op    timestamptz,
+  created_at    timestamptz not null default now()
+);
+create index if not exists pay_sleutels_hh_idx on public.pay_sleutels (huishouden_id);
+
+-- pay_geheimen is van jou alleen. Hier staan twee pakketjes die met je
+-- wachtwoordzin zijn ingepakt: je private sleutel, en de huishoudsleutel.
+-- Zonder die zin is het allebei onbruikbaar, ook voor ons.
+create table if not exists public.pay_geheimen (
+  user_id       uuid primary key references auth.users on delete cascade,
+  prive_gewrapt jsonb,
+  huis_gewrapt  jsonb,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- De gegevens zelf
+-- ---------------------------------------------------------------------------
+-- Alles wat inhoud is, zit in `geheim`. Wat daarbuiten staat is het minimum dat
+-- de database nodig heeft om te weten wie erbij mag: het huishouden, en bij een
+-- persoon de koppeling aan een account.
 create table if not exists public.pay_personen (
   id            uuid primary key default gen_random_uuid(),
   huishouden_id uuid not null default public.pay_mijn_huishouden()
                 references public.pay_huishoudens on delete cascade,
-  naam          text not null,
-
-  kleur         text not null default '#1f6f5c',
-  is_mij        boolean not null default false,
   gekoppeld_aan uuid references auth.users on delete set null,
+  geheim        jsonb not null default '{}'::jsonb,
   created_at    timestamptz not null default now()
 );
 create index if not exists pay_personen_hh_idx on public.pay_personen (huishouden_id);
@@ -90,88 +130,63 @@ create unique index if not exists pay_personen_koppeling_idx
   on public.pay_personen (huishouden_id, gekoppeld_aan)
   where gekoppeld_aan is not null;
 
--- ---------------------------------------------------------------------------
--- Rekeningen
--- ---------------------------------------------------------------------------
--- soort = 'gezamenlijk' → een pot; deelnemers storten erop, gedeelde lasten
---                          gaan eraf. In de boeken een eigen partij.
--- soort = 'prive'/'zakelijk' → van één persoon. Wat anderen ervan meegebruiken,
---                          staat bij die persoon in het krijt.
 create table if not exists public.pay_rekeningen (
   id            uuid primary key default gen_random_uuid(),
   huishouden_id uuid not null default public.pay_mijn_huishouden()
                 references public.pay_huishoudens on delete cascade,
-  naam          text not null,
-  soort         text not null default 'gezamenlijk'
-                check (soort in ('gezamenlijk', 'prive', 'zakelijk')),
-  eigenaar_id   uuid references public.pay_personen on delete set null,
-  deelnemers    uuid[] not null default '{}',
-  stortingen    jsonb not null default '{}'::jsonb,
-  iban          text not null default '',
-  -- Lopen de onderlinge verrekeningen via deze rekening? Zie routeerVia() in
-  -- src/lib/saldo.js: dan stort iedereen zijn hele aandeel hierop, ook voor
-  -- dingen die van een andere rekening af gingen, en verrekent die rekening dat
-  -- daarna met wie het voorschoot.
-  afrekenpot    boolean not null default false,
-  created_at    timestamptz not null default now(),
-  -- Een pot zonder deelnemers of een eigen rekening zonder eigenaar levert
-  -- posten op die nergens terechtkomen. Dat vangen we hier af en niet pas in
-  -- het formulier.
-  check (
-    (soort = 'gezamenlijk' and array_length(deelnemers, 1) is not null)
-    or (soort <> 'gezamenlijk' and eigenaar_id is not null)
-  )
+  geheim        jsonb not null default '{}'::jsonb,
+  created_at    timestamptz not null default now()
 );
 create index if not exists pay_rekeningen_hh_idx on public.pay_rekeningen (huishouden_id);
 
--- ---------------------------------------------------------------------------
--- Posten
--- ---------------------------------------------------------------------------
--- Bedragen staan in hele centen. Nooit in een kommagetal: een boekhouding die
--- een halve cent kan verliezen is geen boekhouding.
---
--- betaler   = {"soort": "rekening"|"persoon", "id": "..."}
--- verdeling = {"soort": "gelijk"|"delen"|"procent"|"bedrag",
---              "deelnemers": [...], "gewichten": {"persoon-id": getal}}
 create table if not exists public.pay_posten (
   id            uuid primary key default gen_random_uuid(),
   huishouden_id uuid not null default public.pay_mijn_huishouden()
                 references public.pay_huishoudens on delete cascade,
-  naam          text not null,
-  bedrag        bigint not null default 0,
-  ritme         text not null default 'maand'
-                check (ritme in ('maand', 'kwartaal', 'halfjaar', 'jaar', 'week', 'eenmalig')),
-  categorie     text not null default 'overig',
-  -- Vrije naam van de incasso waar deze post op meelift. Meerdere posten op
-  -- één afschrijving: handig om af te vinken tegen je bankafschrift.
-  bundel        text not null default '',
-  betaler       jsonb not null default '{}'::jsonb,
-  verdeling     jsonb not null default '{}'::jsonb,
-  vanaf         date,
-  tot           date,
-  gepauzeerd    boolean not null default false,
-  zakelijk      boolean not null default false,
-  afgerekend    boolean not null default false,
-  notitie       text not null default '',
+  geheim        jsonb not null default '{}'::jsonb,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
 create index if not exists pay_posten_hh_idx on public.pay_posten (huishouden_id);
 
--- Voor projecten die een eerdere versie van dit schema al gedraaid hebben.
-alter table public.pay_rekeningen add column if not exists afrekenpot boolean not null default false;
-alter table public.pay_posten     add column if not exists bundel text not null default '';
+-- Voor projecten die een eerdere, leesbare versie van dit schema draaiden. Deze
+-- kolommen stonden er in gewone tekst in; ze horen weg, niet mee te reizen.
+do $$
+declare
+  kolom text;
+begin
+  alter table public.pay_personen   add column if not exists geheim jsonb not null default '{}'::jsonb;
+  alter table public.pay_rekeningen add column if not exists geheim jsonb not null default '{}'::jsonb;
+  alter table public.pay_posten     add column if not exists geheim jsonb not null default '{}'::jsonb;
+
+  foreach kolom in array array['naam', 'kleur', 'is_mij', 'emoji'] loop
+    execute format('alter table public.pay_personen drop column if exists %I', kolom);
+  end loop;
+
+  foreach kolom in array array['naam', 'soort', 'eigenaar_id', 'deelnemers', 'stortingen',
+                               'iban', 'emoji', 'afrekenpot'] loop
+    execute format('alter table public.pay_rekeningen drop column if exists %I', kolom);
+  end loop;
+
+  foreach kolom in array array['naam', 'bedrag', 'ritme', 'categorie', 'bundel', 'betaler',
+                               'verdeling', 'vanaf', 'tot', 'gepauzeerd', 'zakelijk',
+                               'afgerekend', 'notitie'] loop
+    execute format('alter table public.pay_posten drop column if exists %I', kolom);
+  end loop;
+end;
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Uitnodigingen
 -- ---------------------------------------------------------------------------
+-- Geen label: dat zou weer leesbare tekst zijn. Wie wie heeft uitgenodigd zie
+-- je aan `aangemaakt_door`, en dat is een id.
 create table if not exists public.pay_uitnodigingen (
   id              uuid primary key default gen_random_uuid(),
   huishouden_id   uuid not null default public.pay_mijn_huishouden()
                   references public.pay_huishoudens on delete cascade,
   code_hash       text unique not null,
   aangemaakt_door uuid not null default auth.uid() references auth.users on delete cascade,
-  label           text not null default '',
   max_keer        int,
   gebruikt        int not null default 0,
   verloopt_op     timestamptz,
@@ -179,12 +194,15 @@ create table if not exists public.pay_uitnodigingen (
   created_at      timestamptz not null default now()
 );
 create index if not exists pay_uitnodigingen_hh_idx on public.pay_uitnodigingen (huishouden_id);
+alter table public.pay_uitnodigingen drop column if exists label;
 
 -- ============================================================================
 -- Row Level Security
 -- ============================================================================
 alter table public.pay_huishoudens    enable row level security;
 alter table public.pay_leden          enable row level security;
+alter table public.pay_sleutels       enable row level security;
+alter table public.pay_geheimen       enable row level security;
 alter table public.pay_personen       enable row level security;
 alter table public.pay_rekeningen     enable row level security;
 alter table public.pay_posten         enable row level security;
@@ -193,10 +211,6 @@ alter table public.pay_uitnodigingen  enable row level security;
 drop policy if exists pay_huishoudens_lid on public.pay_huishoudens;
 create policy pay_huishoudens_lid on public.pay_huishoudens
   for select to authenticated using (public.pay_lid_van(id));
-
-drop policy if exists pay_huishoudens_naam on public.pay_huishoudens;
-create policy pay_huishoudens_naam on public.pay_huishoudens
-  for update to authenticated using (public.pay_lid_van(id)) with check (public.pay_lid_van(id));
 
 -- Leden zien elkaar binnen hetzelfde huishouden. Erbij zetten doet de trigger
 -- bij het aanmelden; met de hand kan het niet, anders is de uitnodiging een
@@ -209,9 +223,33 @@ drop policy if exists pay_leden_vertrek on public.pay_leden;
 create policy pay_leden_vertrek on public.pay_leden
   for delete to authenticated using (user_id = auth.uid());
 
--- Personen, rekeningen en posten: gedeeld bezit van het huishouden. Iedereen
--- die erbij hoort mag alles lezen en wijzigen — het gaat tenslotte over geld
--- dat jullie samen uitgeven, en een half overzicht is geen overzicht.
+-- Sleutels: iedereen in het huishouden mag ze lezen (je moet elkaars publieke
+-- sleutel kunnen zien om iemand toegang te kunnen geven), maar alleen je eigen
+-- rij schrijven. Het pakketje `voor_mij` zet een ander lid neer, en dat gaat
+-- via pay_deel_sleutel() verderop — niet via een update, want dan zou iemand
+-- ook jouw publieke sleutel kunnen omwisselen voor de zijne.
+drop policy if exists pay_sleutels_lezen on public.pay_sleutels;
+create policy pay_sleutels_lezen on public.pay_sleutels
+  for select to authenticated using (public.pay_lid_van(huishouden_id));
+
+drop policy if exists pay_sleutels_eigen on public.pay_sleutels;
+create policy pay_sleutels_eigen on public.pay_sleutels
+  for insert to authenticated
+  with check (user_id = auth.uid() and public.pay_lid_van(huishouden_id));
+
+drop policy if exists pay_sleutels_bijwerken on public.pay_sleutels;
+create policy pay_sleutels_bijwerken on public.pay_sleutels
+  for update to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists pay_geheimen_eigen on public.pay_geheimen;
+create policy pay_geheimen_eigen on public.pay_geheimen
+  for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- De gegevens: gedeeld bezit van het huishouden. Iedereen die erbij hoort mag
+-- alles lezen en wijzigen — het gaat over geld dat je samen uitgeeft, en een
+-- half overzicht is geen overzicht.
 drop policy if exists pay_personen_lid on public.pay_personen;
 create policy pay_personen_lid on public.pay_personen
   for all to authenticated
@@ -251,15 +289,54 @@ revoke all on all tables in schema public from anon;
 
 grant select, insert, update, delete on
   public.pay_personen, public.pay_rekeningen, public.pay_posten,
-  public.pay_uitnodigingen
+  public.pay_uitnodigingen, public.pay_geheimen
   to authenticated;
-grant select, update on public.pay_huishoudens to authenticated;
+grant select, insert, update on public.pay_sleutels to authenticated;
+grant select on public.pay_huishoudens to authenticated;
 grant select, delete on public.pay_leden to authenticated;
 
 revoke all on function public.pay_mijn_huishouden() from public;
 revoke all on function public.pay_lid_van(uuid) from public;
 grant execute on function public.pay_mijn_huishouden() to authenticated;
 grant execute on function public.pay_lid_van(uuid) to authenticated;
+
+-- ============================================================================
+-- RPC: iemand toegang geven tot de huishoudsleutel
+-- ============================================================================
+-- Een lid pakt de huishoudsleutel in met de publieke sleutel van de nieuwkomer
+-- en zet dat pakketje hier neer. De functie draait als SECURITY DEFINER omdat
+-- ze in andermans rij schrijft — vandaar de twee controles: de aanroeper moet
+-- lid zijn van hetzelfde huishouden, en de ontvanger ook. Meer mag ze niet: de
+-- publieke sleutel blijft ongemoeid, dus je kunt iemands sleutel niet omruilen
+-- voor de jouwe om zo mee te kunnen kijken.
+create or replace function public.pay_deel_sleutel(p_user uuid, p_pakket jsonb)
+returns void
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  hh uuid;
+begin
+  select huishouden_id into hh from public.pay_leden where user_id = auth.uid() limit 1;
+  if hh is null then
+    raise exception 'Je hoort bij geen enkel huishouden.';
+  end if;
+
+  if not exists (select 1 from public.pay_leden where user_id = p_user and huishouden_id = hh) then
+    raise exception 'Die persoon hoort niet bij jouw huishouden.';
+  end if;
+
+  update public.pay_sleutels
+     set voor_mij = p_pakket, gedeeld_op = now()
+   where user_id = p_user and huishouden_id = hh;
+
+  if not found then
+    raise exception 'Die persoon heeft nog geen sleutel klaargezet.';
+  end if;
+end;
+$$;
+
+revoke all on function public.pay_deel_sleutel(uuid, jsonb) from public;
+grant execute on function public.pay_deel_sleutel(uuid, jsonb) to authenticated;
 
 -- ============================================================================
 -- Is dit project nog leeg?
@@ -284,25 +361,25 @@ grant execute on function public.pay_needs_bootstrap() to anon, authenticated;
 -- bij hoort. Dit is de laag die het écht afdwingt: het formulier verstoppen
 -- houdt alleen bots tegen, dit houdt ook iemand tegen die de auth-endpoint
 -- rechtstreeks aanroept.
+--
+-- Anders dan in de leesbare versie maakt deze trigger geen persoon meer aan.
+-- Dat kan ook niet: een naam hoort versleuteld te zijn, en de sleutel bestaat
+-- hier niet. De app doet het na het inloggen.
 create or replace function public.pay_nieuwe_gebruiker()
 returns trigger
 language plpgsql security definer set search_path = public, extensions, pg_temp
 as $$
 declare
-  eerste  boolean;
-  code    text;
-  uitn    public.pay_uitnodigingen;
-  hh      uuid;
-  roepnaam text;
+  eerste boolean;
+  code   text;
+  uitn   public.pay_uitnodigingen;
+  hh     uuid;
 begin
   select not exists (select 1 from public.pay_leden) into eerste;
-  roepnaam := initcap(split_part(coalesce(new.email, 'iemand'), '@', 1));
 
   if eerste then
-    insert into public.pay_huishoudens (naam) values ('Ons huishouden') returning id into hh;
+    insert into public.pay_huishoudens default values returning id into hh;
     insert into public.pay_leden (huishouden_id, user_id, rol) values (hh, new.id, 'eigenaar');
-    insert into public.pay_personen (huishouden_id, naam, is_mij, gekoppeld_aan)
-    values (hh, roepnaam, true, new.id);
     return new;
   end if;
 
@@ -326,29 +403,6 @@ begin
   on conflict do nothing;
 
   update public.pay_uitnodigingen set gebruikt = gebruikt + 1 where id = uitn.id;
-
-  -- Bestaat er al een persoon met deze naam en zonder account, dan pakken we
-  -- die op in plaats van er een tweede naast te zetten. Anders had je zowel
-  -- "Anne" als "Anne" in je lijst staan zodra ze inlogt.
-  update public.pay_personen
-     set gekoppeld_aan = new.id
-   where huishouden_id = uitn.huishouden_id
-     and gekoppeld_aan is null
-     and lower(naam) = lower(roepnaam)
-     and id = (
-       select id from public.pay_personen
-        where huishouden_id = uitn.huishouden_id
-          and gekoppeld_aan is null
-          and lower(naam) = lower(roepnaam)
-        order by created_at
-        limit 1
-     );
-
-  if not found then
-    insert into public.pay_personen (huishouden_id, naam, gekoppeld_aan)
-    values (uitn.huishouden_id, roepnaam, new.id);
-  end if;
-
   return new;
 end;
 $$;
@@ -374,4 +428,9 @@ $$;
 drop trigger if exists pay_posten_stempel on public.pay_posten;
 create trigger pay_posten_stempel
   before update on public.pay_posten
+  for each row execute function public.pay_stempel();
+
+drop trigger if exists pay_geheimen_stempel on public.pay_geheimen;
+create trigger pay_geheimen_stempel
+  before update on public.pay_geheimen
   for each row execute function public.pay_stempel();

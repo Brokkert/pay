@@ -1,15 +1,22 @@
 // De kluis: personen, rekeningen en posten.
 //
-// Pay draait in twee standen, net als Camp. Met een Supabase-project erachter
-// staat alles in de database, afgeschermd per huishouden met Row Level
-// Security. Zonder — of als je niet ingelogd bent — is er de lokale kluis:
-// alles in deze browser, niets naar buiten. Dezelfde vorm, dezelfde schermen,
-// zodat je het eerst een maand kunt proberen voor je iets aanmaakt.
+// Alles wat inhoud is — een naam, een bedrag, een notitie — gaat door de
+// versleuteling voordat het hier weggeschreven wordt, en pas weer terug als het
+// binnenkomt. Wat er in de database of in localStorage belandt, is een blob.
+//
+// Wat er buiten de blob blijft is het minimum dat nodig is om te weten wie
+// erbij mag: het huishouden, het id van de rij, en bij een persoon de koppeling
+// aan een account. Geen namen, geen bedragen.
+//
+// Pay draait in twee standen. Met een Supabase-project erachter staat alles in
+// de database, afgeschermd per huishouden. Zonder — of als je niet ingelogd
+// bent — is er de lokale stand: alles in deze browser, en ook daar versleuteld.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getClient } from './supabase.js';
+import { versleutel, ontsleutel } from './kluis.js';
 
-const LOKAAL = 'pay:kluis:v1';
+const LOKAAL = 'pay:kluis:v2';
 const cacheSleutel = (userId) => `pay:cache:${userId}`;
 
 const leeg = () => ({ personen: [], rekeningen: [], posten: [] });
@@ -32,44 +39,54 @@ const schrijfJson = (sleutel, waarde) => {
 export const nieuwId = () =>
   crypto.randomUUID?.() ?? `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-// --- welke velden de database kent -------------------------------------------
-const VELDEN = {
-  personen: ['naam', 'kleur', 'is_mij', 'gekoppeld_aan'],
-  rekeningen: ['naam', 'soort', 'eigenaar_id', 'deelnemers', 'stortingen', 'iban', 'afrekenpot'],
-  posten: ['naam', 'bedrag', 'ritme', 'betaler', 'verdeling', 'categorie', 'bundel', 'vanaf',
-    'tot', 'gepauzeerd', 'zakelijk', 'notitie', 'afgerekend'],
-};
 const TABEL = { personen: 'pay_personen', rekeningen: 'pay_rekeningen', posten: 'pay_posten' };
 
-// is_mij bestaat alleen in de lokale kluis. In de cloud is "ik" per kijker
-// anders en volgt het uit gekoppeld_aan; de kolom terugschrijven zou de vlag
-// van je huisgenoot overschrijven met wat er bij jou op het scherm stond.
-const ALLEEN_LOKAAL = { personen: ['is_mij'] };
+// Wat er buiten de versleuteling blijft, per soort. Alleen dit ziet de server.
+const OPEN_VELDEN = { personen: ['gekoppeld_aan'], rekeningen: [], posten: [] };
 
-function voorDb(soort, rij, cloud = false) {
-  const uit = {};
-  for (const veld of VELDEN[soort]) {
-    if (cloud && ALLEEN_LOKAAL[soort]?.includes(veld)) continue;
-    if (rij[veld] !== undefined) uit[veld] = rij[veld];
+/** Van een gewone rij naar wat er weggeschreven wordt. */
+async function naarOpslag(soort, rij, sleutel) {
+  const open = {};
+  const inhoud = { ...rij };
+  delete inhoud.id;
+  delete inhoud.created_at;
+  delete inhoud.geheim;
+  for (const veld of OPEN_VELDEN[soort]) {
+    if (rij[veld] !== undefined) open[veld] = rij[veld];
+    delete inhoud[veld];
   }
   if (soort === 'posten') {
-    uit.bedrag = Math.round(Number(uit.bedrag) || 0);
-    // Lege datumvelden komen uit <input type="date"> als '' binnen, en daar
-    // maakt PostgREST een fout van.
-    for (const datum of ['vanaf', 'tot']) if (uit[datum] === '') uit[datum] = null;
+    inhoud.bedrag = Math.round(Number(inhoud.bedrag) || 0);
+    // Lege datumvelden komen uit <input type="date"> als '' binnen.
+    for (const datum of ['vanaf', 'tot']) if (inhoud[datum] === '') inhoud[datum] = null;
   }
-  return uit;
+  return { ...open, geheim: await versleutel(sleutel, inhoud) };
 }
 
-/** Het huishouden waar je bij hoort, of null in lokale stand. */
+/** En terug. Een rij die niet te openen valt slaan we over in plaats van te crashen. */
+async function uitOpslag(soort, rij, sleutel) {
+  try {
+    const inhoud = await ontsleutel(sleutel, rij.geheim);
+    if (!inhoud) return null;
+    const uit = { ...inhoud, id: rij.id, created_at: rij.created_at };
+    for (const veld of OPEN_VELDEN[soort]) uit[veld] = rij[veld] ?? null;
+    return uit;
+  } catch {
+    return null;
+  }
+}
+
+const allesUit = async (soort, rijen, sleutel) =>
+  (await Promise.all((rijen || []).map((r) => uitOpslag(soort, r, sleutel)))).filter(Boolean);
+
+/** Het huishouden waar je bij hoort, of null in de lokale stand. */
 async function mijnHuishouden() {
-  const supabase = getClient();
-  const { data, error } = await supabase.rpc('pay_mijn_huishouden');
+  const { data, error } = await getClient().rpc('pay_mijn_huishouden');
   if (error) throw error;
   return data ?? null;
 }
 
-export function useKasboek(user) {
+export function useKasboek(user, sleutel) {
   const cloud = Boolean(getClient() && user);
   const [staat, setStaat] = useState(leeg);
   const [huishouden, setHuishouden] = useState(null);
@@ -79,8 +96,19 @@ export function useKasboek(user) {
 
   const ophalen = useCallback(async () => {
     setFout(null);
+    if (!sleutel) {
+      setStaat(leeg());
+      setLaden(false);
+      return;
+    }
+
     if (!cloud) {
-      setStaat({ ...leeg(), ...leesJson(LOKAAL, leeg()) });
+      const rauw = { ...leeg(), ...leesJson(LOKAAL, leeg()) };
+      setStaat({
+        personen: await allesUit('personen', rauw.personen, sleutel),
+        rekeningen: await allesUit('rekeningen', rauw.rekeningen, sleutel),
+        posten: await allesUit('posten', rauw.posten, sleutel),
+      });
       setHuishouden(null);
       setLaden(false);
       return;
@@ -88,98 +116,112 @@ export function useKasboek(user) {
 
     const supabase = getClient();
     try {
-      const hh = await mijnHuishouden();
-      setHuishouden(hh);
+      setHuishouden(await mijnHuishouden());
       const [personen, rekeningen, posten] = await Promise.all([
         supabase.from('pay_personen').select('*').order('created_at'),
         supabase.from('pay_rekeningen').select('*').order('created_at'),
-        supabase.from('pay_posten').select('*').order('naam'),
+        supabase.from('pay_posten').select('*').order('created_at'),
       ]);
       const eerste = personen.error || rekeningen.error || posten.error;
       if (eerste) throw eerste;
+
       const verse = {
         // Wie "ik" ben verschilt per kijker: voor jou is dat jouw persoon, voor
-        // je vriendin de hare. In de cloud bepaalt de koppeling aan het account
-        // dat dus, en niet de vlag in de tabel — die is per huishouden hetzelfde
-        // en zou anders bij haar het verkeerde poppetje aanwijzen.
-        personen: (personen.data || []).map((p) => ({
+        // je huisgenoot de hare. In de cloud bepaalt de koppeling aan het
+        // account dat, en niet een vlag in de gegevens — die is voor iedereen
+        // hetzelfde en zou bij haar het verkeerde poppetje aanwijzen.
+        personen: (await allesUit('personen', personen.data, sleutel)).map((p) => ({
           ...p,
           is_mij: p.gekoppeld_aan === user.id,
         })),
-        rekeningen: rekeningen.data || [],
-        posten: posten.data || [],
+        rekeningen: await allesUit('rekeningen', rekeningen.data, sleutel),
+        posten: await allesUit('posten', posten.data, sleutel),
       };
       setStaat(verse);
       setOffline(false);
-      schrijfJson(cacheSleutel(user.id), verse);
+      // De kopie voor onderweg is óók versleuteld: hij bevat de rijen precies
+      // zoals ze uit de database kwamen.
+      schrijfJson(cacheSleutel(user.id), {
+        personen: personen.data,
+        rekeningen: rekeningen.data,
+        posten: posten.data,
+      });
     } catch (err) {
-      // Geen bereik? Val terug op de kopie van de laatste keer, zodat je in de
-      // supermarkt nog steeds kunt opzoeken wat er loopt.
+      // Geen bereik? Val terug op de kopie van de laatste keer.
       const kopie = leesJson(cacheSleutel(user.id), null);
       if (kopie) {
-        setStaat(kopie);
+        setStaat({
+          personen: (await allesUit('personen', kopie.personen, sleutel)).map((p) => ({
+            ...p,
+            is_mij: p.gekoppeld_aan === user.id,
+          })),
+          rekeningen: await allesUit('rekeningen', kopie.rekeningen, sleutel),
+          posten: await allesUit('posten', kopie.posten, sleutel),
+        });
         setOffline(true);
       } else {
         setFout(err.message || String(err));
       }
     }
     setLaden(false);
-  }, [cloud, user?.id]);
+  }, [cloud, user?.id, sleutel]);
 
   useEffect(() => {
     setLaden(true);
     ophalen();
   }, [ophalen]);
 
-  const bewaarLokaal = useCallback((volgende) => {
-    setStaat(volgende);
+  const bewaarLokaal = useCallback(async (volgende) => {
     schrijfJson(LOKAAL, volgende);
-  }, []);
+    setStaat({
+      personen: await allesUit('personen', volgende.personen, sleutel),
+      rekeningen: await allesUit('rekeningen', volgende.rekeningen, sleutel),
+      posten: await allesUit('posten', volgende.posten, sleutel),
+    });
+  }, [sleutel]);
 
   const bewaar = useCallback(
     async (soort, rij) => {
-      const schoon = voorDb(soort, rij, cloud);
+      if (!sleutel) throw new Error('De kluis is vergrendeld.');
+      const opslag = await naarOpslag(soort, rij, sleutel);
 
       if (!cloud) {
-        const volgende = { ...staat };
+        const rauw = { ...leeg(), ...leesJson(LOKAAL, leeg()) };
         const nu = new Date().toISOString();
-        if (rij.id) {
-          volgende[soort] = staat[soort].map((r) => (r.id === rij.id ? { ...r, ...schoon } : r));
-        } else {
-          volgende[soort] = [...staat[soort], { ...schoon, id: nieuwId(), created_at: nu }];
-        }
-        bewaarLokaal(volgende);
-        return volgende[soort].find((r) => r.id === rij.id) || volgende[soort].at(-1);
+        rauw[soort] = rij.id
+          ? rauw[soort].map((r) => (r.id === rij.id ? { ...r, ...opslag } : r))
+          : [...rauw[soort], { ...opslag, id: nieuwId(), created_at: nu }];
+        await bewaarLokaal(rauw);
+        return rij;
       }
 
       const supabase = getClient();
       if (rij.id) {
-        const { data, error } = await supabase
-          .from(TABEL[soort]).update(schoon).eq('id', rij.id).select().single();
+        const { error } = await supabase.from(TABEL[soort]).update(opslag).eq('id', rij.id);
         if (error) throw error;
-        setStaat((s) => ({ ...s, [soort]: s[soort].map((r) => (r.id === data.id ? data : r)) }));
-        return data;
+      } else {
+        const { error } = await supabase.from(TABEL[soort]).insert(opslag);
+        if (error) throw error;
       }
-      const { data, error } = await supabase
-        .from(TABEL[soort]).insert(schoon).select().single();
-      if (error) throw error;
-      setStaat((s) => ({ ...s, [soort]: [...s[soort], data] }));
-      return data;
+      await ophalen();
+      return rij;
     },
-    [cloud, staat, bewaarLokaal]
+    [cloud, sleutel, bewaarLokaal, ophalen]
   );
 
   const verwijder = useCallback(
     async (soort, id) => {
       if (!cloud) {
-        bewaarLokaal({ ...staat, [soort]: staat[soort].filter((r) => r.id !== id) });
+        const rauw = { ...leeg(), ...leesJson(LOKAAL, leeg()) };
+        rauw[soort] = rauw[soort].filter((r) => r.id !== id);
+        await bewaarLokaal(rauw);
         return;
       }
       const { error } = await getClient().from(TABEL[soort]).delete().eq('id', id);
       if (error) throw error;
       setStaat((s) => ({ ...s, [soort]: s[soort].filter((r) => r.id !== id) }));
     },
-    [cloud, staat, bewaarLokaal]
+    [cloud, bewaarLokaal]
   );
 
   /**
@@ -187,21 +229,28 @@ export function useKasboek(user) {
    *
    * De volgorde is niet vrijblijvend: rekeningen wijzen naar personen en posten
    * naar allebei, dus de oude id's moeten al vertaald zijn voor we ze
-   * meesturen. Lokaal kan dat in één klap, in de cloud rij voor rij omdat de
-   * database de id's uitdeelt.
+   * wegschrijven. In de cloud deelt de database de id's uit, dus daar gaat het
+   * rij voor rij.
    */
   const voerIn = useCallback(
     async (set) => {
-      const aantal =
-        set.personen.length + set.rekeningen.length + set.posten.length;
+      if (!sleutel) throw new Error('De kluis is vergrendeld.');
+      const aantal = set.personen.length + set.rekeningen.length + set.posten.length;
       if (!aantal) return 0;
 
       if (!cloud) {
-        bewaarLokaal({
-          personen: [...staat.personen, ...set.personen],
-          rekeningen: [...staat.rekeningen, ...set.rekeningen],
-          posten: [...staat.posten, ...set.posten],
-        });
+        const rauw = { ...leeg(), ...leesJson(LOKAAL, leeg()) };
+        const nu = new Date().toISOString();
+        for (const soort of ['personen', 'rekeningen', 'posten']) {
+          for (const rij of set[soort]) {
+            rauw[soort].push({
+              ...(await naarOpslag(soort, rij, sleutel)),
+              id: rij.id,
+              created_at: nu,
+            });
+          }
+        }
+        await bewaarLokaal(rauw);
         return aantal;
       }
 
@@ -209,9 +258,8 @@ export function useKasboek(user) {
       const kaart = new Map();
       for (const soort of ['personen', 'rekeningen', 'posten']) {
         for (const rij of set[soort]) {
-          const schoon = hertaal(voorDb(soort, rij, true), kaart);
-          const { data, error } = await supabase
-            .from(TABEL[soort]).insert(schoon).select().single();
+          const opslag = await naarOpslag(soort, hertaal(rij, kaart), sleutel);
+          const { data, error } = await supabase.from(TABEL[soort]).insert(opslag).select('id').single();
           if (error) throw error;
           kaart.set(rij.id, data.id);
         }
@@ -219,30 +267,36 @@ export function useKasboek(user) {
       await ophalen();
       return aantal;
     },
-    [cloud, ophalen, staat, bewaarLokaal]
+    [cloud, sleutel, bewaarLokaal, ophalen]
   );
 
-  /** Alles uit de lokale kluis naar je huishouden tillen, na het inloggen. */
+  /** Alles uit de lokale stand naar je huishouden tillen, na het inloggen. */
   const tilOver = useCallback(async () => {
-    const aantal = await voerIn({ ...leeg(), ...leesJson(LOKAAL, leeg()) });
+    const rauw = { ...leeg(), ...leesJson(LOKAAL, leeg()) };
+    const uitgepakt = {
+      personen: await allesUit('personen', rauw.personen, sleutel),
+      rekeningen: await allesUit('rekeningen', rauw.rekeningen, sleutel),
+      posten: await allesUit('posten', rauw.posten, sleutel),
+    };
+    const aantal = await voerIn(uitgepakt);
     if (aantal) schrijfJson(LOKAAL, leeg());
     return aantal;
-  }, [voerIn]);
+  }, [voerIn, sleutel]);
 
-  /**
-   * "Dit ben ik" aanvinken bij een persoon.
-   *
-   * In de cloud is dat een koppeling aan je account: eerst de oude losmaken,
-   * dan de nieuwe leggen — er kan er maar één zijn, en de database bewaakt dat
-   * met een unieke index. Lokaal is het gewoon de vlag.
-   */
+  const lokaalAantal = useMemo(() => {
+    const l = leesJson(LOKAAL, leeg());
+    return (l.personen?.length || 0) + (l.rekeningen?.length || 0) + (l.posten?.length || 0);
+  }, [staat]);
+
+  /** "Dit ben ik" aanvinken bij een persoon. */
   const claim = useCallback(
     async (persoonId) => {
       if (!cloud) {
-        bewaarLokaal({
-          ...staat,
-          personen: staat.personen.map((p) => ({ ...p, is_mij: p.id === persoonId })),
-        });
+        for (const p of staat.personen) {
+          if (Boolean(p.is_mij) !== (p.id === persoonId)) {
+            await bewaar('personen', { ...p, is_mij: p.id === persoonId });
+          }
+        }
         return;
       }
       const supabase = getClient();
@@ -257,13 +311,8 @@ export function useKasboek(user) {
       if (error) throw error;
       await ophalen();
     },
-    [cloud, staat, user?.id, bewaarLokaal, ophalen]
+    [cloud, staat, user?.id, bewaar, ophalen]
   );
-
-  const lokaalAantal = useMemo(() => {
-    const l = leesJson(LOKAAL, leeg());
-    return l.personen.length + l.rekeningen.length + l.posten.length;
-  }, [staat]);
 
   return {
     ...staat,
@@ -279,7 +328,6 @@ export function useKasboek(user) {
     tilOver,
     voerIn,
     claim,
-    vervang: bewaarLokaal,
   };
 }
 

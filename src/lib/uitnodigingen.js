@@ -23,7 +23,7 @@ export function uitnodigingsLink(code) {
   return `${origin}${pathname}#/join/${code}`;
 }
 
-export async function maakUitnodiging({ label = '', maxKeer = 1, dagenGeldig = 14 } = {}) {
+export async function maakUitnodiging({ maxKeer = 1, dagenGeldig = 14 } = {}) {
   const supabase = getClient();
   if (!supabase) throw new Error('Niet verbonden.');
   const code = verzinCode();
@@ -33,7 +33,6 @@ export async function maakUitnodiging({ label = '', maxKeer = 1, dagenGeldig = 1
 
   const { error } = await supabase.from('pay_uitnodigingen').insert({
     code_hash: await hash(code),
-    label,
     max_keer: maxKeer || null,
     verloopt_op: verloopt,
   });

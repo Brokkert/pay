@@ -34,10 +34,10 @@ export function Blad({ titel, onSluit, children, acties = null }) {
   );
 }
 
-export function Veld({ label, tip, let: letOp = false, children }) {
+export function Veld({ label, tip, voor = null, let: letOp = false, children }) {
   return (
     <div className="veld">
-      {label && <label>{label}</label>}
+      {label && <label htmlFor={voor || undefined}>{label}</label>}
       {children}
       {tip && <div className={`tip${letOp ? ' let' : ''}`}>{tip}</div>}
     </div>

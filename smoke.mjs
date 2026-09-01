@@ -31,8 +31,18 @@ pagina.on('console', (m) => m.type() === 'error' && fouten.push(m.text()));
 
 const kiek = (naam) => (SHOTS ? pagina.screenshot({ path: `/tmp/pay-${naam}.png`, fullPage: true }) : null);
 
+
 await pagina.goto('http://localhost:4321/');
 await pagina.getByRole('button', { name: /zonder account/i }).first().click();
+
+// De kluis staat dicht tot je een wachtwoordzin instelt. Dat is meteen een
+// controle op het zwaarste stukje rekenwerk in de app: PBKDF2 met 310.000
+// rondes, in een echte browser.
+await pagina.getByLabel('Wachtwoordzin').fill('zes wilde ganzen boven de dijk');
+await pagina.getByLabel('Nog een keer').fill('zes wilde ganzen boven de dijk');
+await kiek('sleutel');
+await pagina.getByRole('button', { name: 'Instellen' }).click();
+await pagina.waitForTimeout(1200);
 
 await pagina.getByRole('button', { name: /Meer/ }).click();
 await pagina.getByRole('button', { name: /voorbeeldhuishouden/i }).click();
@@ -57,6 +67,12 @@ await pagina.getByPlaceholder(/Energie, internet/).fill('Krant');
 await pagina.getByPlaceholder('0,00').fill('12,50');
 await pagina.waitForTimeout(150);
 await kiek('nieuw');
+
+// Wat er in de browser is blijven staan, hoort onleesbaar te zijn.
+const opslag = await pagina.evaluate(() => localStorage.getItem('pay:kluis:v2') || '');
+for (const woord of ['Energie', 'Internet', 'Partner', 'Krant']) {
+  if (opslag.includes(woord)) fouten.push(`"${woord}" staat leesbaar in localStorage`);
+}
 
 await browser.close();
 server.close();

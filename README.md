@@ -136,39 +136,68 @@ database alleen een SHA-256-hash. Setup staat in
 
 Wat je lokaal hebt opgebouwd til je na het inloggen in één klik over.
 
-## Wat er wel en niet openbaar is
+## Versleuteld, en wat dat precies betekent
 
-De repo is publiek — dat moet, want GitHub Pages is alleen gratis bij een
-publieke repo. **Er staan geen gegevens in.** Wat er in staat is code, en de
-publishable key van Supabase, die openbaar hoort te zijn en in zijn eentje
-nergens toegang toe geeft.
+**Alles wat inhoud is — elke naam, elk bedrag, elke notitie — wordt in je browser
+versleuteld voordat het je apparaat verlaat.** Wat er in de database staat is
+één blob per rij. Wie hem openmaakt, wij en Supabase incluis, ziet ruis.
 
-Je eigen bedragen staan in je Supabase-project, achter Row Level Security per
-huishouden. Concreet:
+De sleutel komt uit een wachtwoordzin die je zelf kiest. Hij wordt nergens
+opgeslagen: alleen een pakketje dat met die zin is dichtgemaakt (AES-GCM 256, met
+PBKDF2-SHA256 en 310.000 rondes). Ben je de zin kwijt, dan zijn je gegevens
+onleesbaar — ook voor ons. Dat is geen bijwerking maar het punt.
 
-- Wie niet is ingelogd (`anon`) komt bij geen enkele tabel. Niet "ziet nul
-  rijen" — komt er niet bij.
-- Wie wel is ingelogd ziet uitsluitend het huishouden waar hij lid van is, en
-  kan er ook alleen in schrijven.
-- Aanmelden kan alleen met een geldige uitnodiging, afgedwongen door een trigger
-  op `auth.users` — dus ook als iemand het formulier overslaat en de
-  auth-endpoint rechtstreeks aanroept.
-- Van uitnodigingscodes staat alleen een SHA-256-hash in de database, en de code
-  zelf staat achter het hekje in de link, waar hij nooit naar een server gaat.
-- De pagina staat op `noindex` en stuurt geen verwijzer mee.
+Buiten de versleuteling blijft alleen wat de database nodig heeft om te weten wie
+erbij mag: het id van de rij, bij welk huishouden hij hoort, en bij een persoon
+de koppeling aan een account. Wat een lezer daarmee te weten komt is hoeveel
+rijen je hebt en wanneer je ze hebt gemaakt — verder niets. Dat is te controleren
+en dat wordt gecontroleerd: `supabase/test.sql` laat de build vallen zodra er een
+leesbare kolom bijkomt.
 
-Dat zijn geen beloftes maar tests: `./supabase/run-tests.sh` draait het schema
-tegen een echte PostgreSQL en laat de build vallen zodra een van deze punten
-niet meer klopt.
+### Hoe een tweede persoon erbij komt
 
-Twee dingen om zelf te weten:
+De voor de hand liggende oplossing is de sleutel in de uitnodigingslink zetten.
+Dat doet Pay bewust niet: dan ís die link de sleutel, en die stuur je door
+WhatsApp. In plaats daarvan gaat het in twee stappen.
 
-- **Supabase kan je gegevens in principe lezen** (het is hun database). Wil je
-  dat ook uitsluiten, dan is er end-to-end versleuteling nodig; dat kost je
-  "wachtwoord vergeten" en vraagt om het delen van een sleutel.
-- **De lokale kopie in je browser is niet versleuteld.** Pay bewaart er een kopie
-  in zodat de app zonder bereik nog iets kan laten zien. Bij uitloggen wordt die
-  gewist; op een computer die niet van jou is, log dus ook echt uit.
+1. Zij logt in met de uitnodiging en kiest haar eigen wachtwoordzin. Haar browser
+   maakt een sleutelpaar; de publieke helft gaat naar de database, de private
+   helft wordt met haar zin dichtgemaakt.
+2. Jij ziet in de app dat er iemand wacht. Eén klik: jouw browser pakt de
+   huishoudsleutel in met háár publieke sleutel. Alleen zij kan dat openen.
+
+Het kost één klik van jou, maar er gaat nooit een sleutel over de lijn die iemand
+kan onderscheppen.
+
+### En daarnaast, gewoon Row Level Security
+
+Onleesbaar of niet, het hoort niet rond te slingeren. Dus:
+
+- `anon` komt bij geen enkele tabel — niet "ziet nul rijen", maar komt er niet bij;
+- wie is ingelogd ziet alleen het huishouden waar hij lid van is;
+- aanmelden kan alleen met een geldige uitnodiging, afgedwongen door een trigger
+  op `auth.users`, dus ook buiten het formulier om;
+- van uitnodigingscodes staat alleen een SHA-256-hash in de database;
+- je eigen sleutelpakketjes zijn privé, ook voor je huisgenoten;
+- de pagina staat op `noindex` en stuurt geen verwijzer mee.
+
+### Wat het niet afdekt
+
+- **De ontgrendelde sleutel staat op je apparaat.** Anders zou je bij elke keer
+  openen je zin moeten intikken en gebruikt niemand het. Wie fysiek bij je
+  ontgrendelde telefoon kan, kan je gegevens lezen — net als bij je bank-app. Met
+  **Meer → Vergrendelen** gooi je hem eraf, en uitloggen doet dat ook.
+- **Wie de code van de app kan vervangen, kan alles.** Dat geldt voor elke
+  webapp met versleuteling in de browser: de server levert het slot. Daarom is de
+  repo openbaar — zodat te zien is wat er draait.
+- **De omvang lekt.** Aan het aantal rijen en de tijdstippen is te zien hoeveel
+  posten je hebt en wanneer je ze aanmaakte.
+
+### En in de repo?
+
+Er staan geen gegevens in. Het voorbeeldhuishouden in de app is verzonnen: ronde
+getallen die nergens op slaan. Dat is een expliciete regel — een openbare repo is
+geen plek voor iets wat op iemands werkelijke lasten lijkt.
 
 ## Ontwikkelen
 

@@ -20,13 +20,20 @@ Ga naar **SQL Editor**, plak de volledige inhoud van
 
 Dat zet in één keer neer:
 
-- de tabellen (huishoudens, leden, personen, rekeningen, posten, uitnodigingen);
+- de tabellen (huishoudens, leden, sleutels, personen, rekeningen, posten,
+  uitnodigingen);
 - Row Level Security, zodat een ander huishouden niets van het jouwe ziet;
-- de trigger die nieuwe gebruikers alleen met een geldige uitnodiging binnenlaat
-  en ze meteen aan een persoon koppelt.
+- de trigger die nieuwe gebruikers alleen met een geldige uitnodiging binnenlaat.
 
 Het bestand is idempotent: na een update van Pay kun je het gewoon opnieuw
 draaien zonder je gegevens kwijt te raken.
+
+> **Kom je van een eerdere versie?** Toen stonden namen en bedragen nog in
+> gewone kolommen. Dit schema gooit die kolommen weg — versleutelen kan alleen in
+> de browser, en de database heeft de sleutel niet, dus meeverhuizen kan niet.
+> Exporteer eerst je gegevens via **Meer → Volledige reservekopie**, draai daarna
+> het schema, en plak ze terug. Sta je nog aan het begin, dan is er niets aan de
+> hand.
 
 ## 3. Inloggen per e-mail aanzetten
 
@@ -121,16 +128,23 @@ worden — en er staat alleen een SHA-256-hash van in de database.
 > Zolang er nog niemand is, biedt het inlogscherm dat uit zichzelf aan. Zodra jij
 > binnen bent verdwijnt die deur en heeft iedereen een uitnodiging nodig, jij
 > incluis.
+>
+> Direct daarna kies je een **wachtwoordzin**. Daarmee wordt alles versleuteld
+> voordat het je apparaat verlaat. Schrijf hem ergens veilig op: hij staat
+> nergens, dus hij is ook niet te herstellen.
 
 Je vriendin uitnodigen doe je daarna in de app: **Meer → Iemand toegang geven**.
 Je krijgt een link die je doorstuurt; hij is één keer bruikbaar en veertien dagen
 geldig.
 
-> **Handig om te weten:** stond er al een persoon "Anne" in je huishouden zonder
-> account, en meldt Anne zich aan met een adres dat op `anne@` begint, dan pakt de
-> trigger die bestaande persoon op in plaats van er een tweede naast te zetten.
-> Klopt de koppeling niet, dan zet je hem recht bij **Mensen → (persoon) → Dit ben
-> ik**.
+> **Na het aanmelden moet je haar nog binnenlaten.** Zij kiest eerst haar eigen
+> wachtwoordzin; jij ziet daarna bij **Meer** dat er iemand wacht en klikt op
+> *Binnenlaten*. Pas dan kan zij bij de gegevens. Dat is één klik extra, en het
+> scheelt dat er ooit een sleutel door een chat-app gaat.
+>
+> Daarna koppelt ze zichzelf aan de juiste persoon via **Mensen → (persoon) →
+> Dit ben ik**. Namen zijn versleuteld, dus dat kan de database niet voor je
+> raden.
 
 ## 6. De keepalive aanzetten
 
@@ -163,10 +177,11 @@ lokale PostgreSQL:
 ```
 
 Dat zet een wegwerpdatabase op, draait `schema.sql` erover en controleert onder
-meer dat een tweede huishouden je posten niet ziet, dat een ingetrokken, verlopen
-of opgebruikte uitnodiging echt dichtgaat, en dat je jezelf wel aan een persoon
-kunt koppelen en iemand anders niet. Fouten laten het script met een foutcode
-stoppen; dezelfde controle draait bij elke push in GitHub Actions.
+meer dat er geen enkele leesbare kolom bestaat, dat een tweede huishouden je
+gegevens niet ziet, dat een ingetrokken, verlopen of opgebruikte uitnodiging echt
+dichtgaat, dat je sleutelpakketjes privé blijven, en dat je jezelf wel aan een
+persoon kunt koppelen en iemand anders niet. Fouten laten het script met een
+foutcode stoppen; dezelfde controle draait bij elke push in GitHub Actions.
 
 ## Wat er bewust niet in zit
 
@@ -174,5 +189,5 @@ Iedereen in een huishouden mag alle posten lezen én wijzigen. Dat is opzet: het
 gaat over geld dat jullie samen uitgeven, en een half overzicht is geen
 overzicht. Er is dus geen rollenmodel waarin één van jullie alleen mag kijken.
 
-Wat wél afgeschermd is: een ander huishouden ziet niets, `anon` ziet niets, en
-niemand kan een persoon aan andermans account koppelen.
+Er is ook geen "wachtwoordzin vergeten". Die zou betekenen dat iemand anders je
+sleutel kan herstellen, en dan is de versleuteling een sierstuk. Schrijf hem op.
