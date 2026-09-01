@@ -1,18 +1,54 @@
 // Wie draagt welk deel van een post.
 //
-// Alle vier de vormen komen uit op hetzelfde: een aantal hele centen per
-// persoon, die samen precies het bedrag zijn. Geen cent erbij, geen cent eraf.
+// Alle vier de vormen komen uit op hetzelfde: een aantal hele centen per drager,
+// die samen precies het bedrag zijn. Geen cent erbij, geen cent eraf.
+//
+// Een drager is meestal een persoon, maar hoeft dat niet te zijn. Een deel van
+// je bankkosten kan zakelijk zijn: dan draagt de zaak dat deel, en niemand
+// privé. Zulke dragers staan als 'rekening:<id>' in de verdeling; een kale id is
+// een persoon. Voor het rekenwerk maakt het niets uit — het zijn sleutels.
 
 export const VERDELINGEN = [
   { id: 'gelijk', label: 'Gelijk', blurb: 'Ieder evenveel.' },
   { id: 'delen', label: 'In delen', blurb: 'Bijvoorbeeld 2 om 1, of naar aantal plekken.' },
   { id: 'procent', label: 'In procenten', blurb: 'Bijvoorbeeld 60/40 naar inkomen.' },
-  { id: 'bedrag', label: 'Vaste bedragen', blurb: 'Je tikt per persoon het bedrag in.' },
+  { id: 'bedrag', label: 'Vaste bedragen', blurb: 'Je tikt per drager het bedrag in.' },
 ];
 
 export const leegVerdeling = (deelnemers = []) => ({ soort: 'gelijk', deelnemers, gewichten: {} });
 
-/** De personen die meedoen, in een vaste volgorde — die volgorde bepaalt de restcent. */
+export const REKENING_VOORVOEGSEL = 'rekening:';
+export const alsRekeningDrager = (id) => `${REKENING_VOORVOEGSEL}${id}`;
+export const isRekeningDrager = (sleutel) => String(sleutel).startsWith(REKENING_VOORVOEGSEL);
+export const rekeningVanDrager = (sleutel) =>
+  isRekeningDrager(sleutel) ? String(sleutel).slice(REKENING_VOORVOEGSEL.length) : null;
+
+/**
+ * Wie een deel kán dragen.
+ *
+ * Personen, plus je zakelijke rekeningen. Een zakelijke rekening staat er niet
+ * voor de sier tussen: als een kwart van je bankkosten zakelijk is, draagt de
+ * zaak dat kwart en niemand privé. Een privérekening ontbreekt met opzet — die
+ * ís de persoon die hem bezit, dus dat zou hetzelfde twee keer zijn.
+ */
+export function mogelijkeDragers(personen = [], rekeningen = []) {
+  return [
+    ...personen.map((p) => ({ sleutel: p.id, naam: p.naam, kleur: p.kleur, rekening: null })),
+    ...rekeningen
+      .filter((r) => r.soort === 'zakelijk')
+      .map((r) => ({ sleutel: alsRekeningDrager(r.id), naam: r.naam, kleur: null, rekening: r })),
+  ];
+}
+
+/** De naam achter een sleutel uit een verdeling. */
+export function dragerNaam(sleutel, personen = [], rekeningen = []) {
+  if (isRekeningDrager(sleutel)) {
+    return rekeningen.find((r) => r.id === rekeningVanDrager(sleutel))?.naam || 'rekening';
+  }
+  return personen.find((p) => p.id === sleutel)?.naam || 'onbekend';
+}
+
+/** Wie meedoet, in een vaste volgorde — die volgorde bepaalt de restcent. */
 export function deelnemersVan(verdeling) {
   const v = verdeling || {};
   if (v.soort === 'bedrag' || v.soort === 'delen' || v.soort === 'procent') {

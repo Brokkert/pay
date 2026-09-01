@@ -114,6 +114,7 @@ export default function PostForm({ post, personen, rekeningen, bundels = [], onB
         ritme={concept.ritme}
         verdeling={concept.verdeling}
         personen={personen}
+        rekeningen={rekeningen}
         onChange={(verdeling) => zet({ verdeling })}
       />
 

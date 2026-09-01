@@ -84,6 +84,18 @@ Daardoor verrekent alles kruislings vanzelf. Zit Pieter in jouw YouTube Family
 - **⬇️ Exporteren** — een CSV die rechtstreeks in Excel opent, met per post het
   maandbedrag, het jaarbedrag en het aandeel van iedereen in een eigen kolom.
 
+### Een rekening kan zelf een deel dragen
+
+Niet elke drager is een persoon. Is een kwart van je bankkosten zakelijk, dan
+draagt de **zaak** dat kwart — en niemand privé. Dat scheelt de constructie die
+daar in een spreadsheet voor nodig is (een deel dat je nergens optelt en dus
+nergens terugziet):
+
+- het zakelijke kwart staat niet bij jou privé, maar telt wél mee als last;
+- je ziet meteen wat de zaak nog moet overmaken, of wat je kunt terughalen;
+- betaalt de zaak het zelf, dan valt zijn eigen deel weg — je hoeft jezelf niets
+  terug te betalen.
+
 ## Vier manieren om te verdelen
 
 | | Waarvoor |
@@ -91,7 +103,7 @@ Daardoor verrekent alles kruislings vanzelf. Zit Pieter in jouw YouTube Family
 | **Gelijk** | Ieder evenveel. |
 | **In delen** | 2 om 1, of naar aantal plekken in een Family-abonnement. |
 | **In procenten** | 60/40 naar inkomen. |
-| **Vaste bedragen** | Je tikt per persoon het bedrag in. |
+| **Vaste bedragen** | Je tikt per drager het bedrag in. |
 
 Onder de keuze staat meteen wat het in euro's betekent. Een percentage zegt
 niets; "Partner € 801,75 per maand" wel.

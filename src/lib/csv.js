@@ -12,6 +12,7 @@ import { verdeel } from './verdeel.js';
 import { betalerPartij, isPot, partijId } from './saldo.js';
 import { parseGeld } from './geld.js';
 import { categorieVan } from '../data/categorieen.js';
+import { mogelijkeDragers } from './verdeel.js';
 
 const veld = (waarde) => {
   const tekst = String(waarde ?? '');
@@ -23,10 +24,11 @@ const veld = (waarde) => {
 const bedrag = (centen) => String((centen / 100).toFixed(2)).replace('.', ',');
 
 export function naarCsv({ posten, personen, rekeningen }) {
+  const dragers = mogelijkeDragers(personen, rekeningen);
   const kop = [
     'Post', 'Categorie', 'Incasso', 'Bedrag', 'Ritme', 'Per maand', 'Per jaar',
     'Betaald door', 'Zakelijk', 'Loopt vanaf', 'Loopt tot', 'Notitie',
-    ...personen.map((p) => `Aandeel ${p.naam}`),
+    ...dragers.map((d) => `Aandeel ${d.naam}`),
   ];
 
   const regels = posten.map((post) => {
@@ -50,7 +52,7 @@ export function naarCsv({ posten, personen, rekeningen }) {
       post.vanaf || '',
       post.tot || '',
       post.notitie || '',
-      ...personen.map((p) => bedrag(delen[p.id] || 0)),
+      ...dragers.map((d) => bedrag(delen[d.sleutel] || 0)),
     ];
   });
 

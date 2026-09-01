@@ -1,9 +1,9 @@
 // Alle posten, met filters. Hier zoek je op "wat loopt er eigenlijk allemaal".
 
 import { useMemo, useState } from 'react';
-import { Geld, Leeg, Wie, Icoon } from '../components/ui.jsx';
+import { Geld, Leeg, Drager, Icoon } from '../components/ui.jsx';
 import { perMaand, perJaar, ritmeVan, loopt } from '../lib/ritme.js';
-import { verdeel, omschrijfVerdeling } from '../lib/verdeel.js';
+import { verdeel, omschrijfVerdeling, mogelijkeDragers, dragerNaam } from '../lib/verdeel.js';
 import { categorieVan } from '../data/categorieen.js';
 import { toonGeld } from '../lib/geld.js';
 
@@ -139,7 +139,8 @@ function PostRegel({ rij, maand, personen, rekeningen, onOpen, onBewaar }) {
       ? rekeningen.find((r) => r.id === post.betaler.id)?.naam
       : personen.find((p) => p.id === post.betaler?.id)?.naam;
   const meedoeners = Object.keys(delen);
-  const naamVan = (id) => personen.find((p) => p.id === id)?.naam || '?';
+  const dragers = mogelijkeDragers(personen, rekeningen);
+  const naamVan = (sleutel) => dragerNaam(sleutel, personen, rekeningen);
 
   return (
     <button className="regel" onClick={() => onOpen(post)} style={actief ? undefined : { opacity: 0.5 }}>
@@ -159,7 +160,7 @@ function PostRegel({ rij, maand, personen, rekeningen, onOpen, onBewaar }) {
         </span>
         <span className="stapel" style={{ marginTop: 6 }}>
           {meedoeners.slice(0, 5).map((id) => (
-            <Wie key={id} persoon={personen.find((p) => p.id === id)} maat="klein" />
+            <Drager key={id} drager={dragers.find((d) => d.sleutel === id)} maat="klein" />
           ))}
           {meedoeners.length > 5 && (
             <span className="mini vaag" style={{ marginLeft: 8, alignSelf: 'center' }}>

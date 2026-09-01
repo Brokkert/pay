@@ -102,6 +102,22 @@ export function Wie({ persoon, maat = '' }) {
   );
 }
 
+/** Het rondje van een drager: initialen bij een persoon, een merkje bij een rekening. */
+export function Drager({ drager, maat = '' }) {
+  if (drager?.rekening) {
+    return (
+      <span
+        className={`wie ${maat}`.trim()}
+        style={{ background: 'var(--text-2)', borderRadius: 7 }}
+        title={drager.naam}
+      >
+        <Icoon naam="sleutel" maat={maat === 'klein' ? 12 : 15} />
+      </span>
+    );
+  }
+  return <Wie persoon={drager} maat={maat} />;
+}
+
 export const WieMetNaam = ({ persoon, maat = 'klein' }) => (
   <span className="rij" style={{ gap: 7, minWidth: 0 }}>
     <Wie persoon={persoon} maat={maat} />

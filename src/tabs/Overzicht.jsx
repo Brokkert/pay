@@ -1,10 +1,11 @@
 // Het overzicht: wat loopt er, en wie moet wie wat.
 
 import { useMemo } from 'react';
-import { Post, Som, Geld, Wie, Melding, Leeg, Icoon } from '../components/ui.jsx';
+import { Post, Som, Geld, Wie, Drager, Melding, Leeg, Icoon } from '../components/ui.jsx';
 import { rekenMaand, losseSaldi, isPot, partijId, partijNaam } from '../lib/saldo.js';
 import { toonMaand, verschuifMaand, dezeMaand } from '../lib/ritme.js';
 import { categorieVan, soortVan } from '../data/categorieen.js';
+import { mogelijkeDragers } from '../lib/verdeel.js';
 import { toonGeld } from '../lib/geld.js';
 
 export default function Overzicht({ kasboek, maand, onMaand }) {
@@ -149,15 +150,19 @@ export default function Overzicht({ kasboek, maand, onMaand }) {
 
       <div className="kop">Wat ieder uiteindelijk draagt</div>
       <div className="paneel">
-        {personen.map((p) => (
-          <Post
-            key={p.id}
-            links={<Wie persoon={p} maat="klein" />}
-            wat={p.naam}
-            onder={p.is_mij ? 'jij' : undefined}
-            centen={uit.draagt[p.id] || 0}
-          />
-        ))}
+        {mogelijkeDragers(personen, rekeningen)
+          .filter((d) => d.rekening === null || uit.draagt[d.sleutel])
+          .map((d) => (
+            <Post
+              key={d.sleutel}
+              links={<Drager drager={d} maat="klein" />}
+              wat={d.naam}
+              onder={
+                d.rekening ? 'zakelijk deel' : personen.find((p) => p.id === d.sleutel)?.is_mij ? 'jij' : undefined
+              }
+              centen={uit.draagt[d.sleutel] || 0}
+            />
+          ))}
         <Som label="Samen" centen={uit.maandlast} />
       </div>
       <div className="tip">

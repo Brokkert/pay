@@ -4,11 +4,13 @@
 // onder wat de gekozen verdeling in euro's betekent. Een percentage zegt niets;
 // "Mau € 310,25 per maand" wel.
 
-import { VERDELINGEN, verdeel, deelnemersVan } from '../lib/verdeel.js';
+import { VERDELINGEN, verdeel, deelnemersVan, mogelijkeDragers } from '../lib/verdeel.js';
 import { perMaand } from '../lib/ritme.js';
-import { Veld, Geld, Wie, Bedrag } from './ui.jsx';
+import { Veld, Geld, Drager, Bedrag } from './ui.jsx';
 
-export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, onChange }) {
+export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, rekeningen = [], onChange }) {
+  const dragers = mogelijkeDragers(personen, rekeningen);
+  const dragerVan = (sleutel) => dragers.find((d) => d.sleutel === sleutel);
   const v = verdeling || { soort: 'gelijk', deelnemers: [], gewichten: {} };
   const meedoen = deelnemersVan(v);
   const inSet = new Set(meedoen);
@@ -58,17 +60,24 @@ export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, onCh
         let={!meedoen.length}
       >
         <div className="blokjes">
-          {personen.map((p) => (
+          {dragers.map((d) => (
             <button
-              key={p.id}
+              key={d.sleutel}
               type="button"
-              className={`blokje${inSet.has(p.id) ? ' aan' : ''}`}
-              onClick={() => wissel(p.id)}
+              className={`blokje${inSet.has(d.sleutel) ? ' aan' : ''}`}
+              onClick={() => wissel(d.sleutel)}
             >
-              <Wie persoon={p} maat="klein" /> {p.naam}
+              <Drager drager={d} maat="klein" /> {d.naam}
             </button>
           ))}
         </div>
+        {rekeningen.some((r) => r.soort === 'zakelijk') && (
+          <div className="tip">
+            Een zakelijke rekening kan zelf een deel dragen. Is een kwart van je bankkosten
+            zakelijk, dan draagt de zaak dat kwart en staat het niet bij jou privé — en zie je
+            meteen wat je bij de zaak kunt terughalen.
+          </div>
+        )}
       </Veld>
 
       {meedoen.length > 1 && (
@@ -93,11 +102,11 @@ export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, onCh
           <label>Komt neer op {ritme === 'eenmalig' ? '(eenmalig)' : '(per maand)'}</label>
           <div className="paneel">
             {meedoen.map((id) => {
-              const persoon = personen.find((p) => p.id === id);
+              const drager = dragerVan(id);
               return (
                 <div key={id} className="post">
-                  <Wie persoon={persoon} maat="klein" />
-                  <div className="wat"><div className="n kort">{persoon?.naam || 'onbekend'}</div></div>
+                  <Drager drager={drager} maat="klein" />
+                  <div className="wat"><div className="n kort">{drager?.naam || 'onbekend'}</div></div>
 
                   {v.soort === 'delen' && (
                     <input
@@ -105,7 +114,7 @@ export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, onCh
                       type="number"
                       min="0"
                       step="1"
-                      aria-label={`Aantal delen voor ${persoon?.naam}`}
+                      aria-label={`Aantal delen voor ${drager?.naam}`}
                       style={{ width: 58, padding: '5px 8px', textAlign: 'right', fontSize: 14 }}
                       value={v.gewichten?.[id] ?? 1}
                       onChange={(e) => zetGewicht(id, Number(e.target.value))}
@@ -119,7 +128,7 @@ export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, onCh
                         min="0"
                         max="100"
                         step="1"
-                        aria-label={`Percentage voor ${persoon?.naam}`}
+                        aria-label={`Percentage voor ${drager?.naam}`}
                         style={{ width: 58, padding: '5px 8px', textAlign: 'right', fontSize: 14 }}
                         value={v.gewichten?.[id] ?? 0}
                         onChange={(e) => zetGewicht(id, Number(e.target.value))}
@@ -139,7 +148,7 @@ export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, onCh
             })}
 
             <div className="vak krap">
-              <Verhouding delen={delen} personen={personen} />
+              <Verhouding delen={delen} dragerVan={dragerVan} />
             </div>
           </div>
 
@@ -160,8 +169,8 @@ export default function VerdeelKiezer({ bedrag, ritme, verdeling, personen, onCh
   );
 }
 
-/** Het balkje eronder: één blokje per persoon, naar rato van het bedrag. */
-function Verhouding({ delen, personen }) {
+/** Het balkje eronder: één blokje per drager, naar rato van het bedrag. */
+function Verhouding({ delen, dragerVan }) {
   const totaal = Object.values(delen).reduce((s, c) => s + Math.abs(c), 0);
   if (!totaal) return null;
   return (
@@ -171,7 +180,7 @@ function Verhouding({ delen, personen }) {
           key={id}
           style={{
             width: `${(Math.abs(centen) / totaal) * 100}%`,
-            background: personen.find((p) => p.id === id)?.kleur || 'var(--accent)',
+            background: dragerVan(id)?.kleur || 'var(--text-3)',
           }}
         />
       ))}

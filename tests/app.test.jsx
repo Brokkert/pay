@@ -40,8 +40,10 @@ describe('Pay in de lokale kluis', () => {
   it('rekent het voorbeeldhuishouden door tot op de cent', async () => {
     await start(voorbeeldKasboek());
 
-    // 117 + 19 + 38,12 + 14,69 + 7,11 + 87/3 + 67,39 + 25,99 + 14,99 + 40
-    expect(screen.getAllByText('€ 373,29').length).toBeGreaterThan(0);
+    // 117 + 19 + 38,12 + 14,69 + 7,11 + 87/3 + 67,39 + 25,99 + 14,99 + 28,99 + 40
+    expect(screen.getAllByText('€ 402,28').length).toBeGreaterThan(0);
+    // Een kwart van de bankkosten draagt de zaak, en die maakt dat zelf over.
+    expect(screen.getAllByText('€ 7,25').length).toBeGreaterThan(0);
 
     // YouTube (25,99 door vier, de zaak betaalt) tegen Spotify (14,99 door
     // twee, Pieter betaalt): netto € 1,00 van mij naar Pieter.

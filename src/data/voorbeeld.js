@@ -84,6 +84,12 @@ export function voorbeeldKasboek() {
       betaler: { soort: 'persoon', id: pieter },
       verdeling: { soort: 'gelijk', deelnemers: [ik, pieter], gewichten: {} } },
 
+    // Vier delen bankkosten, waarvan er één zakelijk is. Dat kwart draagt de
+    // zaak, niet jij privé — en de zaak maakt het gewoon over.
+    { naam: 'Bankkosten', bedrag: 2899, categorie: 'overig',
+      betaler: { soort: 'rekening', id: vast },
+      verdeling: { soort: 'delen', deelnemers: [], gewichten: { [ik]: 2, [partner]: 1, [`rekening:${zaak}`]: 1 } } },
+
     { naam: 'Sportschool', bedrag: 4000, categorie: 'gezondheid',
       betaler: { soort: 'rekening', id: prive },
       verdeling: { soort: 'gelijk', deelnemers: [ik], gewichten: {} } },

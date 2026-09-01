@@ -14,9 +14,20 @@
 // wat er van hem af ging) én geld schuldig zijn (zie routeerVia hieronder).
 
 import { perMaand, perJaar, loopt } from './ritme.js';
-import { verdeel } from './verdeel.js';
+import { verdeel, isRekeningDrager, rekeningVanDrager } from './verdeel.js';
 
 export const persoonPartij = (id) => `persoon:${id}`;
+
+/**
+ * De partij achter een drager uit een verdeling.
+ *
+ * Draagt een rekening zelf een deel — een stuk van je bankkosten dat zakelijk
+ * is, bijvoorbeeld — dan is die rekening de partij, en niet de persoon die hem
+ * bezit. Precies dat is het verschil: dat deel is geen privékostenpost, en wat
+ * jij ervoor voorschoot mag je bij die rekening terughalen.
+ */
+export const dragerPartij = (sleutel) =>
+  isRekeningDrager(sleutel) ? potPartij(rekeningVanDrager(sleutel)) : persoonPartij(sleutel);
 export const potPartij = (id) => `pot:${id}`;
 export const isPot = (partij) => String(partij || '').startsWith('pot:');
 export const partijId = (partij) => String(partij || '').split(':').slice(1).join(':') || null;
@@ -54,6 +65,8 @@ export function rekenMaand({ posten = [], personen = [], rekeningen = [] }, maan
   const regels = [];
   const waarschuwingen = [];
   const ruw = {};
+  // Wat ieder uiteindelijk draagt, op de sleutel uit de verdeling — dus ook
+  // rekeningen die zelf een deel dragen.
   const draagt = Object.fromEntries(personen.map((p) => [p.id, 0]));
   const perRekening = Object.fromEntries(rekeningen.map((r) => [r.id, 0]));
   const perCategorie = {};
@@ -86,10 +99,11 @@ export function rekenMaand({ posten = [], personen = [], rekeningen = [] }, maan
     if (post.bundel) perBundel[post.bundel] = (perBundel[post.bundel] || 0) + bedrag;
 
     const eigen = eigenDelen(delen, restant, partij);
-    for (const [persoonId, deel] of Object.entries(eigen)) {
+    for (const [sleutel, deel] of Object.entries(eigen)) {
       if (!deel) continue;
-      draagt[persoonId] = (draagt[persoonId] || 0) + deel;
-      boek(ruw, persoonPartij(persoonId), partij, deel);
+      draagt[sleutel] = (draagt[sleutel] || 0) + deel;
+      if (zelfBetaald(sleutel, post)) continue;
+      boek(ruw, dragerPartij(sleutel), partij, deel);
     }
 
     regels.push({ post, bedrag, partij, delen: eigen, restant });
@@ -124,6 +138,35 @@ function eigenDelen(delen, restant, partij) {
   if (!restant || isPot(partij)) return delen;
   const betaler = partijId(partij);
   return { ...delen, [betaler]: (delen[betaler] || 0) + restant };
+}
+
+/**
+ * Draagt een rekening een deel van iets wat van diezelfde rekening af gaat?
+ *
+ * Dan is er niets te verrekenen: dat deel is betaald door wie het draagt. Dit
+ * moet apart, want een zakelijke rekening telt als bétaler mee als de persoon
+ * die hem bezit (je schiet iets voor via de zaak), maar als dráger als de zaak
+ * zelf (dat is een zakelijke kostenpost). Zonder deze regel zou de zaak zijn
+ * eigen kwart aan jou moeten terugbetalen.
+ */
+function zelfBetaald(sleutel, post) {
+  return (
+    isRekeningDrager(sleutel) &&
+    post.betaler?.soort === 'rekening' &&
+    rekeningVanDrager(sleutel) === post.betaler.id
+  );
+}
+
+/** Alle dragers die in de verdelingen voorkomen, met hun partij erbij. */
+export function dragersIn(posten) {
+  const uit = new Set();
+  for (const post of posten) {
+    const v = post.verdeling || {};
+    for (const sleutel of [...(v.deelnemers || []), ...Object.keys(v.gewichten || {})]) {
+      uit.add(sleutel);
+    }
+  }
+  return [...uit];
 }
 
 function boek(matrix, van, naar, centen) {
@@ -221,8 +264,9 @@ export function losseSaldi(posten, rekeningen) {
     if (!partij) continue;
     const { delen, restant } = verdeel(post.bedrag, post.verdeling);
     const eigen = eigenDelen(delen, restant, partij);
-    for (const [persoonId, deel] of Object.entries(eigen)) {
-      boek(ruw, persoonPartij(persoonId), partij, deel);
+    for (const [sleutel, deel] of Object.entries(eigen)) {
+      if (zelfBetaald(sleutel, post)) continue;
+      boek(ruw, dragerPartij(sleutel), partij, deel);
     }
     regels.push({ post, partij, delen: eigen });
   }

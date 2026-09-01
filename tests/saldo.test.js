@@ -305,3 +305,47 @@ describe('betalerPartij', () => {
     expect(betalerPartij({ betaler: { soort: 'rekening', id: 'weg' } }, rekeningen)).toBe(null);
   });
 });
+
+describe('een rekening die zelf een deel draagt', () => {
+  // Bankkosten: vier delen, waarvan er één zakelijk is. Dat deel is geen
+  // privékostenpost — het staat bij de zaak, en die moet het terugbetalen.
+  const bankkosten = post({
+    id: 'bank', naam: 'Bankkosten', bedrag: 2899,
+    betaler: { soort: 'rekening', id: 'r-vast' },
+    verdeling: { soort: 'delen', gewichten: { [IK]: 2, [MAU]: 1, 'rekening:r-zaak': 1 } },
+  });
+
+  it('legt het zakelijke deel bij de zaak en niet bij mij privé', () => {
+    const uit = rekenMaand({ personen, rekeningen: metHub, posten: [bankkosten] }, '2026-09');
+    // 2899 over 2:1:1 wordt 1449 / 725 / 725 — samen precies 2899.
+    expect(uit.draagt[IK]).toBe(1449);
+    expect(uit.draagt[MAU]).toBe(725);
+    expect(uit.draagt['rekening:r-zaak']).toBe(725);
+    expect(uit.draagt[IK] + uit.draagt[MAU] + uit.draagt['rekening:r-zaak']).toBe(uit.maandlast);
+  });
+
+  it('laat de zaak zelf overmaken, buiten de verrekening tussen ons om', () => {
+    const uit = rekenMaand({ personen, rekeningen: metHub, posten: [bankkosten] }, '2026-09');
+    expect(stroom(uit, 'pot:r-zaak', 'pot:r-vast')).toBe(725);
+    // En het loopt niet stiekem via mij: de zaak is geen deelnemer van de
+    // vaste-lastenrekening, dus daar wordt niets langs geleid.
+    expect(stroom(uit, `persoon:${IK}`, 'pot:r-vast')).toBe(1449);
+  });
+
+  it('streept weg als de zaak het zelf al betaalde', () => {
+    const uit = rekenMaand({
+      personen, rekeningen: metHub,
+      posten: [{ ...bankkosten, betaler: { soort: 'rekening', id: 'r-zaak' } }],
+    }, '2026-09');
+    // De zaak betaalt en draagt een kwart; die twee heffen elkaar op — er is
+    // niets terug te betalen aan jezelf.
+    expect(uit.stromen.some((s) => s.van === 'pot:r-zaak')).toBe(false);
+    // Het blijft wel een zakelijke kostenpost, dus het telt gewoon mee in wat
+    // de zaak draagt.
+    expect(uit.draagt['rekening:r-zaak']).toBe(725);
+    // Mau stort haar deel op de vaste-lastenrekening; ik schoot de rest voor
+    // via de zaak, dus die rekening betaalt mij terug.
+    expect(stroom(uit, `persoon:${MAU}`, 'pot:r-vast')).toBe(725);
+    expect(stroom(uit, 'pot:r-vast', `persoon:${IK}`)).toBe(725);
+  });
+});
