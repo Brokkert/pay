@@ -1,0 +1,5 @@
+# Pay is een privé-app. Er valt hier voor een zoekmachine niets te halen — achter
+# het inlogscherm zit alleen een lege pagina tot je bent ingelogd — maar we zeggen
+# het voor de zekerheid ook hier.
+User-agent: *
+Disallow: /
