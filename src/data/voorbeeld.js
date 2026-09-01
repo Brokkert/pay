@@ -1,10 +1,14 @@
 // Een huishouden om mee te beginnen.
 //
-// Een leeg scherm laat niet zien waar Pay voor is. Dit voorbeeld wel: een pot
-// met twee mensen, een abonnement dat van een eigen rekening af gaat maar door
-// vier mensen gedeeld wordt, en een abonnement van iemand anders waar jij aan
-// meebetaalt. Precies de drie gevallen die in een spreadsheet zo'n rommel
-// worden. Alles is te wijzigen of in één klik weg te gooien.
+// Een leeg scherm laat niet zien waar Pay voor is. Dit voorbeeld wel, en het
+// laat precies de vier gevallen zien die in een spreadsheet een rommel worden:
+//
+//   1. gewone gedeelde lasten van de vaste-lastenrekening;
+//   2. iets wat de zaak betaalt maar wat je samen gebruikt;
+//   3. een abonnement dat je met vrienden deelt en waar je geld voor terugkrijgt;
+//   4. een abonnement van iemand anders waar jij aan meebetaalt.
+//
+// De bedragen zijn verzonnen. Alles is te wijzigen of in één klik weg te gooien.
 
 import { nieuwId } from '../lib/kasboek.js';
 
@@ -14,7 +18,7 @@ export function voorbeeldKasboek() {
   const pieter = nieuwId();
   const sanne = nieuwId();
 
-  const samen = nieuwId();
+  const vast = nieuwId();
   const prive = nieuwId();
   const zaak = nieuwId();
 
@@ -26,41 +30,61 @@ export function voorbeeldKasboek() {
   ];
 
   const rekeningen = [
-    { id: samen, naam: 'Gezamenlijk', soort: 'gezamenlijk',
-      deelnemers: [ik, partner], stortingen: { [ik]: 90000, [partner]: 90000 } },
+    {
+      id: vast,
+      naam: 'Vaste lasten',
+      soort: 'gezamenlijk',
+      deelnemers: [ik, partner],
+      stortingen: { [ik]: 12000, [partner]: 15500 },
+      // Alles wordt hier verrekend: ook wat de zaak of een privérekening
+      // voorschiet. Zo maakt ieder één bedrag over.
+      afrekenpot: true,
+    },
     { id: prive, naam: 'Privé', soort: 'prive', eigenaar_id: ik },
     { id: zaak, naam: 'Zaak', soort: 'zakelijk', eigenaar_id: ik },
   ];
 
-  const samenGelijk = { soort: 'gelijk', deelnemers: [ik, partner], gewichten: {} };
+  const samen = { soort: 'gelijk', deelnemers: [ik, partner], gewichten: {} };
 
   const posten = [
-    { naam: 'Huur', bedrag: 132500, ritme: 'maand', categorie: 'wonen',
-      betaler: { soort: 'rekening', id: samen }, verdeling: samenGelijk },
-    { naam: 'Energie', bedrag: 18500, ritme: 'maand', categorie: 'nuts',
-      betaler: { soort: 'rekening', id: samen }, verdeling: samenGelijk },
-    { naam: 'Internet', bedrag: 4900, ritme: 'maand', categorie: 'telecom',
-      betaler: { soort: 'rekening', id: samen }, verdeling: samenGelijk },
-    { naam: 'Inboedelverzekering', bedrag: 18600, ritme: 'jaar', categorie: 'verzekering',
-      betaler: { soort: 'rekening', id: samen }, verdeling: samenGelijk },
-    { naam: 'Waterschap', bedrag: 8700, ritme: 'kwartaal', categorie: 'nuts',
-      betaler: { soort: 'rekening', id: samen }, verdeling: samenGelijk },
+    { naam: 'Gas/Stroom', bedrag: 11700, categorie: 'nuts',
+      betaler: { soort: 'rekening', id: vast }, verdeling: samen },
+    { naam: 'Water', bedrag: 1900, categorie: 'nuts',
+      betaler: { soort: 'rekening', id: vast }, verdeling: samen },
+    { naam: 'Gemeentebelasting', bedrag: 3812, categorie: 'belasting',
+      betaler: { soort: 'rekening', id: vast }, verdeling: samen },
 
-    // Van de zaak betaald, maar met z'n vieren gebruikt: de andere drie staan
-    // hiervoor bij jou in het krijt.
-    { naam: 'YouTube Family', bedrag: 2599, ritme: 'maand', categorie: 'streaming',
-      zakelijk: true, betaler: { soort: 'rekening', id: zaak },
-      notitie: 'Loopt op de zaak, maar we delen hem met z’n vieren.',
+    // Twee posten op één afschrijving van de verzekeraar.
+    { naam: 'Inboedelverzekering', bedrag: 1469, categorie: 'verzekering',
+      bundel: 'Verzekeringspakket',
+      betaler: { soort: 'rekening', id: vast }, verdeling: samen },
+    { naam: 'Aansprakelijkheid', bedrag: 711, categorie: 'verzekering',
+      bundel: 'Verzekeringspakket',
+      betaler: { soort: 'rekening', id: vast }, verdeling: samen },
+
+    { naam: 'Waterschap', bedrag: 8700, ritme: 'kwartaal', categorie: 'belasting',
+      betaler: { soort: 'rekening', id: vast }, verdeling: samen },
+
+    // Loopt op de zaak, maar we gebruiken het samen. Partner stort haar helft
+    // gewoon op de vaste-lastenrekening, en die betaalt het aan mij terug —
+    // waardoor ik er zelf minder in hoef te doen.
+    { naam: 'TV + internet', bedrag: 6739, categorie: 'telecom', zakelijk: true,
+      notitie: 'Loopt op de zaak; thuis gebruiken we het allebei.',
+      betaler: { soort: 'rekening', id: zaak }, verdeling: samen },
+
+    // Zes plekken, vier vrienden betalen mee. Voeg ze toe bij Mensen en zet ze
+    // hier in de verdeling; wat zij je schuldig zijn rolt er vanzelf uit.
+    { naam: 'YouTube Family', bedrag: 2599, categorie: 'streaming',
+      betaler: { soort: 'rekening', id: zaak },
       verdeling: { soort: 'gelijk', deelnemers: [ik, partner, pieter, sanne], gewichten: {} } },
 
-    // Andersom: Pieter betaalt, jij doet mee. Pay streept dit tegen het
-    // YouTube-abonnement weg.
-    { naam: 'Spotify Duo', bedrag: 1499, ritme: 'maand', categorie: 'streaming',
-      betaler: { soort: 'persoon', id: pieter },
+    // Andersom: Pieter betaalt, ik doe mee. Pay streept dit weg tegen YouTube.
+    { naam: 'Spotify Duo', bedrag: 1499, categorie: 'streaming',
       notitie: 'Van Pieter; ik betaal mijn helft.',
+      betaler: { soort: 'persoon', id: pieter },
       verdeling: { soort: 'gelijk', deelnemers: [ik, pieter], gewichten: {} } },
 
-    { naam: 'Sportschool', bedrag: 3250, ritme: 'maand', categorie: 'gezondheid',
+    { naam: 'Sportschool', bedrag: 4000, categorie: 'gezondheid',
       betaler: { soort: 'rekening', id: prive },
       verdeling: { soort: 'gelijk', deelnemers: [ik], gewichten: {} } },
   ];
@@ -68,6 +92,14 @@ export function voorbeeldKasboek() {
   return {
     personen,
     rekeningen,
-    posten: posten.map((p) => ({ id: nieuwId(), gepauzeerd: false, notitie: '', ...p })),
+    posten: posten.map((p) => ({
+      id: nieuwId(),
+      ritme: 'maand',
+      bundel: '',
+      gepauzeerd: false,
+      zakelijk: false,
+      notitie: '',
+      ...p,
+    })),
   };
 }

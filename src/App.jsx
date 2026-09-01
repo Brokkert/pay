@@ -125,6 +125,7 @@ export default function App() {
           post={bewerken}
           personen={kasboek.personen}
           rekeningen={kasboek.rekeningen}
+          bundels={[...new Set(kasboek.posten.map((p) => p.bundel).filter(Boolean))].sort()}
           onBewaar={(post) => kasboek.bewaar('posten', post)}
           onVerwijder={(id) => kasboek.verwijder('posten', id)}
           onSluit={() => setBewerken(null)}

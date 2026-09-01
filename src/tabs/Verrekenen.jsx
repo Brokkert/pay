@@ -28,10 +28,13 @@ export default function Verrekenen({ kasboek, maand }) {
     if (!mij) return [];
     const optellen = (stromen) => {
       const per = {};
+      const mijnPartij = `persoon:${mij.id}`;
       for (const s of stromen) {
-        if (isPot(s.naar)) continue;
-        if (s.van === mij.id) per[partijId(s.naar)] = (per[partijId(s.naar)] || 0) - s.centen;
-        else if (partijId(s.naar) === mij.id) per[s.van] = (per[s.van] || 0) + s.centen;
+        // Alleen wat tussen twee mensen loopt; het verkeer met een gezamenlijke
+        // rekening staat hierboven apart.
+        if (isPot(s.van) || isPot(s.naar)) continue;
+        if (s.van === mijnPartij) per[partijId(s.naar)] = (per[partijId(s.naar)] || 0) - s.centen;
+        else if (s.naar === mijnPartij) per[partijId(s.van)] = (per[partijId(s.van)] || 0) + s.centen;
       }
       return per;
     };
@@ -51,7 +54,7 @@ export default function Verrekenen({ kasboek, maand }) {
       );
   }, [uit.stromen, los.stromen, personen, mij]);
 
-  const naarPotten = uit.stromen.filter((s) => isPot(s.naar));
+  const metPotten = uit.stromen.filter((s) => isPot(s.van) !== isPot(s.naar));
 
   if (!mij) {
     return (
@@ -62,7 +65,7 @@ export default function Verrekenen({ kasboek, maand }) {
     );
   }
 
-  if (!regels.length && !naarPotten.length) {
+  if (!regels.length && !metPotten.length) {
     return (
       <Leeg icoon="verrekenen" titel="Niets te verrekenen">
         Zodra iemand meedoet aan een post die jij betaalt — of jij aan een van hen — staat het hier.
@@ -72,30 +75,33 @@ export default function Verrekenen({ kasboek, maand }) {
 
   return (
     <>
-      {naarPotten.length > 0 && (
+      {metPotten.length > 0 && (
         <>
-          <div className="kop">Naar de gezamenlijke pot</div>
+          <div className="kop">Met de gezamenlijke rekeningen</div>
           <div className="paneel">
-            {naarPotten.map((s) => {
-              const p = personen.find((x) => x.id === s.van);
+            {metPotten.map((s) => {
+              const heen = !isPot(s.van);
+              const persoon = personen.find((x) => x.id === partijId(heen ? s.van : s.naar));
+              const rekeningNaam = partijNaam(heen ? s.naar : s.van, { personen, rekeningen });
               return (
                 <Post
                   key={`${s.van}-${s.naar}`}
-                  links={<Wie persoon={p} maat="klein" />}
-                  wat={p?.naam || '?'}
-                  onder={`naar ${partijNaam(s.naar, { personen, rekeningen })}`}
-                  centen={s.centen}
+                  links={<Wie persoon={persoon} maat="klein" />}
+                  wat={persoon?.naam || '?'}
+                  onder={heen ? `stort op ${rekeningNaam}` : `krijgt terug van ${rekeningNaam}`}
+                  centen={heen ? s.centen : -s.centen}
+                  toon={heen ? '' : 'tegoed'}
                 />
               );
             })}
             <Som
               label={`Per maand · ${toonMaand(maand)}`}
-              centen={naarPotten.reduce((s, x) => s + x.centen, 0)}
+              centen={metPotten.reduce((s, x) => s + (isPot(x.van) ? -x.centen : x.centen), 0)}
             />
           </div>
           <div className="tip">
-            Storten in de pot is geen kostenpost — je zet er geld klaar waar de gedeelde lasten van
-            afgaan. Wat ieder werkelijk draagt staat op het overzicht.
+            Storten is geen kostenpost — je zet er geld klaar waar de gedeelde lasten van afgaan.
+            Wat ieder werkelijk draagt staat op het overzicht.
           </div>
         </>
       )}

@@ -5,7 +5,7 @@ const personen = [{ id: 'a', naam: 'Ik', is_mij: true }, { id: 'b', naam: 'Anne'
 const rekeningen = [{ id: 'r', naam: 'Gezamenlijk', soort: 'gezamenlijk', deelnemers: ['a', 'b'] }];
 const posten = [{
   id: '1', naam: 'Huur', bedrag: 140000, ritme: 'maand', categorie: 'wonen',
-  betaler: { soort: 'rekening', id: 'r' },
+  bundel: 'Hypotheek', betaler: { soort: 'rekening', id: 'r' },
   verdeling: { soort: 'gelijk', deelnemers: ['a', 'b'] },
 }];
 
@@ -13,7 +13,8 @@ describe('naarCsv', () => {
   it('schrijft een blad dat Excel meteen in kolommen zet', () => {
     const regels = naarCsv({ posten, personen, rekeningen }).split('\r\n');
     expect(regels[0].split(';')).toContain('Aandeel Anne');
-    expect(regels[1]).toContain('Huur;Wonen;1400,00');
+    expect(regels[0].split(';')).toContain('Incasso');
+    expect(regels[1]).toContain('Huur;Wonen;Hypotheek;1400,00');
     expect(regels[1].endsWith('700,00;700,00')).toBe(true);
   });
 

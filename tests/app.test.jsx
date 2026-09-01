@@ -40,15 +40,18 @@ describe('Pay in de lokale kluis', () => {
   it('rekent het voorbeeldhuishouden door tot op de cent', async () => {
     await start(voorbeeldKasboek());
 
-    // 1325 + 185 + 49 + 186/12 + 87/3 + 25,99 + 14,99 + 32,50
-    expect(screen.getAllByText('€ 1.676,98').length).toBeGreaterThan(0);
+    // 117 + 19 + 38,12 + 14,69 + 7,11 + 87/3 + 67,39 + 25,99 + 14,99 + 40
+    expect(screen.getAllByText('€ 373,29').length).toBeGreaterThan(0);
 
-    // YouTube (25,99 door vier, ik betaal) tegen Spotify (14,99 door twee,
-    // Pieter betaalt): netto € 1,00 van mij naar Pieter.
+    // YouTube (25,99 door vier, de zaak betaalt) tegen Spotify (14,99 door
+    // twee, Pieter betaalt): netto € 1,00 van mij naar Pieter.
     expect(screen.getAllByText('€ 1,00').length).toBeGreaterThan(0);
-    // Pieter en Sanne dragen elk een kwart van 25,99.
-    expect(screen.getAllByText('€ 6,50').length).toBeGreaterThan(0);
+    // Sanne draagt een kwart van 25,99 en staat daarmee rechtstreeks bij mij in
+    // het krijt: zij hoort niet bij de vaste-lastenrekening, dus daar loopt
+    // niets langs.
     expect(screen.getAllByText('€ 6,49').length).toBeGreaterThan(0);
+    // De twee verzekeringsposten staan samen op één incasso.
+    expect(screen.getByText('Verzekeringspakket')).toBeTruthy();
   });
 
   it('bewaart een nieuwe post en telt hem meteen mee', async () => {
@@ -59,7 +62,7 @@ describe('Pay in de lokale kluis', () => {
     await gebruiker.type(screen.getByPlaceholderText(/Gas\/Stroom/), 'Krant');
     await gebruiker.type(screen.getByPlaceholderText('0,00'), '12,50');
     const paneel = screen.getByRole('heading', { name: 'Nieuwe post' }).closest('.blad');
-    await gebruiker.click(within(paneel).getByRole('button', { name: /Gezamenlijk/ }));
+    await gebruiker.click(within(paneel).getByRole('button', { name: /Vaste lasten/ }));
     await gebruiker.click(within(paneel).getByRole('button', { name: 'Bewaren' }));
 
     expect(await screen.findByText('Krant')).toBeTruthy();

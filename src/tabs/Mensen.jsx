@@ -93,6 +93,7 @@ export default function Mensen({ kasboek }) {
         <RekeningForm
           rekening={rekening}
           personen={personen}
+          rekeningen={rekeningen}
           onBewaar={(rij) => bewaar('rekeningen', rij)}
           onVerwijder={(id) => verwijder('rekeningen', id)}
           onSluit={() => setRekening(null)}
@@ -230,9 +231,10 @@ function PersoonForm({ persoon, personen, cloud, onClaim, onBewaar, onVerwijder,
   );
 }
 
-function RekeningForm({ rekening, personen, onBewaar, onVerwijder, onSluit }) {
+function RekeningForm({ rekening, personen, rekeningen, onBewaar, onVerwijder, onSluit }) {
   const [concept, setConcept] = useState(() => ({
-    naam: '', soort: 'gezamenlijk', eigenaar_id: null, deelnemers: [], stortingen: {}, iban: '', ...rekening,
+    naam: '', soort: 'gezamenlijk', eigenaar_id: null, deelnemers: [], stortingen: {},
+    iban: '', afrekenpot: false, ...rekening,
   }));
   const [fout, setFout] = useState(null);
   const [vraag, setVraag] = useState(false);
@@ -251,12 +253,22 @@ function RekeningForm({ rekening, personen, onBewaar, onVerwijder, onSluit }) {
       const stortingen = Object.fromEntries(
         Object.entries(concept.stortingen || {}).filter(([id]) => deelnemers.includes(id))
       );
+      // Er kan er maar één de afrekenrekening zijn; anders weet de motor niet
+      // waar een verrekening heen moet. Zet hem dus bij de rest uit.
+      if (concept.afrekenpot && gezamenlijk) {
+        for (const andere of rekeningen) {
+          if (andere.id !== rekening.id && andere.afrekenpot) {
+            await onBewaar({ ...andere, afrekenpot: false });
+          }
+        }
+      }
       await onBewaar({
         ...concept,
         naam: concept.naam.trim(),
         deelnemers: gezamenlijk ? deelnemers : [],
         stortingen: gezamenlijk ? stortingen : {},
         eigenaar_id: gezamenlijk ? null : concept.eigenaar_id,
+        afrekenpot: gezamenlijk ? Boolean(concept.afrekenpot) : false,
       });
       onSluit();
     } catch (err) {
@@ -314,6 +326,28 @@ function RekeningForm({ rekening, personen, onBewaar, onVerwijder, onSluit }) {
                 </button>
               ))}
             </div>
+          </Veld>
+
+          <Veld label="Verrekenen">
+            <label className="optie" style={{ cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={Boolean(concept.afrekenpot)}
+                onChange={(e) => zet({ afrekenpot: e.target.checked })}
+                style={{ marginTop: 3 }}
+              />
+              <span>
+                <span className="t" style={{ display: 'block' }}>
+                  Onderlinge verrekeningen lopen hierlangs
+                </span>
+                <span className="b" style={{ display: 'block' }}>
+                  Iedereen stort zijn hele aandeel op deze rekening — ook voor dingen die van een
+                  eigen of zakelijke rekening af gingen. Deze rekening betaalt dat daarna terug aan
+                  wie het voorschoot, zodat er één bedrag per persoon overblijft in plaats van
+                  losse verrekeningen.
+                </span>
+              </span>
+            </label>
           </Veld>
 
           {deelnemers.length > 0 && (

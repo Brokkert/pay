@@ -36,6 +36,26 @@ De gezamenlijke rekening telt daarbij als een eigen partij in de boeken. "Wat
 moet zij overmaken" is dus geen apart soort som, maar gewoon haar schuld aan die
 partij — dezelfde berekening als de rest.
 
+### Alles langs één rekening
+
+Zet je bij een gezamenlijke rekening aan dat de verrekeningen daarlangs lopen,
+dan valt de laatste rommel ook weg. Betaalt de zaak het internet, dan heeft je
+vriendin jóu haar helft schuldig — maar zo werkt het in het echt niet: ze stort
+het gewoon op de vaste-lastenrekening, samen met de rest. Pay rekent dat ook zo
+door. Die rekening staat het daarna aan jou schuldig, en dat streept weg tegen
+wat jij er nog in moet doen:
+
+| | |
+|---|---|
+| Zij maakt over | haar hele aandeel, in één bedrag |
+| Jij maakt over | jouw aandeel **min** wat je van een andere rekening voorschoot |
+
+Onder de streep gaat er geen enkel los bedrag heen en weer, en klopt de rekening
+nog steeds tot op de cent. Wat je een vriend buiten die rekening schuldig bent,
+betaal je hem gewoon rechtstreeks.
+
+### Kruislings
+
 Daardoor verrekent alles kruislings vanzelf. Zit Pieter in jouw YouTube Family
 (€ 6,50 per maand) en zit jij in zijn Spotify Duo (€ 7,50), dan rolt daar netto
 **€ 1,00 van jou naar Pieter** uit. Je hoeft nergens iets af te trekken; er staat
@@ -55,8 +75,12 @@ Daardoor verrekent alles kruislings vanzelf. Zit Pieter in jouw YouTube Family
   navertellen ga je niet vertrouwen.
 - **👥 Mensen** — personen en rekeningen. Niet iedere persoon hoeft een account
   te hebben: de vriend met wie je een abonnement deelt staat er gewoon in.
-- **📋 Plakken uit Excel** — sleep twee kolommen uit je bestaande overzicht
-  hierheen; tabs, puntkomma's, euro-tekens en kopregels worden herkend.
+- **Per incasso** — posten die samen op één afschrijving staan (het
+  verzekeringspakket, de zorgverzekeraar) geef je dezelfde incassonaam. Pay telt
+  ze op, zodat je het bedrag herkent op je bankafschrift.
+- **📋 Plakken uit Excel of Numbers** — sleep twee kolommen uit je bestaande
+  overzicht hierheen; tabs, puntkomma's, euro-tekens en kopregels worden
+  herkend.
 - **⬇️ Exporteren** — een CSV die rechtstreeks in Excel opent, met per post het
   maandbedrag, het jaarbedrag en het aandeel van iedereen in een eigen kolom.
 

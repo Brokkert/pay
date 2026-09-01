@@ -17,10 +17,11 @@ const leegPost = (mij) => ({
   tot: '',
   gepauzeerd: false,
   zakelijk: false,
+  bundel: '',
   notitie: '',
 });
 
-export default function PostForm({ post, personen, rekeningen, onBewaar, onVerwijder, onSluit }) {
+export default function PostForm({ post, personen, rekeningen, bundels = [], onBewaar, onVerwijder, onSluit }) {
   const mij = personen.find((p) => p.is_mij)?.id;
   const [concept, setConcept] = useState(() => ({ ...leegPost(mij), ...post }));
   const [bezig, setBezig] = useState(false);
@@ -120,6 +121,22 @@ export default function PostForm({ post, personen, rekeningen, onBewaar, onVerwi
         <select className="keuze" value={concept.categorie} onChange={(e) => zet({ categorie: e.target.value })}>
           {CATEGORIEEN.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
         </select>
+      </Veld>
+
+      <Veld
+        label="Incasso"
+        tip="Staat deze post samen met andere op één afschrijving? Geef die afschrijving dan een naam, dan telt Pay ze bij elkaar op — handig om tegen je bankafschrift te houden. Leeg laten mag."
+      >
+        <input
+          className="invoer"
+          list="pay-bundels"
+          placeholder="Verzekeringspakket, VGZ…"
+          value={concept.bundel || ''}
+          onChange={(e) => zet({ bundel: e.target.value })}
+        />
+        <datalist id="pay-bundels">
+          {bundels.map((b) => <option key={b} value={b} />)}
+        </datalist>
       </Veld>
 
       <details className="uitklap" style={{ marginBottom: 18 }}>

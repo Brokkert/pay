@@ -35,9 +35,9 @@ export const nieuwId = () =>
 // --- welke velden de database kent -------------------------------------------
 const VELDEN = {
   personen: ['naam', 'kleur', 'is_mij', 'gekoppeld_aan'],
-  rekeningen: ['naam', 'soort', 'eigenaar_id', 'deelnemers', 'stortingen', 'iban'],
-  posten: ['naam', 'bedrag', 'ritme', 'betaler', 'verdeling', 'categorie', 'vanaf', 'tot',
-    'gepauzeerd', 'zakelijk', 'notitie', 'afgerekend'],
+  rekeningen: ['naam', 'soort', 'eigenaar_id', 'deelnemers', 'stortingen', 'iban', 'afrekenpot'],
+  posten: ['naam', 'bedrag', 'ritme', 'betaler', 'verdeling', 'categorie', 'bundel', 'vanaf',
+    'tot', 'gepauzeerd', 'zakelijk', 'notitie', 'afgerekend'],
 };
 const TABEL = { personen: 'pay_personen', rekeningen: 'pay_rekeningen', posten: 'pay_posten' };
 
@@ -183,7 +183,7 @@ export function useKasboek(user) {
   );
 
   /**
-   * Een hele bundel in één keer invoeren.
+   * Een hele set in één keer invoeren.
    *
    * De volgorde is niet vrijblijvend: rekeningen wijzen naar personen en posten
    * naar allebei, dus de oude id's moeten al vertaald zijn voor we ze
@@ -191,16 +191,16 @@ export function useKasboek(user) {
    * database de id's uitdeelt.
    */
   const voerIn = useCallback(
-    async (bundel) => {
+    async (set) => {
       const aantal =
-        bundel.personen.length + bundel.rekeningen.length + bundel.posten.length;
+        set.personen.length + set.rekeningen.length + set.posten.length;
       if (!aantal) return 0;
 
       if (!cloud) {
         bewaarLokaal({
-          personen: [...staat.personen, ...bundel.personen],
-          rekeningen: [...staat.rekeningen, ...bundel.rekeningen],
-          posten: [...staat.posten, ...bundel.posten],
+          personen: [...staat.personen, ...set.personen],
+          rekeningen: [...staat.rekeningen, ...set.rekeningen],
+          posten: [...staat.posten, ...set.posten],
         });
         return aantal;
       }
@@ -208,7 +208,7 @@ export function useKasboek(user) {
       const supabase = getClient();
       const kaart = new Map();
       for (const soort of ['personen', 'rekeningen', 'posten']) {
-        for (const rij of bundel[soort]) {
+        for (const rij of set[soort]) {
           const schoon = hertaal(voorDb(soort, rij, true), kaart);
           const { data, error } = await supabase
             .from(TABEL[soort]).insert(schoon).select().single();

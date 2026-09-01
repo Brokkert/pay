@@ -24,7 +24,7 @@ const bedrag = (centen) => String((centen / 100).toFixed(2)).replace('.', ',');
 
 export function naarCsv({ posten, personen, rekeningen }) {
   const kop = [
-    'Post', 'Categorie', 'Bedrag', 'Ritme', 'Per maand', 'Per jaar',
+    'Post', 'Categorie', 'Incasso', 'Bedrag', 'Ritme', 'Per maand', 'Per jaar',
     'Betaald door', 'Zakelijk', 'Loopt vanaf', 'Loopt tot', 'Notitie',
     ...personen.map((p) => `Aandeel ${p.naam}`),
   ];
@@ -40,6 +40,7 @@ export function naarCsv({ posten, personen, rekeningen }) {
     return [
       post.naam,
       categorieVan(post.categorie).label,
+      post.bundel || '',
       bedrag(post.bedrag),
       ritmeVan(post.ritme).label,
       bedrag(maandbedrag),

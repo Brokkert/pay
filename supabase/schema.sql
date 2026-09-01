@@ -108,7 +108,11 @@ create table if not exists public.pay_rekeningen (
   deelnemers    uuid[] not null default '{}',
   stortingen    jsonb not null default '{}'::jsonb,
   iban          text not null default '',
-
+  -- Lopen de onderlinge verrekeningen via deze rekening? Zie routeerVia() in
+  -- src/lib/saldo.js: dan stort iedereen zijn hele aandeel hierop, ook voor
+  -- dingen die van een andere rekening af gingen, en verrekent die rekening dat
+  -- daarna met wie het voorschoot.
+  afrekenpot    boolean not null default false,
   created_at    timestamptz not null default now(),
   -- Een pot zonder deelnemers of een eigen rekening zonder eigenaar levert
   -- posten op die nergens terechtkomen. Dat vangen we hier af en niet pas in
@@ -138,6 +142,10 @@ create table if not exists public.pay_posten (
   ritme         text not null default 'maand'
                 check (ritme in ('maand', 'kwartaal', 'halfjaar', 'jaar', 'week', 'eenmalig')),
   categorie     text not null default 'overig',
+  -- Vrije naam van de incasso waar deze post op meelift ("Verzekeringspakket",
+  -- "VGZ"). Meerdere posten op één afschrijving: handig om af te vinken tegen
+  -- je bankafschrift.
+  bundel        text not null default '',
   betaler       jsonb not null default '{}'::jsonb,
   verdeling     jsonb not null default '{}'::jsonb,
   vanaf         date,
@@ -150,6 +158,10 @@ create table if not exists public.pay_posten (
   updated_at    timestamptz not null default now()
 );
 create index if not exists pay_posten_hh_idx on public.pay_posten (huishouden_id);
+
+-- Voor projecten die een eerdere versie van dit schema al gedraaid hebben.
+alter table public.pay_rekeningen add column if not exists afrekenpot boolean not null default false;
+alter table public.pay_posten     add column if not exists bundel text not null default '';
 
 -- ---------------------------------------------------------------------------
 -- Uitnodigingen
