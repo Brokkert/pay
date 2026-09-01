@@ -1,0 +1,33 @@
+name: Supabase wakker houden
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+# Supabase pauzeert gratis projecten als er te weinig gebeurt. Eén verzoek per
+# dag is genoeg om dat te voorkomen. Vul dezelfde twee waarden in als in
+# src/lib/config.js; zolang ze leeg zijn slaat deze workflow zichzelf over.
+env:
+  SUPABASE_URL: ''
+  SUPABASE_KEY: ''
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Even aantikken
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "Nog geen project ingesteld; niets te doen."
+            exit 0
+          fi
+          # pay_needs_bootstrap is de enige functie die anon mag aanroepen, en
+          # hij leest geen gegevens uit — precies goed om mee aan te tikken.
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/pay_needs_bootstrap" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H 'Content-Type: application/json' -d '{}')
+          echo "HTTP $code"
+          [ "$code" = "200" ]
