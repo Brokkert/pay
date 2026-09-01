@@ -142,9 +142,8 @@ create table if not exists public.pay_posten (
   ritme         text not null default 'maand'
                 check (ritme in ('maand', 'kwartaal', 'halfjaar', 'jaar', 'week', 'eenmalig')),
   categorie     text not null default 'overig',
-  -- Vrije naam van de incasso waar deze post op meelift ("Verzekeringspakket",
-  -- "VGZ"). Meerdere posten op één afschrijving: handig om af te vinken tegen
-  -- je bankafschrift.
+  -- Vrije naam van de incasso waar deze post op meelift. Meerdere posten op
+  -- één afschrijving: handig om af te vinken tegen je bankafschrift.
   bundel        text not null default '',
   betaler       jsonb not null default '{}'::jsonb,
   verdeling     jsonb not null default '{}'::jsonb,

@@ -6,17 +6,19 @@
 //   1. gewone gedeelde lasten van de vaste-lastenrekening;
 //   2. iets wat de zaak betaalt maar wat je samen gebruikt;
 //   3. een abonnement dat je met vrienden deelt en waar je geld voor terugkrijgt;
-//   4. een abonnement van iemand anders waar jij aan meebetaalt.
+//   4. een deel dat zakelijk is en dus door de zaak gedragen wordt.
 //
-// De bedragen zijn verzonnen. Alles is te wijzigen of in één klik weg te gooien.
+// Alle namen en bedragen hieronder zijn verzonnen: ronde getallen die nergens
+// op slaan, met opzet. Dit bestand staat in een openbare repo, dus er hoort
+// niets in wat op iemands werkelijke lasten lijkt.
 
 import { nieuwId } from '../lib/kasboek.js';
 
 export function voorbeeldKasboek() {
   const ik = nieuwId();
   const partner = nieuwId();
-  const pieter = nieuwId();
-  const sanne = nieuwId();
+  const vriend = nieuwId();
+  const buur = nieuwId();
 
   const vast = nieuwId();
   const prive = nieuwId();
@@ -25,8 +27,8 @@ export function voorbeeldKasboek() {
   const personen = [
     { id: ik, naam: 'Ik', kleur: '#0d6e5c', is_mij: true },
     { id: partner, naam: 'Partner', kleur: '#9a4f2c' },
-    { id: pieter, naam: 'Pieter', kleur: '#2f5fa8' },
-    { id: sanne, naam: 'Sanne', kleur: '#7a4a8f' },
+    { id: vriend, naam: 'Vriend', kleur: '#2f5fa8' },
+    { id: buur, naam: 'Buur', kleur: '#7a4a8f' },
   ];
 
   const rekeningen = [
@@ -35,7 +37,7 @@ export function voorbeeldKasboek() {
       naam: 'Vaste lasten',
       soort: 'gezamenlijk',
       deelnemers: [ik, partner],
-      stortingen: { [ik]: 12000, [partner]: 15500 },
+      stortingen: { [ik]: 15000, [partner]: 15000 },
       // Alles wordt hier verrekend: ook wat de zaak of een privérekening
       // voorschiet. Zo maakt ieder één bedrag over.
       afrekenpot: true,
@@ -47,50 +49,47 @@ export function voorbeeldKasboek() {
   const samen = { soort: 'gelijk', deelnemers: [ik, partner], gewichten: {} };
 
   const posten = [
-    { naam: 'Gas/Stroom', bedrag: 11700, categorie: 'nuts',
+    { naam: 'Energie', bedrag: 9000, categorie: 'nuts',
       betaler: { soort: 'rekening', id: vast }, verdeling: samen },
-    { naam: 'Water', bedrag: 1900, categorie: 'nuts',
-      betaler: { soort: 'rekening', id: vast }, verdeling: samen },
-    { naam: 'Gemeentebelasting', bedrag: 3812, categorie: 'belasting',
+    { naam: 'Water', bedrag: 1500, categorie: 'nuts',
       betaler: { soort: 'rekening', id: vast }, verdeling: samen },
 
-    // Twee posten op één afschrijving van de verzekeraar.
-    { naam: 'Inboedelverzekering', bedrag: 1469, categorie: 'verzekering',
-      bundel: 'Verzekeringspakket',
+    // Twee posten op één afschrijving van dezelfde verzekeraar.
+    { naam: 'Inboedel', bedrag: 1200, categorie: 'verzekering', bundel: 'Verzekeringen',
       betaler: { soort: 'rekening', id: vast }, verdeling: samen },
-    { naam: 'Aansprakelijkheid', bedrag: 711, categorie: 'verzekering',
-      bundel: 'Verzekeringspakket',
+    { naam: 'Aansprakelijkheid', bedrag: 800, categorie: 'verzekering', bundel: 'Verzekeringen',
       betaler: { soort: 'rekening', id: vast }, verdeling: samen },
 
-    { naam: 'Waterschap', bedrag: 8700, ritme: 'kwartaal', categorie: 'belasting',
+    { naam: 'Gemeentelijke heffingen', bedrag: 9000, ritme: 'kwartaal', categorie: 'belasting',
       betaler: { soort: 'rekening', id: vast }, verdeling: samen },
 
-    // Loopt op de zaak, maar we gebruiken het samen. Partner stort haar helft
+    // Loopt op de zaak, maar we gebruiken het samen. De partner stort haar helft
     // gewoon op de vaste-lastenrekening, en die betaalt het aan mij terug —
     // waardoor ik er zelf minder in hoef te doen.
-    { naam: 'TV + internet', bedrag: 6739, categorie: 'telecom', zakelijk: true,
+    { naam: 'Internet', bedrag: 5000, categorie: 'telecom', zakelijk: true,
       notitie: 'Loopt op de zaak; thuis gebruiken we het allebei.',
       betaler: { soort: 'rekening', id: zaak }, verdeling: samen },
 
-    // Zes plekken, vier vrienden betalen mee. Voeg ze toe bij Mensen en zet ze
-    // hier in de verdeling; wat zij je schuldig zijn rolt er vanzelf uit.
-    { naam: 'YouTube Family', bedrag: 2599, categorie: 'streaming',
-      betaler: { soort: 'rekening', id: zaak },
-      verdeling: { soort: 'gelijk', deelnemers: [ik, partner, pieter, sanne], gewichten: {} } },
+    // Een gedeeld abonnement met vrienden erbij. Voeg zoveel mensen toe als er
+    // meedoen; wat zij je schuldig zijn rolt er vanzelf uit.
+    { naam: 'Streamingdienst', bedrag: 2000, categorie: 'streaming',
+      betaler: { soort: 'rekening', id: prive },
+      verdeling: { soort: 'gelijk', deelnemers: [ik, partner, vriend, buur], gewichten: {} } },
 
-    // Andersom: Pieter betaalt, ik doe mee. Pay streept dit weg tegen YouTube.
-    { naam: 'Spotify Duo', bedrag: 1499, categorie: 'streaming',
-      notitie: 'Van Pieter; ik betaal mijn helft.',
-      betaler: { soort: 'persoon', id: pieter },
-      verdeling: { soort: 'gelijk', deelnemers: [ik, pieter], gewichten: {} } },
+    // Andersom: de vriend betaalt, ik doe mee. Pay streept dat weg tegen het
+    // abonnement hierboven.
+    { naam: 'Muziekdienst', bedrag: 1200, categorie: 'streaming',
+      notitie: 'Van de vriend; ik betaal mijn helft.',
+      betaler: { soort: 'persoon', id: vriend },
+      verdeling: { soort: 'gelijk', deelnemers: [ik, vriend], gewichten: {} } },
 
     // Vier delen bankkosten, waarvan er één zakelijk is. Dat kwart draagt de
     // zaak, niet jij privé — en de zaak maakt het gewoon over.
-    { naam: 'Bankkosten', bedrag: 2899, categorie: 'overig',
+    { naam: 'Bankkosten', bedrag: 1600, categorie: 'overig',
       betaler: { soort: 'rekening', id: vast },
       verdeling: { soort: 'delen', deelnemers: [], gewichten: { [ik]: 2, [partner]: 1, [`rekening:${zaak}`]: 1 } } },
 
-    { naam: 'Sportschool', bedrag: 4000, categorie: 'gezondheid',
+    { naam: 'Sportclub', bedrag: 2500, categorie: 'gezondheid',
       betaler: { soort: 'rekening', id: prive },
       verdeling: { soort: 'gelijk', deelnemers: [ik], gewichten: {} } },
   ];

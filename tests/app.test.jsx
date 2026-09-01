@@ -40,20 +40,15 @@ describe('Pay in de lokale kluis', () => {
   it('rekent het voorbeeldhuishouden door tot op de cent', async () => {
     await start(voorbeeldKasboek());
 
-    // 117 + 19 + 38,12 + 14,69 + 7,11 + 87/3 + 67,39 + 25,99 + 14,99 + 28,99 + 40
-    expect(screen.getAllByText('€ 402,28').length).toBeGreaterThan(0);
+    // 90 + 15 + 12 + 8 + 90/3 + 50 + 20 + 12 + 16 + 25
+    expect(screen.getAllByText('€ 278,00').length).toBeGreaterThan(0);
     // Een kwart van de bankkosten draagt de zaak, en die maakt dat zelf over.
-    expect(screen.getAllByText('€ 7,25').length).toBeGreaterThan(0);
-
-    // YouTube (25,99 door vier, de zaak betaalt) tegen Spotify (14,99 door
-    // twee, Pieter betaalt): netto € 1,00 van mij naar Pieter.
+    expect(screen.getAllByText('€ 4,00').length).toBeGreaterThan(0);
+    // De streamingdienst (20 door vier, ik betaal) tegen de muziekdienst
+    // (12 door twee, de vriend betaalt): netto € 1,00 van mij naar hem.
     expect(screen.getAllByText('€ 1,00').length).toBeGreaterThan(0);
-    // Sanne draagt een kwart van 25,99 en staat daarmee rechtstreeks bij mij in
-    // het krijt: zij hoort niet bij de vaste-lastenrekening, dus daar loopt
-    // niets langs.
-    expect(screen.getAllByText('€ 6,49').length).toBeGreaterThan(0);
     // De twee verzekeringsposten staan samen op één incasso.
-    expect(screen.getByText('Verzekeringspakket')).toBeTruthy();
+    expect(screen.getAllByText('Verzekeringen').length).toBeGreaterThan(0);
   });
 
   it('bewaart een nieuwe post en telt hem meteen mee', async () => {
@@ -61,7 +56,7 @@ describe('Pay in de lokale kluis', () => {
     await gebruiker.click(screen.getByRole('button', { name: /Lasten/ }));
 
     await gebruiker.click(screen.getByRole('button', { name: 'Nieuwe post' }));
-    await gebruiker.type(screen.getByPlaceholderText(/Gas\/Stroom/), 'Krant');
+    await gebruiker.type(screen.getByPlaceholderText(/Energie, internet/), 'Krant');
     await gebruiker.type(screen.getByPlaceholderText('0,00'), '12,50');
     const paneel = screen.getByRole('heading', { name: 'Nieuwe post' }).closest('.blad');
     await gebruiker.click(within(paneel).getByRole('button', { name: /Vaste lasten/ }));

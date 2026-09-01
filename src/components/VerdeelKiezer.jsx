@@ -2,7 +2,7 @@
 //
 // Het belangrijkste onderdeel van het formulier, en daarom staat er meteen
 // onder wat de gekozen verdeling in euro's betekent. Een percentage zegt niets;
-// "Mau € 310,25 per maand" wel.
+// "Partner € 152,64 per maand" wel.
 
 import { VERDELINGEN, verdeel, deelnemersVan, mogelijkeDragers } from '../lib/verdeel.js';
 import { perMaand } from '../lib/ritme.js';

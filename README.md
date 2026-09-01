@@ -56,10 +56,10 @@ betaal je hem gewoon rechtstreeks.
 
 ### Kruislings
 
-Daardoor verrekent alles kruislings vanzelf. Zit Pieter in jouw YouTube Family
-(€ 6,50 per maand) en zit jij in zijn Spotify Duo (€ 7,50), dan rolt daar netto
-**€ 1,00 van jou naar Pieter** uit. Je hoeft nergens iets af te trekken; er staat
-één regel.
+Daardoor verrekent alles kruislings vanzelf. Zit een vriend in jouw gedeelde
+abonnement (€ 6,50 per maand) en zit jij in het zijne (€ 7,50), dan rolt daar
+netto **€ 1,00 van jou naar hem** uit. Je hoeft nergens iets af te trekken; er
+staat één regel.
 
 ## Wat er in zit
 
@@ -75,9 +75,8 @@ Daardoor verrekent alles kruislings vanzelf. Zit Pieter in jouw YouTube Family
   navertellen ga je niet vertrouwen.
 - **👥 Mensen** — personen en rekeningen. Niet iedere persoon hoeft een account
   te hebben: de vriend met wie je een abonnement deelt staat er gewoon in.
-- **Per incasso** — posten die samen op één afschrijving staan (het
-  verzekeringspakket, de zorgverzekeraar) geef je dezelfde incassonaam. Pay telt
-  ze op, zodat je het bedrag herkent op je bankafschrift.
+- **Per incasso** — posten die samen op één afschrijving staan geef je dezelfde
+  incassonaam. Pay telt ze op, zodat je het bedrag herkent op je bankafschrift.
 - **📋 Plakken uit Excel of Numbers** — sleep twee kolommen uit je bestaande
   overzicht hierheen; tabs, puntkomma's, euro-tekens en kopregels worden
   herkend.

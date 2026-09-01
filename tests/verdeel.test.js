@@ -51,9 +51,9 @@ describe('verdeel', () => {
   });
 
   it('verdeelt in delen (twee van de vijf plekken)', () => {
-    const { delen } = verdeel(1799, { soort: 'delen', gewichten: { ik: 2, pieter: 1, sanne: 1, joost: 1 } });
+    const { delen } = verdeel(1799, { soort: 'delen', gewichten: { a: 2, b: 1, c: 1, d: 1 } });
     expect(som(delen)).toBe(1799);
-    expect(delen.ik).toBeGreaterThan(delen.pieter);
+    expect(delen.a).toBeGreaterThan(delen.b);
   });
 
   it('meldt het als vaste bedragen niet optellen', () => {

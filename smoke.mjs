@@ -46,14 +46,14 @@ for (const tab of ['Overzicht', 'Lasten', 'Verrekenen', 'Mensen']) {
 
 // Een post openen en weer sluiten.
 await pagina.getByRole('button', { name: /Lasten/ }).click();
-await pagina.getByText('YouTube Family').first().click();
+await pagina.getByText('Streamingdienst').first().click();
 await pagina.waitForTimeout(200);
 await kiek('post');
 await pagina.getByRole('button', { name: 'Sluiten' }).click();
 
 // En het scherm waar je in het echt begint: een lege post invullen.
 await pagina.getByRole('button', { name: 'Nieuwe post' }).click();
-await pagina.getByPlaceholder(/Gas\/Stroom/).fill('Krant');
+await pagina.getByPlaceholder(/Energie, internet/).fill('Krant');
 await pagina.getByPlaceholder('0,00').fill('12,50');
 await pagina.waitForTimeout(150);
 await kiek('nieuw');

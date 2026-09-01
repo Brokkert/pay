@@ -51,7 +51,7 @@ export default function PostForm({ post, personen, rekeningen, bundels = [], onB
         <input
           className="invoer"
           autoFocus
-          placeholder="Gas/Stroom, YouTube Family, zorgverzekering…"
+          placeholder="Energie, internet, verzekering…"
           value={concept.naam}
           onChange={(e) => zet({ naam: e.target.value })}
         />
@@ -131,7 +131,7 @@ export default function PostForm({ post, personen, rekeningen, bundels = [], onB
         <input
           className="invoer"
           list="pay-bundels"
-          placeholder="Verzekeringspakket, VGZ…"
+          placeholder="Naam van de afschrijving"
           value={concept.bundel || ''}
           onChange={(e) => zet({ bundel: e.target.value })}
         />

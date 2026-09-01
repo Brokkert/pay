@@ -210,7 +210,7 @@ function PlakPaneel({ kasboek, onKlaar, onSluit }) {
           className="tekstvak"
           style={{ minHeight: 160, fontFamily: 'var(--num)', fontSize: 13 }}
           autoFocus
-          placeholder={'Gas/Stroom\t117,00\nZorgverzekering\t158,07\nMotorverzekeringen\t107,58'}
+          placeholder={'Energie\t90,00\nInternet\t50,00\nVerzekering\t18,00\tper jaar'}
           value={tekst}
           onChange={(e) => setTekst(e.target.value)}
         />

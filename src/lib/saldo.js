@@ -6,8 +6,9 @@
 // hetzelfde. Wie een deel draagt maar niet de betaler is, staat bij die betaler
 // in het krijt. Meer is er niet.
 //
-// Daardoor verrekent alles kruislings vanzelf. Zit Pieter in jouw YouTube-abo en
-// zit jij in zijn Spotify, dan rolt daar één regel uit in plaats van twee.
+// Daardoor verrekent alles kruislings vanzelf. Zit een vriend in jouw gedeelde
+// abonnement en zit jij in het zijne, dan rolt daar één regel uit in plaats van
+// twee.
 //
 // In de boekhouding is een partij óf een persoon óf een gezamenlijke rekening.
 // Die tweede telt volwaardig mee: hij kan geld te goed hebben (ieders aandeel in
