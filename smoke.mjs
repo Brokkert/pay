@@ -67,6 +67,35 @@ await page.getByPlaceholder('0,00').fill('12,50');
 await page.waitForTimeout(150);
 await shot('new');
 
+// The sheet has to fit the space you can actually see. On iOS the keyboard
+// does not shrink the viewport dvh is measured against, so a sheet sized in dvh
+// keeps its full height and everything below the fold — the save button
+// included — ends up behind the keyboard, unreachable. Fake that here.
+const KEYBOARD = 340;
+await page.evaluate((keyboard) => {
+  const vv = window.visualViewport;
+  Object.defineProperty(vv, 'height', { value: window.innerHeight - keyboard, configurable: true });
+  vv.dispatchEvent(new Event('resize'));
+}, KEYBOARD);
+await page.waitForTimeout(150);
+const reachable = await page.evaluate((keyboard) => {
+  const visible = window.innerHeight - keyboard;
+  const body = document.querySelector('.sheet-body');
+  body.scrollTop = body.scrollHeight;
+  const save = [...document.querySelectorAll('.sheet button')].find((b) => b.textContent.trim() === 'Bewaren');
+  return {
+    bottom: Math.round(document.querySelector('.sheet').getBoundingClientRect().bottom),
+    visible,
+    saveBottom: save ? Math.round(save.getBoundingClientRect().bottom) : null,
+  };
+}, KEYBOARD);
+if (reachable.bottom > reachable.visible + 1) {
+  errors.push(`sheet runs to ${reachable.bottom} with only ${reachable.visible} visible`);
+}
+if (reachable.saveBottom === null || reachable.saveBottom > reachable.visible + 1) {
+  errors.push(`"Bewaren" not reachable with the keyboard up (${reachable.saveBottom})`);
+}
+
 // Whatever is left in the browser should be unreadable.
 const stored = await page.evaluate(() => localStorage.getItem('pay:store') || '');
 for (const word of ['Energie', 'Internet', 'Partner', 'Krant']) {

@@ -617,7 +617,13 @@ button.item:active { background: var(--sunk); }
 
 .overlay {
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  /* Not inset:0 — the top and the height follow the visible viewport, so the
+     sheet sits above the on-screen keyboard instead of behind it. */
+  top: var(--vv-top, 0px);
+  height: var(--vv-height, 100dvh);
+  overscroll-behavior: contain;
   z-index: 50;
   background: rgba(22, 18, 10, 0.42);
   backdrop-filter: blur(3px);
@@ -632,7 +638,8 @@ button.item:active { background: var(--sunk); }
   background: var(--paper);
   width: 100%;
   max-width: 720px;
-  max-height: 93dvh;
+  max-height: 93%;
+  min-height: 0;
   border-radius: 24px 24px 0 0;
   display: flex;
   flex-direction: column;
@@ -654,7 +661,17 @@ button.item:active { background: var(--sunk); }
   flex: 1;
   line-height: 1.2;
 }
-.sheet-body { padding: 20px 20px calc(28px + var(--safe-b)); overflow-y: auto; }
+/* flex:1 with min-height:0 is what actually makes this scroll. Without the
+   min-height a flex item refuses to shrink below its content, so the panel just
+   grows past the sheet and overflow-y never gets anything to do. */
+.sheet-body {
+  padding: 20px 20px calc(28px + var(--safe-b));
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { transform: translateY(20px); opacity: 0.5; } }

@@ -17,6 +17,32 @@ export function Sheet({ title, onClose, children, actions = null }) {
     };
   }, [onClose]);
 
+  // Fit the sheet to the space you can actually see.
+  //
+  // On iOS the on-screen keyboard does not shrink the viewport that dvh is
+  // measured against, so a sheet of 93dvh keeps the height of the whole screen
+  // and its bottom — the save button, the last few fields — sits behind the
+  // keyboard with no way to scroll to it. visualViewport does report the space
+  // left over, so the overlay follows that instead.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return undefined;
+    const root = document.documentElement;
+    const apply = () => {
+      root.style.setProperty('--vv-height', `${Math.round(vv.height)}px`);
+      root.style.setProperty('--vv-top', `${Math.round(vv.offsetTop)}px`);
+    };
+    apply();
+    vv.addEventListener('resize', apply);
+    vv.addEventListener('scroll', apply);
+    return () => {
+      vv.removeEventListener('resize', apply);
+      vv.removeEventListener('scroll', apply);
+      root.style.removeProperty('--vv-height');
+      root.style.removeProperty('--vv-top');
+    };
+  }, []);
+
   return (
     <div className="overlay" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
