@@ -100,7 +100,6 @@ export function readBackup(source) {
       kind,
       ...(a.ownerId ? { ownerId: known(a.ownerId, where, 'persoon') } : {}),
       ...(Array.isArray(a.members) ? { members: a.members.map((m) => known(m, where, 'persoon')) } : {}),
-      ...(Array.isArray(a.settles) ? { settles: a.settles.map((s) => known(s, where, 'persoon')) } : {}),
       ...(a.contributions
         ? {
             contributions: Object.fromEntries(

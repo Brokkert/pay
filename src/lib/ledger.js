@@ -53,12 +53,34 @@ export const settlementAccount = (accounts) =>
   accounts.find((a) => a.kind === 'shared' && a.settlement) || null;
 
 /**
- * Everyone whose debts run through this account: the people who fill it, plus
- * anyone added purely to settle through it.
+ * Who settles through the account, worked out rather than asked.
+ *
+ * The people who fill it, always. And on top of that anyone who this month has
+ * something going out *and* something coming in with them: a friend on your
+ * YouTube who also pays for a service you use. Those two have to meet somewhere
+ * to cancel, and this is where.
+ *
+ * Someone who only owes — the rest of the people on that subscription — is left
+ * alone. There is nothing to cancel, so routing would only move the arrow
+ * without changing a cent.
  */
-export const settlersOf = (account) => [
-  ...new Set([...(account?.members || []), ...(account?.settles || [])]),
-];
+function settlersIn(matrix, hub, members) {
+  const settlers = new Set(members);
+  const owes = new Set();
+  const owed = new Set();
+  const orbit = (party) =>
+    party === hub || (!isAccountParty(party) && members.has(partyId(party)));
+
+  for (const [from, targets] of Object.entries(matrix)) {
+    for (const [to, cents] of Object.entries(targets)) {
+      if (!cents) continue;
+      if (!isAccountParty(from) && orbit(to)) owes.add(partyId(from));
+      if (!isAccountParty(to) && orbit(from)) owed.add(partyId(to));
+    }
+  }
+  for (const id of owes) if (owed.has(id)) settlers.add(id);
+  return settlers;
+}
 
 /**
  * Works out one month. `month` is 'yyyy-mm'.
@@ -118,11 +140,10 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
   }
 
   const hub = settlementAccount(accounts);
-  // Two different questions, and they used to share one answer. Who fills the
-  // account is `members`; who settles through it is that plus `settles`. A
-  // friend on a shared subscription belongs in the second list and not the
-  // first: he owes you, he does not pay into your household.
-  if (hub) routeThrough(raw, accountParty(hub.id), new Set(settlersOf(hub)));
+  if (hub) {
+    const party = accountParty(hub.id);
+    routeThrough(raw, party, settlersIn(raw, party, new Set(hub.members || [])));
+  }
 
   const transfers = net(raw);
 
@@ -185,8 +206,8 @@ function book(matrix, from, to, cents) {
  * still have to put in. In the end nobody moves a loose amount around, and you
  * transfer less yourself.
  *
- * Only between those who settle through that account. What you owe a friend who has nothing to
- * do with it, you simply pay him directly.
+ * Only between those who settle through it — see settlersIn. What you owe a
+ * friend who has nothing else to do with you, you simply pay him directly.
  */
 function routeThrough(matrix, hub, settlers) {
   for (const [from, targets] of Object.entries(matrix)) {

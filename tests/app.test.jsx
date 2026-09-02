@@ -186,7 +186,7 @@ describe('a friend who settles through the bills account', () => {
         { id: frans, name: 'Frans', colour: '#2f5fa8' },
       ],
       accounts: [
-        { id: bills, name: 'BUNQ', kind: 'shared', members: [me, mau], settles: [frans], settlement: true },
+        { id: bills, name: 'BUNQ', kind: 'shared', members: [me, mau], settlement: true },
       ],
       expenses: [
         { ...base, id: 'yt', name: 'YouTube Family', amount: 1497,

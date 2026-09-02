@@ -353,11 +353,10 @@ describe('payerParty', () => {
   });
 });
 
-describe('settling through an account without paying into it', () => {
-  // Frans is not part of the household: he does not fill the bills account and
-  // has no fixed deposit. But he is on the shared YouTube subscription and pays
-  // for a service you use in full, so those two have to cancel out — and the
-  // payment leaves the bills account, because that is where it comes from.
+describe('someone outside the household with something either way', () => {
+  // Frans does not fill the bills account and has no fixed deposit. He is on
+  // the shared YouTube and pays for a service you use in full: one out, one in.
+  // Nothing is configured anywhere — having both is what makes them cancel.
   const me = 'me', mau = 'mau', frans = 'frans';
   const bills = 'bills';
   const people = [
@@ -377,14 +376,27 @@ describe('settling through an account without paying into it', () => {
   const find = (r, from, to) =>
     r.transfers.find((t) => t.from === from && t.to === to)?.cents ?? 0;
 
-  it('leaves the two debts standing apart when he settles on his own', () => {
-    const r = forMonth({ people, accounts: account({}), expenses }, '2026-09');
-    expect(find(r, `person:${frans}`, `account:${bills}`)).toBe(800);
-    expect(find(r, `person:${me}`, `person:${frans}`)).toBe(1200);
+  it('leaves alone anyone who only owes', () => {
+    // Rou is on the same subscription and nothing more. His 6,00 goes straight
+    // to the account that pays it; there is nothing to net it against.
+    const rou = 'rou';
+    const r = forMonth(
+      {
+        people: [...people, { id: rou, name: 'Rou' }],
+        accounts: account({}),
+        expenses: [
+          { ...expenses[0], split: equal(me, mau, frans, rou) },
+          expenses[1],
+        ],
+      },
+      '2026-09'
+    );
+    expect(find(r, `person:${rou}`, `account:${bills}`)).toBe(600);
+    expect(r.transfers.filter((t) => t.from === `person:${rou}`).length).toBe(1);
   });
 
-  it('nets them to one payment out of the account when he settles through it', () => {
-    const r = forMonth({ people, accounts: account({ settles: [frans] }), expenses }, '2026-09');
+  it('nets one against the other, without being told to', () => {
+    const r = forMonth({ people, accounts: account({}), expenses }, '2026-09');
     // 12,00 owed to him minus his 8,00 share: 4,00 out of the account.
     expect(find(r, `account:${bills}`, `person:${frans}`)).toBe(400);
     expect(find(r, `person:${frans}`, `account:${bills}`)).toBe(0);
@@ -394,7 +406,7 @@ describe('settling through an account without paying into it', () => {
   });
 
   it('keeps the account balanced to the cent', () => {
-    const r = forMonth({ people, accounts: account({ settles: [frans] }), expenses }, '2026-09');
+    const r = forMonth({ people, accounts: account({}), expenses }, '2026-09');
     const into = r.transfers
       .filter((t) => t.to === `account:${bills}`).reduce((s, t) => s + t.cents, 0);
     const outOf = r.transfers
@@ -404,7 +416,7 @@ describe('settling through an account without paying into it', () => {
   });
 
   it('does not turn him into someone who fills the account', () => {
-    const r = forMonth({ people, accounts: account({ settles: [frans] }), expenses }, '2026-09');
+    const r = forMonth({ people, accounts: account({}), expenses }, '2026-09');
     const pot = r.pots.find((p) => p.account.id === bills);
     expect(pot.contributions[frans]).toBeUndefined();
     // He still bears his share of YouTube, like anyone else on it.
@@ -418,7 +430,7 @@ describe('explaining a transfer', () => {
     { id: me, name: 'Ik', isMe: true }, { id: mau, name: 'Mau' }, { id: frans, name: 'Frans' },
   ];
   const accounts = [
-    { id: bills, name: 'BUNQ', kind: 'shared', members: [me, mau], settles: [frans], settlement: true },
+    { id: bills, name: 'BUNQ', kind: 'shared', members: [me, mau], settlement: true },
   ];
   const equal = (...ids) => ({ kind: 'equal', participants: ids, weights: {} });
   const base = { cadence: 'month', category: 'media', charge: '', note: '', business: false, paused: false };
