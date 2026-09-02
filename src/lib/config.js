@@ -1,13 +1,14 @@
 // Connection to your own (free) Supabase project.
 //
-// Fill in the two values from Supabase under Settings → API. The publishable key
-// belongs in source code: it is meant to be public and grants nothing on its own
-// — Row Level Security handles that (see supabase/schema.sql).
+// The two values from Supabase under Settings → API. The publishable key
+// belongs in source code: it is meant to be public and grants nothing on its
+// own — Row Level Security handles that (see supabase/schema.sql). It ships in
+// the bundle of every Supabase app for exactly that reason.
 //
-// While these are empty, Pay runs in local mode: everything stays in this
+// Leave these empty and Pay runs in local mode: everything stays in this
 // browser and sharing is off.
-export const SUPABASE_URL = '';
-export const SUPABASE_KEY = '';
+export const SUPABASE_URL = 'https://kybcuhpmnlhkomjsnozl.supabase.co';
+export const SUPABASE_KEY = 'sb_publishable_MN1g1l7SufRGrhTQ742mGQ_3pAkhkAH';
 
 // Handy for testing without a rebuild: what you fill in under Settings wins.
 const OVERRIDE = 'pay:supabase';

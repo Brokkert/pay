@@ -9,8 +9,8 @@ on:
 # is enough to prevent that. Fill in the same two values as in
 # src/lib/config.js; while they are empty this workflow skips itself.
 env:
-  SUPABASE_URL: ''
-  SUPABASE_KEY: ''
+  SUPABASE_URL: 'https://kybcuhpmnlhkomjsnozl.supabase.co'
+  SUPABASE_KEY: 'sb_publishable_MN1g1l7SufRGrhTQ742mGQ_3pAkhkAH'
 
 jobs:
   ping:

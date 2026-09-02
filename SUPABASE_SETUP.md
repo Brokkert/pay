@@ -69,7 +69,7 @@ in **Authentication → Emails → Magic Link** iets als:
 
 Onder **Authentication → URL Configuration**:
 
-- **Site URL**: `https://<jouw-github-naam>.github.io/pay/`
+- **Site URL**: `https://brokkert.github.io/pay/`
 - **Redirect URLs**: dezelfde, plus `http://localhost:5173/` om lokaal te kunnen
   ontwikkelen.
 
