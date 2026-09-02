@@ -259,3 +259,30 @@ describe('changing one person\'s amount', () => {
     expect(fields.map((f) => f.value)).toContain('5,00');
   }, 30000);
 });
+
+describe('clearing an amount to retype it', () => {
+  it('keeps the row, and the field you are typing in', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Streamingdienst'));
+    await user.click(await screen.findByRole('button', { name: /Bedrag voor Ik zelf invullen/i }));
+
+    const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    // The first 0,00 field is the expense's own amount; the split rows follow.
+    const splitFields = () => within(sheet).getAllByPlaceholderText('0,00').slice(1);
+    const mine = splitFields()[0];
+    expect(mine.value).toBe('5,00');
+
+    // Backspace all the way to empty: the row used to vanish here, because a
+    // weight of zero dropped the bearer out of the split.
+    await user.clear(mine);
+    expect(splitFields().length).toBe(4);
+    expect(document.body.contains(mine)).toBe(true);
+
+    // And typing carries on in the same field.
+    await user.type(mine, '7,50');
+    expect(splitFields()[0].value).toBe('7,50');
+    expect(within(sheet).getAllByText('€ 7,50').length).toBeGreaterThan(0);
+  }, 30000);
+});

@@ -4,13 +4,7 @@
 // in euros sits right underneath it. A percentage says nothing; "Partner
 // € 152,64 per maand" does.
 
-import {
-  SPLIT_KINDS,
-  split,
-  participantsOf,
-  possibleBearers,
-  ACCOUNT_PREFIX,
-} from '../lib/split.js';
+import { SPLIT_KINDS, split, possibleBearers, ACCOUNT_PREFIX } from '../lib/split.js';
 import { perMonth } from '../lib/cadence.js';
 import { Field, Money, BearerAvatar, AmountInput } from './ui.jsx';
 
@@ -19,7 +13,13 @@ export default function SplitPicker({ amount, cadence, spec, people, accounts = 
   const bearerOf = (key) => bearers.find((b) => b.key === key);
 
   const s = spec || { kind: 'equal', participants: [], weights: {} };
-  const taking = participantsOf(s);
+  // Who is in this split according to the editor — including anyone sitting at
+  // zero for a moment. participantsOf() answers "who actually bears something"
+  // and rightly leaves zeroes out, but using that here meant that clearing a
+  // field to retype it dropped the row, and with it the field being typed in.
+  // Taking someone off the split is what the chips are for.
+  const taking =
+    s.kind === 'equal' ? [...(s.participants || [])] : Object.keys(s.weights || {});
   const inSet = new Set(taking);
   const shown = cadence === 'once' ? amount : perMonth(amount, cadence);
   const { parts, remainder } = split(shown, s);
