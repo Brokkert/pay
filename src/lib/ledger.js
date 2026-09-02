@@ -14,7 +14,7 @@
 // and it can owe money (see routeThrough below).
 
 import { perMonth, perYear, isActive } from './cadence.js';
-import { split, isAccountBearer, accountOfBearer } from './split.js';
+import { split, byWeight, isAccountBearer, accountOfBearer } from './split.js';
 
 export const personParty = (id) => `person:${id}`;
 export const accountParty = (id) => `account:${id}`;
@@ -116,8 +116,9 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     const { parts, remainder } = split(amount, expense.split);
     if (remainder !== 0) {
       warnings.push(
-        `Bij "${expense.name}" tellen de vaste bedragen niet op tot het postbedrag; ` +
-          'het verschil komt bij de betaler te liggen.'
+        `Bij "${expense.name}" tellen de vaste bedragen niet op tot het postbedrag. ` +
+          `Het verschil van ${(Math.abs(remainder) / 100).toFixed(2).replace('.', ',')} ` +
+          `${remainder > 0 ? 'komt te liggen bij' : 'gaat af van'} wie de post betaalt.`
       );
     }
 
@@ -128,7 +129,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     perCategory[category] = (perCategory[category] || 0) + amount;
     if (expense.charge) perCharge[expense.charge] = (perCharge[expense.charge] || 0) + amount;
 
-    const shares = withRemainder(parts, remainder, party);
+    const shares = withRemainder(parts, remainder, party, accounts);
     for (const [key, part] of Object.entries(shares)) {
       if (!part) continue;
       borne[key] = (borne[key] || 0) + part;
@@ -167,10 +168,31 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
  * The remainder on fixed amounts sits with the payer: they did transfer it,
  * after all. If the payer is a shared account, it stays in that account.
  */
-function withRemainder(parts, remainder, party) {
-  if (!remainder || isAccountParty(party)) return parts;
-  const payer = partyId(party);
-  return { ...parts, [payer]: (parts[payer] || 0) + remainder };
+function withRemainder(parts, remainder, party, accounts) {
+  if (!remainder) return parts;
+  const out = { ...parts };
+
+  // A person pays, so a person is short. This is the everyday case: you ask
+  // five friends a round amount each and quietly carry the rest yourself.
+  if (!isAccountParty(party)) {
+    const payer = partyId(party);
+    out[payer] = (out[payer] || 0) + remainder;
+    return out;
+  }
+
+  // A shared account pays. Then whoever fills that account is short, between
+  // them — the account cannot bear anything, it only holds what they put in.
+  // Dropping it here is what used to happen, and it made the shares add up to
+  // less than the expense.
+  const account = accounts.find((a) => a.id === partyId(party));
+  const members = account?.members || [];
+  if (!members.length) return out;
+
+  const over = byWeight(remainder, Object.fromEntries(members.map((id) => [id, 1])));
+  for (const [id, part] of Object.entries(over)) {
+    if (part) out[id] = (out[id] || 0) + part;
+  }
+  return out;
 }
 
 /**

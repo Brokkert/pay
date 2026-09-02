@@ -469,3 +469,59 @@ describe('explaining a transfer', () => {
     expect(rows.reduce((s, r) => s + r.cents, 0)).toBe(499 + 849);
   });
 });
+
+describe('fixed amounts that do not add up to the expense', () => {
+  // Five bearers at a round 4,99 for something that costs 29,99: 24,95
+  // covered, 5,04 left over. That has to land on someone, or the shares add up
+  // to less than the bill and the overview quietly lies.
+  const me = 'me', mau = 'mau';
+  const friends = ['a', 'b', 'c'];
+  const bills = 'bills';
+  const people = [
+    { id: me, name: 'Ik', isMe: true },
+    { id: mau, name: 'Mau' },
+    ...friends.map((id, i) => ({ id, name: `V${i + 1}` })),
+  ];
+  const weights = Object.fromEntries([...friends, me, mau].map((id) => [id, 499]));
+  const expense = (payer) => ({
+    id: 'yt', name: 'YouTube', amount: 2999, cadence: 'month', category: 'media',
+    charge: '', note: '', business: false, paused: false,
+    payer, split: { kind: 'amount', participants: [], weights },
+  });
+  const borneTotal = (r) => Object.values(r.borne).reduce((sum, c) => sum + c, 0);
+
+  it('puts the difference on the payer when a person pays', () => {
+    const r = forMonth(
+      { people, accounts: [], expenses: [expense({ kind: 'person', id: me })] },
+      '2026-09'
+    );
+    expect(r.borne[me]).toBe(499 + 504);
+    expect(borneTotal(r)).toBe(r.monthlyTotal);
+  });
+
+  it('puts it on whoever fills the account when an account pays', () => {
+    const accounts = [
+      { id: bills, name: 'BUNQ', kind: 'shared', members: [me, mau], settlement: true },
+    ];
+    const r = forMonth(
+      { people, accounts, expenses: [expense({ kind: 'account', id: bills })] },
+      '2026-09'
+    );
+    // 5,04 over the two of them, and never lost.
+    expect(r.borne[me] + r.borne[mau]).toBe(499 * 2 + 504);
+    expect(r.borne[me]).toBe(499 + 252);
+    expect(r.borne[mau]).toBe(499 + 252);
+    expect(borneTotal(r)).toBe(r.monthlyTotal);
+    // The friends pay exactly what you asked them, which was the point.
+    for (const id of friends) expect(r.borne[id]).toBe(499);
+  });
+
+  it('says so, and says how much', () => {
+    const accounts = [{ id: bills, name: 'BUNQ', kind: 'shared', members: [me], settlement: true }];
+    const r = forMonth(
+      { people, accounts, expenses: [expense({ kind: 'account', id: bills })] },
+      '2026-09'
+    );
+    expect(r.warnings.join(' ')).toMatch(/5,04/);
+  });
+});
