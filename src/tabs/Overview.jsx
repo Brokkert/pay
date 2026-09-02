@@ -171,11 +171,26 @@ export default function Overview({ store, month, onMonth }) {
               cents={result.borne[b.key] || 0}
             />
           ))}
+        {result.unassigned !== 0 && (
+          <Line
+            left={<span className="cat-dot" style={{ background: 'var(--debt)' }} />}
+            what="Nog niet verdeeld"
+            sub="vaste bedragen die niet optellen tot de post"
+            cents={result.unassigned}
+            tone="debt"
+          />
+        )}
         <Total label="Samen" cents={result.monthlyTotal} />
       </div>
       <div className="hint">
         Dit is de last ná verdeling, ongeacht van wiens rekening het afgeschreven wordt. De som is
         precies de maandlast: er raakt geen cent zoek en er komt er geen bij.
+        {result.unassigned !== 0 && (
+          <>
+            {' '}Staat er iets bij <strong>nog niet verdeeld</strong>, dan heeft een post met vaste
+            bedragen een deel dat bij niemand ligt. Open die post en vul in wie het draagt.
+          </>
+        )}
       </div>
     </>
   );

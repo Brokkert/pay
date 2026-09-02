@@ -102,6 +102,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
   const perCategory = {};
   const perCharge = {};
   let monthlyTotal = 0;
+  let unassigned = 0;
   let yearlyTotal = 0;
 
   for (const expense of running) {
@@ -114,11 +115,17 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     }
 
     const { parts, remainder } = split(amount, expense.split);
+    // An account cannot bear anything — it only holds what people put in — so a
+    // remainder on an expense it pays stays undivided until the expense itself
+    // says who carries it. Counted here so it can be shown rather than lost.
+    if (remainder !== 0 && isAccountParty(party)) unassigned += remainder;
     if (remainder !== 0) {
       warnings.push(
         `Bij "${expense.name}" tellen de vaste bedragen niet op tot het postbedrag. ` +
-          `Het verschil van ${(Math.abs(remainder) / 100).toFixed(2).replace('.', ',')} ` +
-          `${remainder > 0 ? 'komt te liggen bij' : 'gaat af van'} wie de post betaalt.`
+          `Er blijft ${(Math.abs(remainder) / 100).toFixed(2).replace('.', ',')} over` +
+          (isAccountParty(party)
+            ? '; die staat nog bij niemand. Vul in wie dat deel draagt.'
+            : ' en dat draagt de betaler.')
       );
     }
 
@@ -129,7 +136,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     perCategory[category] = (perCategory[category] || 0) + amount;
     if (expense.charge) perCharge[expense.charge] = (perCharge[expense.charge] || 0) + amount;
 
-    const shares = withRemainder(parts, remainder, party, accounts);
+    const shares = withRemainder(parts, remainder, party);
     for (const [key, part] of Object.entries(shares)) {
       if (!part) continue;
       borne[key] = (borne[key] || 0) + part;
@@ -154,6 +161,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     monthlyTotal,
     yearlyTotal,
     borne,
+    unassigned,
     perAccount,
     perCategory,
     perCharge,
@@ -168,31 +176,13 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
  * The remainder on fixed amounts sits with the payer: they did transfer it,
  * after all. If the payer is a shared account, it stays in that account.
  */
-function withRemainder(parts, remainder, party, accounts) {
-  if (!remainder) return parts;
-  const out = { ...parts };
-
-  // A person pays, so a person is short. This is the everyday case: you ask
-  // five friends a round amount each and quietly carry the rest yourself.
-  if (!isAccountParty(party)) {
-    const payer = partyId(party);
-    out[payer] = (out[payer] || 0) + remainder;
-    return out;
-  }
-
-  // A shared account pays. Then whoever fills that account is short, between
-  // them — the account cannot bear anything, it only holds what they put in.
-  // Dropping it here is what used to happen, and it made the shares add up to
-  // less than the expense.
-  const account = accounts.find((a) => a.id === partyId(party));
-  const members = account?.members || [];
-  if (!members.length) return out;
-
-  const over = byWeight(remainder, Object.fromEntries(members.map((id) => [id, 1])));
-  for (const [id, part] of Object.entries(over)) {
-    if (part) out[id] = (out[id] || 0) + part;
-  }
-  return out;
+function withRemainder(parts, remainder, party) {
+  // A person pays, so a person is short: you ask five friends a round amount
+  // each and quietly carry the rest. The payer is part of the expense, so this
+  // still follows from the expense itself.
+  if (!remainder || isAccountParty(party)) return parts;
+  const payer = partyId(party);
+  return { ...parts, [payer]: (parts[payer] || 0) + remainder };
 }
 
 /**

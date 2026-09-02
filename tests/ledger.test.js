@@ -499,29 +499,57 @@ describe('fixed amounts that do not add up to the expense', () => {
     expect(borneTotal(r)).toBe(r.monthlyTotal);
   });
 
-  it('puts it on whoever fills the account when an account pays', () => {
+  it('leaves it undivided when an account pays, instead of charging its members', () => {
+    // An account holds money, it does not bear costs — expenses divide, and
+    // accounts follow from that. So nobody is charged for filling the account:
+    // the part the expense does not divide stays visibly undivided.
     const accounts = [
       { id: bills, name: 'BUNQ', kind: 'shared', members: [me, mau], settlement: true },
     ];
+    const withoutMau = Object.fromEntries(friends.map((id) => [id, 499]));
     const r = forMonth(
-      { people, accounts, expenses: [expense({ kind: 'account', id: bills })] },
+      {
+        people,
+        accounts,
+        expenses: [
+          {
+            ...expense({ kind: 'account', id: bills }),
+            split: { kind: 'amount', participants: [], weights: withoutMau },
+          },
+        ],
+      },
       '2026-09'
     );
-    // 5,04 over the two of them, and never lost.
-    expect(r.borne[me] + r.borne[mau]).toBe(499 * 2 + 504);
-    expect(r.borne[me]).toBe(499 + 252);
-    expect(r.borne[mau]).toBe(499 + 252);
-    expect(borneTotal(r)).toBe(r.monthlyTotal);
-    // The friends pay exactly what you asked them, which was the point.
+
+    // Mau is not on this expense, so she carries none of it.
+    expect(r.borne[mau] || 0).toBe(0);
+    expect(r.borne[me] || 0).toBe(0);
     for (const id of friends) expect(r.borne[id]).toBe(499);
+
+    // And not a cent goes missing: what is borne plus what is undivided is the
+    // whole expense.
+    expect(r.unassigned).toBe(2999 - 3 * 499);
+    expect(borneTotal(r) + r.unassigned).toBe(r.monthlyTotal);
   });
 
-  it('says so, and says how much', () => {
+  it('still lets a person who pays carry the difference', () => {
+    const r = forMonth(
+      { people, accounts: [], expenses: [expense({ kind: 'person', id: mau })] },
+      '2026-09'
+    );
+    // The payer is part of the expense, so this still follows from it.
+    expect(r.borne[mau]).toBe(499 + 504);
+    expect(r.unassigned).toBe(0);
+    expect(borneTotal(r)).toBe(r.monthlyTotal);
+  });
+
+  it('says how much is left and that it lies with nobody', () => {
     const accounts = [{ id: bills, name: 'BUNQ', kind: 'shared', members: [me], settlement: true }];
     const r = forMonth(
       { people, accounts, expenses: [expense({ kind: 'account', id: bills })] },
       '2026-09'
     );
     expect(r.warnings.join(' ')).toMatch(/5,04/);
+    expect(r.warnings.join(' ')).toMatch(/nog bij niemand/);
   });
 });

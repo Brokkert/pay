@@ -17,6 +17,7 @@ export default function SplitPicker({ amount, cadence, spec, people, accounts = 
   const inSet = new Set(taking);
   const shown = cadence === 'once' ? amount : perMonth(amount, cadence);
   const { parts, remainder } = split(shown, s);
+  const me = people.find((p) => p.isMe);
 
   const setKind = (kind) => {
     const ids = [...taking];
@@ -161,7 +162,23 @@ export default function SplitPicker({ amount, cadence, spec, people, accounts = 
           )}
           {remainder !== 0 && (
             <div className="hint warn">
-              Er blijft <Money cents={remainder} /> over. Dat deel komt bij de betaler te liggen.
+              Er blijft <Money cents={remainder} /> over, en dat ligt nu bij niemand. Verdelen doe
+              je hier — een rekening kan niets dragen.
+              {me && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    className="btn quiet sm"
+                    style={{ marginTop: 7 }}
+                    onClick={() =>
+                      setWeight(me.id, (s.weights?.[me.id] ?? 0) + remainder)
+                    }
+                  >
+                    Zet de rest op {me.name}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
