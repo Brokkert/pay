@@ -88,6 +88,10 @@ export default function Settle({ store, month }) {
               const inbound = !isAccountParty(t.from);
               const person = people.find((p) => p.id === partyId(inbound ? t.from : t.to));
               const accountName = partyName(inbound ? t.to : t.from, { people, accounts });
+              // Neither direction gets a colour. Green reads as "coming your
+              // way", and an amount leaving the account is the opposite: you
+              // fill that account, so you are the one paying it. The minus and
+              // the line underneath already say which way it goes.
               return (
                 <Line
                   key={`${t.from}-${t.to}`}
@@ -95,7 +99,6 @@ export default function Settle({ store, month }) {
                   what={person?.name || '?'}
                   sub={inbound ? `stort op ${accountName}` : `krijgt terug van ${accountName}`}
                   cents={inbound ? t.cents : -t.cents}
-                  tone={inbound ? '' : 'credit'}
                   onClick={person ? () => setOpen(person) : null}
                 />
               );

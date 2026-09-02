@@ -227,6 +227,9 @@ describe('a friend who settles through the bills account', () => {
     const row = await screen.findByRole('button', { name: /Frans/ });
     expect(within(row).getByText(/3,50/)).toBeTruthy();
     expect(within(row).getByText(/krijgt terug van BUNQ/)).toBeTruthy();
+    // Not green: money leaving the account is not money coming your way — you
+    // fill that account, so you are the one paying it.
+    expect(row.querySelector('.credit')).toBe(null);
     expect(screen.queryByText(/8,49/)).toBe(null);
 
     // And tapping him shows where that 3,50 comes from, at full value.
