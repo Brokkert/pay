@@ -124,7 +124,17 @@ export default function App() {
         {tab === 'people' && <People store={store} />}
 
         {tab === 'more' && (
-          <Settings user={user} store={store} keyring={keyring} theme={theme} onTheme={setTheme} />
+          <Settings
+            user={user}
+            store={store}
+            keyring={keyring}
+            theme={theme}
+            onTheme={setTheme}
+            onSignIn={() => {
+              localStorage.removeItem('pay:local');
+              setWithoutAccount(false);
+            }}
+          />
         )}
       </div>
 

@@ -13,7 +13,7 @@ import { readBackup } from '../lib/backup.js';
 import { CADENCES } from '../lib/cadence.js';
 import { CATEGORIES } from '../data/categories.js';
 
-export default function Settings({ user, store, keyring, theme, onTheme }) {
+export default function Settings({ user, store, keyring, theme, onTheme, onSignIn }) {
   const [panel, setPanel] = useState(null);
   const [message, setMessage] = useState(null);
   const config = readConfig();
@@ -199,12 +199,30 @@ export default function Settings({ user, store, keyring, theme, onTheme }) {
         <>
           <Notice tone="info">
             Pay draait nu <strong>lokaal</strong>: alles staat versleuteld in deze browser en gaat
-            nergens heen. Wil je dat je huisgenoot meekijkt en dat het tussen je telefoon en laptop
-            gelijkloopt, dan koppel je een eigen (gratis) Supabase-project. Zie SUPABASE_SETUP.md.
+            nergens heen.{' '}
+            {config.source === 'none' ? (
+              <>
+                Wil je dat je huisgenoot meekijkt en dat het tussen je telefoon en laptop
+                gelijkloopt, dan koppel je een eigen (gratis) Supabase-project. Zie
+                SUPABASE_SETUP.md.
+              </>
+            ) : (
+              <>
+                Er ís een project gekoppeld — log in met je e-mail en je houdt het samen bij, op al
+                je apparaten. Wat je hier lokaal hebt staan, zet je daarna in één klik over.
+              </>
+            )}
           </Notice>
-          <button className="btn wide" onClick={() => setPanel('connection')}>
-            <Icon name="key" size={17} /> Verbinding instellen
-          </button>
+          <div className="col" style={{ gap: 8 }}>
+            {config.source !== 'none' && onSignIn && (
+              <button className="btn wide" onClick={onSignIn}>
+                <Icon name="mail" size={17} /> Inloggen met e-mail
+              </button>
+            )}
+            <button className="btn wide" onClick={() => setPanel('connection')}>
+              <Icon name="key" size={17} /> Verbinding instellen
+            </button>
+          </div>
         </>
       )}
       {config.source === 'local' && (

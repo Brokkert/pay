@@ -153,3 +153,20 @@ describe('signing out', () => {
     expect(localStorage.getItem('pay:theme')).toBe('dark');
   });
 });
+
+describe('getting out of local mode', () => {
+  it('offers a way back to signing in once a project is connected', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+
+    // The badge says local, and there is a button that leads back to the login
+    // screen — without one you are stuck here for good.
+    expect(screen.getByText(/lokale kluis/i)).toBeTruthy();
+    const back = screen.getByRole('button', { name: /Inloggen met e-mail/i });
+    await user.click(back);
+
+    expect(await screen.findByRole('button', { name: /zonder account/i })).toBeTruthy();
+    expect(localStorage.getItem('pay:local')).toBe(null);
+  }, 30000);
+});
