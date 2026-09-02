@@ -9,6 +9,7 @@ import { signOut } from '../lib/auth.js';
 import { toCsv, parsePaste, download } from '../lib/csv.js';
 import { createInvite, listInvites, revokeInvite } from '../lib/invites.js';
 import { exampleHousehold } from '../data/example.js';
+import { readBackup } from '../lib/backup.js';
 import { CADENCES } from '../lib/cadence.js';
 import { CATEGORIES } from '../data/categories.js';
 
@@ -18,6 +19,20 @@ export default function Settings({ user, store, keyring, theme, onTheme }) {
   const config = readConfig();
 
   const stamp = () => new Date().toISOString().slice(0, 10);
+
+  // Restoring is deliberately additive: it never wipes what is already there,
+  // so a wrong file costs you a delete rather than everything you had.
+  const restore = async (file) => {
+    if (!file) return;
+    setMessage('Bezig…');
+    try {
+      const set = readBackup(await file.text());
+      const count = await store.importAll(set);
+      setMessage(`${count} regels toegevoegd uit ${file.name}.`);
+    } catch (err) {
+      setMessage(err.message || String(err));
+    }
+  };
 
   const fillExample = async () => {
     setMessage('Bezig…');
@@ -120,6 +135,18 @@ export default function Settings({ user, store, keyring, theme, onTheme }) {
         >
           <Icon name="download" size={17} /> Volledige reservekopie (JSON)
         </button>
+        <label className="btn wide" style={{ cursor: 'pointer' }}>
+          <Icon name="paste" size={17} /> Herstellen uit reservekopie (JSON)
+          <input
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={(event) => {
+              restore(event.target.files?.[0]);
+              event.target.value = '';
+            }}
+          />
+        </label>
         {!store.expenses.length && (
           <button className="btn wide" onClick={fillExample}>Vul een voorbeeldhuishouden</button>
         )}
@@ -128,6 +155,10 @@ export default function Settings({ user, store, keyring, theme, onTheme }) {
         De CSV opent rechtstreeks in Excel en Numbers, met per post het maandbedrag, het jaarbedrag
         en het aandeel van iedereen in een eigen kolom. Let op: die twee bestanden zijn níét
         versleuteld — bewaar ze zoals je een bankafschrift zou bewaren.
+        <br />
+        <br />
+        Herstellen leest zo'n JSON weer in. Het vult aan wat er al staat en gooit niets weg, en
+        het bestand wordt pas versleuteld op het moment dat het hier binnenkomt.
       </div>
 
       <div className="section">Samen bijhouden</div>

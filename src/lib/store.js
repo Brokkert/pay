@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getClient } from './supabase.js';
 import { encrypt, decrypt } from './crypto.js';
+import { isAccountBearer, asAccountBearer, accountOfBearer } from './split.js';
 
 const LOCAL = 'pay:store';
 const cacheKey = (userId) => `pay:cache:${userId}`;
@@ -344,7 +345,17 @@ function retarget(record, map) {
   if (out.split) {
     const s = { ...out.split };
     if (Array.isArray(s.participants)) s.participants = s.participants.map(to);
-    if (s.weights) s.weights = Object.fromEntries(Object.entries(s.weights).map(([id, w]) => [to(id), w]));
+    // A weight key is either a person id or "account:<id>"; the prefix has to
+    // come off before the lookup, or an account's own share keeps pointing at
+    // the id it had before the import.
+    if (s.weights) {
+      s.weights = Object.fromEntries(
+        Object.entries(s.weights).map(([key, w]) => [
+          isAccountBearer(key) ? asAccountBearer(to(accountOfBearer(key))) : to(key),
+          w,
+        ])
+      );
+    }
     out.split = s;
   }
   return out;
