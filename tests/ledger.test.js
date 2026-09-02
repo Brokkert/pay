@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { forMonth, openSettlements, net, payerParty } from '../src/lib/ledger.js';
+import { forMonth, openSettlements, net, payerParty, explainTransfer } from '../src/lib/ledger.js';
 
 // A household with everything in it that makes this hard: two people with a
 // household bills account, a business account that also pays for shared things,
@@ -409,5 +409,51 @@ describe('settling through an account without paying into it', () => {
     expect(pot.contributions[frans]).toBeUndefined();
     // He still bears his share of YouTube, like anyone else on it.
     expect(r.borne[frans]).toBe(800);
+  });
+});
+
+describe('explaining a transfer', () => {
+  const me = 'me', mau = 'mau', frans = 'frans', bills = 'bills';
+  const people = [
+    { id: me, name: 'Ik', isMe: true }, { id: mau, name: 'Mau' }, { id: frans, name: 'Frans' },
+  ];
+  const accounts = [
+    { id: bills, name: 'BUNQ', kind: 'shared', members: [me, mau], settles: [frans], settlement: true },
+  ];
+  const equal = (...ids) => ({ kind: 'equal', participants: ids, weights: {} });
+  const base = { cadence: 'month', category: 'media', charge: '', note: '', business: false, paused: false };
+  const expenses = [
+    { ...base, id: 'yt', name: 'YouTube', amount: 1497,
+      payer: { kind: 'account', id: bills }, split: equal(me, mau, frans) },
+    { ...base, id: 'td', name: 'Tidal', amount: 849,
+      payer: { kind: 'person', id: frans }, split: equal(me) },
+  ];
+  const result = forMonth({ people, accounts, expenses }, '2026-09');
+  const context = { lines: result.lines, accounts };
+
+  it('adds up to the amount being transferred, every time', () => {
+    for (const transfer of result.transfers) {
+      const rows = explainTransfer(transfer, context);
+      const sum = rows.reduce((s, r) => s + r.cents, 0);
+      expect(sum).toBe(transfer.cents);
+    }
+  });
+
+  it('names both sides of what was netted away', () => {
+    const out = result.transfers.find((t) => t.from === `account:${bills}`);
+    const rows = explainTransfer(out, context);
+    const by = Object.fromEntries(rows.map((r) => [r.expense.name, r.cents]));
+
+    // He bears 4,99 of YouTube and fronted 8,49 of Tidal: 3,50 his way.
+    expect(by.YouTube).toBe(-499);
+    expect(by.Tidal).toBe(849);
+    expect(out.cents).toBe(350);
+  });
+
+  it('leaves nothing out of my own position either', () => {
+    const mine = result.transfers.find((t) => t.from === `person:${me}`);
+    const rows = explainTransfer(mine, context);
+    // My YouTube share plus the Tidal I use: 13,48 into the account.
+    expect(rows.reduce((s, r) => s + r.cents, 0)).toBe(499 + 849);
   });
 });

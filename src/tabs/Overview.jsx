@@ -2,7 +2,14 @@
 
 import { useMemo } from 'react';
 import { Line, Total, Money, Avatar, BearerAvatar, Notice, Empty, Icon } from '../components/ui.jsx';
-import { forMonth, openSettlements, isAccountParty, partyId, partyName } from '../lib/ledger.js';
+import {
+  forMonth,
+  openSettlements,
+  explainTransfer,
+  isAccountParty,
+  partyId,
+  partyName,
+} from '../lib/ledger.js';
 import { formatMonth, shiftMonth, thisMonth } from '../lib/cadence.js';
 import { categoryOf, accountKindOf } from '../data/categories.js';
 import { possibleBearers } from '../lib/split.js';
@@ -16,7 +23,7 @@ export default function Overview({ store, month, onMonth }) {
   );
   const loose = useMemo(() => openSettlements(expenses, accounts), [expenses, accounts]);
   const me = people.find((p) => p.isMe);
-  const context = { people, accounts };
+  const context = { people, accounts, lines: result.lines };
 
   if (!expenses.length) {
     return (
@@ -69,7 +76,7 @@ export default function Overview({ store, month, onMonth }) {
           <div className="section">Elke maand overmaken</div>
           <div className="panel">
             {result.transfers.map((t) => (
-              <Transfer key={`${t.from}-${t.to}`} transfer={t} context={context} me={me} />
+              <Transfer key={`${t.from}-${t.to}`} transfer={t} context={context} me={me} explain />
             ))}
           </div>
           <div className="hint" style={{ marginTop: -4 }}>
@@ -212,7 +219,27 @@ function Party({ party, context }) {
   );
 }
 
-function Transfer({ transfer, context, me }) {
+/** "Tidal 8,49 − YouTube Family 4,99": where a netted amount came from. */
+function Origin({ transfer, context }) {
+  const rows = explainTransfer(transfer, context);
+  if (rows.length < 2) return null;
+
+  const shown = rows.slice(0, 3);
+  const rest = rows.length - shown.length;
+  return (
+    <div className="origin">
+      {shown.map(({ expense, cents }, i) => (
+        <span key={expense.id}>
+          {i > 0 && <span className="sign">{cents < 0 ? ' − ' : ' + '}</span>}
+          {expense.name} {formatMoney(Math.abs(cents))}
+        </span>
+      ))}
+      {rest > 0 && <span className="sign"> + {rest} meer</span>}
+    </div>
+  );
+}
+
+function Transfer({ transfer, context, me, explain = false }) {
   // Red and green mean "in debt" and "owed to you". Money into your own shared
   // account is neither — that is moving your own money — so it stays neutral.
   const mine = me ? `person:${me.id}` : null;
@@ -222,13 +249,16 @@ function Transfer({ transfer, context, me }) {
     : transfer.from === mine ? 'debt' : transfer.to === mine ? 'credit' : '';
 
   return (
-    <div className="transfer">
-      <Party party={transfer.from} context={context} />
-      <span className="arrow"><Icon name="arrow" size={15} /></span>
-      <span className="grow" style={{ minWidth: 0 }}>
-        <Party party={transfer.to} context={context} />
-      </span>
-      <Money cents={transfer.cents} size="mid" tone={tone} />
+    <div className="transfer-row">
+      <div className="transfer">
+        <Party party={transfer.from} context={context} />
+        <span className="arrow"><Icon name="arrow" size={15} /></span>
+        <span className="grow" style={{ minWidth: 0 }}>
+          <Party party={transfer.to} context={context} />
+        </span>
+        <Money cents={transfer.cents} size="mid" tone={tone} />
+      </div>
+      {explain && <Origin transfer={transfer} context={context} />}
     </div>
   );
 }

@@ -273,3 +273,71 @@ export function openSettlements(expenses, accounts) {
 
   return { lines, transfers: net(raw) };
 }
+
+/**
+ * Where one person's position comes from: every expense that puts them in
+ * credit or in debt, at its full amount.
+ *
+ * Negative is what they owe, positive what is owed to them. Summed it is
+ * exactly the amount they end up transferring, which is the point — a netted
+ * figure that you cannot take apart is one nobody believes.
+ */
+export function positionOf(lines, personId, accounts) {
+  const rows = [];
+  for (const line of lines) {
+    const party = line.party ?? payerParty(line.expense, accounts);
+    let cents = 0;
+
+    // What they bear themselves. Paying it from their own account cancels out.
+    const own = line.shares[personId] || 0;
+    if (own && bearerParty(personId) !== party) cents -= own;
+
+    // And, when they are the one paying, what everybody else bears.
+    if (party === personParty(personId)) {
+      for (const [key, part] of Object.entries(line.shares)) {
+        if (bearerParty(key) !== party) cents += part;
+      }
+    }
+
+    if (cents) rows.push({ expense: line.expense, cents });
+  }
+  return rows.sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
+}
+
+/** The same, but only what runs between two named people. */
+export function betweenTwo(lines, aId, bId, accounts) {
+  const rows = [];
+  for (const line of lines) {
+    const party = line.party ?? payerParty(line.expense, accounts);
+    if (party === personParty(aId) && line.shares[bId]) {
+      rows.push({ expense: line.expense, cents: line.shares[bId] });
+    } else if (party === personParty(bId) && line.shares[aId]) {
+      rows.push({ expense: line.expense, cents: -line.shares[aId] });
+    }
+  }
+  return rows.sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
+}
+
+/**
+ * What a single transfer is made of, seen from the paying side.
+ *
+ * Between a person and the account everything settles through, that is the
+ * person's whole position; between two people it is only what runs between
+ * those two.
+ */
+export function explainTransfer(transfer, { lines, accounts }) {
+  const from = transfer.from;
+  const to = transfer.to;
+  if (isAccountParty(from) && isAccountParty(to)) return [];
+
+  if (isAccountParty(from) || isAccountParty(to)) {
+    const person = partyId(isAccountParty(from) ? to : from);
+    const rows = positionOf(lines, person, accounts);
+    // Seen from the payer: money leaving the account is money owed to them.
+    return isAccountParty(from) ? rows : rows.map((r) => ({ ...r, cents: -r.cents }));
+  }
+  return betweenTwo(lines, partyId(from), partyId(to), accounts).map((r) => ({
+    ...r,
+    cents: -r.cents,
+  }));
+}

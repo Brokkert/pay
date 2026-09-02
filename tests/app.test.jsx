@@ -197,6 +197,27 @@ describe('a friend who settles through the bills account', () => {
     };
   };
 
+  it('spells out on the overview itself where the 3,50 comes from', async () => {
+    await withData(household());
+    await start();
+
+    // No tapping, no other tab: the netted line carries its own reasoning.
+    const row = (await screen.findAllByText('Frans'))
+      .map((n) => n.closest('.transfer-row'))
+      .find(Boolean);
+    expect(row).toBeTruthy();
+    const origin = row.querySelector('.origin').textContent;
+    // Both at their full amount, and the minus that makes it 3,50.
+    expect(origin).toMatch(/Tidal\s*€\s*8,49/);
+    expect(origin).toMatch(/−\s*YouTube Family\s*€\s*4,99/);
+
+    // My own line adds the two up instead: I owe both.
+    const mine = (await screen.findAllByText('Ik'))
+      .map((n) => n.closest('.transfer-row'))
+      .find(Boolean);
+    expect(mine.querySelector('.origin').textContent).toMatch(/\+\s*YouTube Family/);
+  }, 30000);
+
   it('shows the net payment, and both full amounts behind it', async () => {
     await withData(household());
     const user = await start();
