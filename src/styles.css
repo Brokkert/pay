@@ -318,6 +318,20 @@ button.item:active { background: var(--sunk); }
   gap: 14px;
   padding: 12px 17px;
 }
+/* The same line, but it opens something when you tap it. Buttons come with a
+   background, a border and centred text of their own; all of that has to go. */
+.line.tappable {
+  width: 100%;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.line.tappable:active { background: var(--sunk); }
+
 .line .what { flex: 1; min-width: 0; }
 .line .what .n { font-size: 14px; font-weight: 450; }
 .line .what .s { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }

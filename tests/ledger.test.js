@@ -352,3 +352,62 @@ describe('payerParty', () => {
     expect(payerParty({ payer: { kind: 'account', id: 'gone' } }, accounts)).toBe(null);
   });
 });
+
+describe('settling through an account without paying into it', () => {
+  // Frans is not part of the household: he does not fill the bills account and
+  // has no fixed deposit. But he is on the shared YouTube subscription and pays
+  // for a service you use in full, so those two have to cancel out — and the
+  // payment leaves the bills account, because that is where it comes from.
+  const me = 'me', mau = 'mau', frans = 'frans';
+  const bills = 'bills';
+  const people = [
+    { id: me, name: 'Ik', isMe: true }, { id: mau, name: 'Mau' }, { id: frans, name: 'Frans' },
+  ];
+  const equal = (...ids) => ({ kind: 'equal', participants: ids, weights: {} });
+  const base = { cadence: 'month', category: 'media', charge: '', note: '', business: false, paused: false };
+  const expenses = [
+    { ...base, id: 'yt', name: 'YouTube', amount: 2400,
+      payer: { kind: 'account', id: bills }, split: equal(me, mau, frans) },
+    { ...base, id: 'td', name: 'Tidal', amount: 1200,
+      payer: { kind: 'person', id: frans }, split: equal(me) },
+  ];
+  const account = (extra) => [
+    { id: bills, name: 'Vaste lasten', kind: 'shared', members: [me, mau], settlement: true, ...extra },
+  ];
+  const find = (r, from, to) =>
+    r.transfers.find((t) => t.from === from && t.to === to)?.cents ?? 0;
+
+  it('leaves the two debts standing apart when he settles on his own', () => {
+    const r = forMonth({ people, accounts: account({}), expenses }, '2026-09');
+    expect(find(r, `person:${frans}`, `account:${bills}`)).toBe(800);
+    expect(find(r, `person:${me}`, `person:${frans}`)).toBe(1200);
+  });
+
+  it('nets them to one payment out of the account when he settles through it', () => {
+    const r = forMonth({ people, accounts: account({ settles: [frans] }), expenses }, '2026-09');
+    // 12,00 owed to him minus his 8,00 share: 4,00 out of the account.
+    expect(find(r, `account:${bills}`, `person:${frans}`)).toBe(400);
+    expect(find(r, `person:${frans}`, `account:${bills}`)).toBe(0);
+    expect(find(r, `person:${me}`, `person:${frans}`)).toBe(0);
+    // And it is paid for: my own share plus what I owe him goes in.
+    expect(find(r, `person:${me}`, `account:${bills}`)).toBe(800 + 1200);
+  });
+
+  it('keeps the account balanced to the cent', () => {
+    const r = forMonth({ people, accounts: account({ settles: [frans] }), expenses }, '2026-09');
+    const into = r.transfers
+      .filter((t) => t.to === `account:${bills}`).reduce((s, t) => s + t.cents, 0);
+    const outOf = r.transfers
+      .filter((t) => t.from === `account:${bills}`).reduce((s, t) => s + t.cents, 0);
+    // In equals what the account pays out plus what it passes on.
+    expect(into).toBe(2400 + outOf);
+  });
+
+  it('does not turn him into someone who fills the account', () => {
+    const r = forMonth({ people, accounts: account({ settles: [frans] }), expenses }, '2026-09');
+    const pot = r.pots.find((p) => p.account.id === bills);
+    expect(pot.contributions[frans]).toBeUndefined();
+    // He still bears his share of YouTube, like anyone else on it.
+    expect(r.borne[frans]).toBe(800);
+  });
+});

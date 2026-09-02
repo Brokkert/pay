@@ -53,6 +53,14 @@ export const settlementAccount = (accounts) =>
   accounts.find((a) => a.kind === 'shared' && a.settlement) || null;
 
 /**
+ * Everyone whose debts run through this account: the people who fill it, plus
+ * anyone added purely to settle through it.
+ */
+export const settlersOf = (account) => [
+  ...new Set([...(account?.members || []), ...(account?.settles || [])]),
+];
+
+/**
  * Works out one month. `month` is 'yyyy-mm'.
  *
  * Expenses that are not running that month (not started yet, already cancelled,
@@ -110,7 +118,11 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
   }
 
   const hub = settlementAccount(accounts);
-  if (hub) routeThrough(raw, accountParty(hub.id), new Set(hub.members || []));
+  // Two different questions, and they used to share one answer. Who fills the
+  // account is `members`; who settles through it is that plus `settles`. A
+  // friend on a shared subscription belongs in the second list and not the
+  // first: he owes you, he does not pay into your household.
+  if (hub) routeThrough(raw, accountParty(hub.id), new Set(settlersOf(hub)));
 
   const transfers = net(raw);
 
@@ -173,14 +185,14 @@ function book(matrix, from, to, cents) {
  * still have to put in. In the end nobody moves a loose amount around, and you
  * transfer less yourself.
  *
- * Only between members of that account. What you owe a friend who has nothing to
+ * Only between those who settle through that account. What you owe a friend who has nothing to
  * do with it, you simply pay him directly.
  */
-function routeThrough(matrix, hub, members) {
+function routeThrough(matrix, hub, settlers) {
   for (const [from, targets] of Object.entries(matrix)) {
-    if (from === hub || isAccountParty(from) || !members.has(partyId(from))) continue;
+    if (from === hub || isAccountParty(from) || !settlers.has(partyId(from))) continue;
     for (const [to, cents] of Object.entries(targets)) {
-      if (!cents || to === hub || isAccountParty(to) || !members.has(partyId(to))) continue;
+      if (!cents || to === hub || isAccountParty(to) || !settlers.has(partyId(to))) continue;
       targets[to] = 0;
       book(matrix, from, hub, cents);
       book(matrix, hub, to, cents);

@@ -96,6 +96,7 @@ export default function Settle({ store, month }) {
                   sub={inbound ? `stort op ${accountName}` : `krijgt terug van ${accountName}`}
                   cents={inbound ? t.cents : -t.cents}
                   tone={inbound ? '' : 'credit'}
+                  onClick={person ? () => setOpen(person) : null}
                 />
               );
             })}
@@ -106,7 +107,8 @@ export default function Settle({ store, month }) {
           </div>
           <div className="hint">
             Storten is geen kostenpost — je zet er geld klaar waar de gedeelde lasten van afgaan.
-            Wat ieder werkelijk draagt staat op het overzicht.
+            Wat ieder werkelijk draagt staat op het overzicht. Tik op een naam om te zien uit welke
+            posten het bedrag is opgebouwd.
           </div>
         </>
       )}
@@ -157,6 +159,7 @@ export default function Settle({ store, month }) {
           result={result}
           loose={loose}
           accounts={accounts}
+          hub={result.hub}
           onClose={() => setOpen(null)}
         />
       )}
@@ -165,21 +168,32 @@ export default function Settle({ store, month }) {
 }
 
 /** Where the amount comes from: every expense that plays between the two of you. */
-function Breakdown({ person, me, result, loose, accounts, onClose }) {
-  const rows = [...result.lines, ...loose.lines]
-    .map((line) => {
-      const party = line.party ?? payerParty(line.expense, accounts);
-      const payer = isAccountParty(party) ? null : partyId(party);
-      // Only expenses where exactly one of you pays and the other bears a share:
-      // those are the only ones that move money between you.
-      if (payer === me.id && line.shares[person.id]) {
-        return { expense: line.expense, cents: line.shares[person.id] };
-      }
-      if (payer === person.id && line.shares[me.id]) {
-        return { expense: line.expense, cents: -line.shares[me.id] };
-      }
-      return null;
-    })
+function Breakdown({ person, me, result, loose, accounts, hub, onClose }) {
+  const between = (line, viaHub) => {
+    const party = line.party ?? payerParty(line.expense, accounts);
+    const payer = isAccountParty(party) ? null : partyId(party);
+    // Expenses where exactly one of you pays and the other bears a share: those
+    // move money between you directly.
+    if (payer === me.id && line.shares[person.id]) {
+      return { expense: line.expense, cents: line.shares[person.id] };
+    }
+    if (payer === person.id && line.shares[me.id]) {
+      return { expense: line.expense, cents: -line.shares[me.id] };
+    }
+    // And, for the account everything is settled through: what the other person
+    // owes it. That is the other half of the sum — without it a netted amount
+    // looks like it came out of nowhere.
+    if (viaHub && hub && isAccountParty(party) && partyId(party) === hub.id && line.shares[person.id]) {
+      return { expense: line.expense, cents: line.shares[person.id], hub: true };
+    }
+    return null;
+  };
+
+  const rows = [
+    ...result.lines.map((line) => between(line, true)),
+    // One-offs are never routed through an account, so only the direct ones.
+    ...loose.lines.map((line) => between(line, false)),
+  ]
     .filter(Boolean)
     .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
 
@@ -188,29 +202,35 @@ function Breakdown({ person, me, result, loose, accounts, onClose }) {
   return (
     <Sheet title={`Jij en ${person.name}`} onClose={onClose}>
       <div className="panel">
-        {rows.map(({ expense, cents }) => (
+        {rows.map(({ expense, cents, hub: viaHub }) => (
           <Line
             key={expense.id}
             left={<span className="cat-dot" style={{ background: categoryOf(expense.category).colour }} />}
             what={expense.name}
             sub={
-              cents > 0
-                ? `jij betaalt, ${person.name} draagt mee`
-                : `${person.name} betaalt, jij draagt mee`
+              viaHub
+                ? `gaat van ${hub.name} af, ${person.name} draagt mee`
+                : cents > 0
+                  ? `jij betaalt, ${person.name} draagt mee`
+                  : `${person.name} betaalt, jij draagt mee`
             }
             cents={cents}
             tone={cents > 0 ? 'credit' : 'debt'}
           />
         ))}
         <Total
-          label={total >= 0 ? `${person.name} → jij` : `jij → ${person.name}`}
+          label={
+            (total >= 0 ? `${person.name} → jij` : `jij → ${person.name}`) +
+            (rows.some((r) => r.hub) ? ` · via ${hub.name}` : '')
+          }
           cents={Math.abs(total)}
           tone={total >= 0 ? 'credit' : 'debt'}
         />
       </div>
       <div className="hint">
-        Alles wat maar één kant op wijst is al weggestreept: dit is het bedrag dat er netto
-        overblijft. Eenmalige posten staan er tegen hun volle bedrag bij, de rest per maand.
+        Elke post staat er voor zijn volle bedrag; het totaal eronder is wat er ná wegstrepen
+        overblijft. Staat er "via" bij, dan loopt de betaling langs die rekening in plaats van
+        rechtstreeks. Eenmalige posten tellen mee tegen hun hele bedrag, de rest per maand.
       </div>
     </Sheet>
   );

@@ -64,17 +64,26 @@ export const Money = ({ cents, size = '', tone = '' }) => (
 );
 
 /** A line with an amount: description on the left, number on the right. */
-export const Line = ({ what, sub, cents, tone, left = null, right = null }) => (
-  <div className="line">
-    {left}
-    <div className="what">
-      <div className="n truncate">{what}</div>
-      {sub && <div className="s truncate">{sub}</div>}
-    </div>
-    {cents != null && <Money cents={cents} tone={tone} />}
-    {right}
-  </div>
-);
+export const Line = ({ what, sub, cents, tone, left = null, right = null, onClick = null }) => {
+  const body = (
+    <>
+      {left}
+      <div className="what">
+        <div className="n truncate">{what}</div>
+        {sub && <div className="s truncate">{sub}</div>}
+      </div>
+      {cents != null && <Money cents={cents} tone={tone} />}
+      {right}
+    </>
+  );
+  // A line that explains itself when you tap it is still a line; it just has to
+  // be a button so the keyboard and a screen reader can reach it too.
+  return onClick ? (
+    <button type="button" className="line tappable" onClick={onClick}>{body}</button>
+  ) : (
+    <div className="line">{body}</div>
+  );
+};
 
 export const Total = ({ label, cents, tone }) => (
   <div className="total">

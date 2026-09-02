@@ -170,3 +170,52 @@ describe('getting out of local mode', () => {
     expect(localStorage.getItem('pay:local')).toBe(null);
   }, 30000);
 });
+
+describe('a friend who settles through the bills account', () => {
+  // The case in full: Frans is on YouTube (4,99 of it) and pays Tidal (8,49)
+  // that I use on my own. One payment of 3,50 leaves the bills account, and
+  // both original amounts stay visible behind it.
+  const household = () => {
+    const me = 'me', mau = 'mau', frans = 'frans', bills = 'bills';
+    const equal = (...ids) => ({ kind: 'equal', participants: ids, weights: {} });
+    const base = { cadence: 'month', category: 'media', charge: '', note: '', business: false, paused: false };
+    return {
+      people: [
+        { id: me, name: 'Ik', colour: '#0d6e5c', isMe: true },
+        { id: mau, name: 'Mau', colour: '#9a4f2c' },
+        { id: frans, name: 'Frans', colour: '#2f5fa8' },
+      ],
+      accounts: [
+        { id: bills, name: 'BUNQ', kind: 'shared', members: [me, mau], settles: [frans], settlement: true },
+      ],
+      expenses: [
+        { ...base, id: 'yt', name: 'YouTube Family', amount: 1497,
+          payer: { kind: 'account', id: bills }, split: equal(me, mau, frans) },
+        { ...base, id: 'td', name: 'Tidal', amount: 849,
+          payer: { kind: 'person', id: frans }, split: equal(me) },
+      ],
+    };
+  };
+
+  it('shows the net payment, and both full amounts behind it', async () => {
+    await withData(household());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Verrekenen/ }));
+
+    // Frans is there with the netted amount, not with two separate debts.
+    const row = await screen.findByRole('button', { name: /Frans/ });
+    expect(within(row).getByText(/3,50/)).toBeTruthy();
+    expect(within(row).getByText(/krijgt terug van BUNQ/)).toBeTruthy();
+    expect(screen.queryByText(/8,49/)).toBe(null);
+
+    // And tapping him shows where that 3,50 comes from, at full value.
+    await user.click(row);
+    const sheet = screen.getByRole('heading', { name: /Jij en Frans/ }).closest('.sheet');
+    expect(within(sheet).getByText('YouTube Family')).toBeTruthy();
+    expect(within(sheet).getByText(/4,99/)).toBeTruthy();
+    expect(within(sheet).getByText('Tidal')).toBeTruthy();
+    expect(within(sheet).getByText(/8,49/)).toBeTruthy();
+    // Named as running through the account, because that is where it comes from.
+    expect(within(sheet).getByText(/via BUNQ/)).toBeTruthy();
+  }, 30000);
+});

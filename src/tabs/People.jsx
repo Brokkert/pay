@@ -233,7 +233,7 @@ function PersonForm({ person, people, cloud, onClaim, onSave, onRemove, onClose 
 
 function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
   const [draft, setDraft] = useState(() => ({
-    name: '', kind: 'shared', ownerId: null, members: [], contributions: {},
+    name: '', kind: 'shared', ownerId: null, members: [], settles: [], contributions: {},
     iban: '', settlement: false, ...account,
   }));
   const [error, setError] = useState(null);
@@ -242,10 +242,20 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
 
   const shared = draft.kind === 'shared';
   const members = draft.members || [];
+  const settles = draft.settles || [];
   const paidIn = Object.values(draft.contributions || {}).reduce((s, c) => s + (Number(c) || 0), 0);
 
   const toggleMember = (id) =>
-    set({ members: members.includes(id) ? members.filter((x) => x !== id) : [...members, id] });
+    set({
+      members: members.includes(id) ? members.filter((x) => x !== id) : [...members, id],
+      // Nobody is in both lists: filling the account already means settling
+      // through it.
+      settles: settles.filter((x) => x !== id),
+    });
+  };
+
+  const toggleSettler = (id) => {
+    set({ settles: settles.includes(id) ? settles.filter((x) => x !== id) : [...settles, id] });
 
   const save = async () => {
     try {
@@ -266,6 +276,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
         ...draft,
         name: draft.name.trim(),
         members: shared ? members : [],
+        settles: shared && draft.settlement ? settles.filter((id) => !members.includes(id)) : [],
         contributions: shared ? contributions : {},
         ownerId: shared ? null : draft.ownerId,
         settlement: shared ? Boolean(draft.settlement) : false,
@@ -327,6 +338,29 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
               ))}
             </div>
           </Field>
+
+          {draft.settlement && (
+            <Field label="Verrekent hierlangs, maar stort niet">
+              <div className="chips">
+                {people.filter((p) => !members.includes(p.id)).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`chip${settles.includes(p.id) ? ' on' : ''}`}
+                    onClick={() => toggleSettler(p.id)}
+                  >
+                    <Avatar person={p} size="sm" /> {p.name}
+                  </button>
+                ))}
+              </div>
+              <div className="hint" style={{ marginTop: 6 }}>
+                Voor iemand van buiten het huishouden die wél iets met je te verrekenen heeft — een
+                vriend op een gedeeld abonnement. Wat hij jou schuldig is en wat jij hem schuldig
+                bent, komt hier bij elkaar en wordt tot één bedrag weggestreept. Hij stort geen
+                vaste inleg en hoort niet bij de vaste lasten.
+              </div>
+            </Field>
+          )}
 
           <Field label="Verrekenen">
             <label className="option" style={{ cursor: 'pointer' }}>
