@@ -4,7 +4,13 @@
 // in euros sits right underneath it. A percentage says nothing; "Partner
 // € 152,64 per maand" does.
 
-import { SPLIT_KINDS, split, participantsOf, possibleBearers } from '../lib/split.js';
+import {
+  SPLIT_KINDS,
+  split,
+  participantsOf,
+  possibleBearers,
+  ACCOUNT_PREFIX,
+} from '../lib/split.js';
 import { perMonth } from '../lib/cadence.js';
 import { Field, Money, BearerAvatar, AmountInput } from './ui.jsx';
 
@@ -73,17 +79,16 @@ export default function SplitPicker({ amount, cadence, spec, people, accounts = 
             </button>
           ))}
         </div>
-        {accounts.some((a) => a.kind === 'business') && (
+        {taking.some((key) => key.startsWith(ACCOUNT_PREFIX)) && (
           <div className="hint">
-            Een zakelijke rekening kan zelf een deel dragen. Is een kwart van je bankkosten
-            zakelijk, dan draagt de zaak dat kwart en staat het niet bij jou privé — en zie je
-            meteen wat je bij de zaak kunt terughalen.
+            Een zakelijke rekening draagt dit deel zelf, dus het staat niet bij jou privé — en je
+            ziet meteen wat je bij de zaak kunt terughalen.
           </div>
         )}
       </Field>
 
       {taking.length > 1 && (
-        <Field label="Hoe" hint={SPLIT_KINDS.find((k) => k.id === s.kind)?.blurb}>
+        <Field label="Verdeling" hint={SPLIT_KINDS.find((k) => k.id === s.kind)?.blurb}>
           <div className="chips">
             {SPLIT_KINDS.map((k) => (
               <button
@@ -144,7 +149,21 @@ export default function SplitPicker({ amount, cadence, spec, people, accounts = 
                     </span>
                   )}
 
-                  <Money cents={parts[key] || 0} />
+                  {s.kind === 'amount' ? (
+                    <Money cents={parts[key] || 0} />
+                  ) : (
+                    // Wanting to change one person's amount is how this starts,
+                    // not "I would like a different division method". So the
+                    // amount itself is the way in.
+                    <button
+                      type="button"
+                      className="as-amount"
+                      aria-label={`Bedrag voor ${bearer?.name} zelf invullen`}
+                      onClick={() => setKind('amount')}
+                    >
+                      <Money cents={parts[key] || 0} />
+                    </button>
+                  )}
                 </div>
               );
             })}

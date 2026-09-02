@@ -240,3 +240,22 @@ describe('a friend who settles through the bills account', () => {
     expect(within(sheet).getByText(/via BUNQ/)).toBeTruthy();
   }, 30000);
 });
+
+describe('changing one person\'s amount', () => {
+  it('starts from tapping that amount, not from a division method', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Streamingdienst'));
+
+    // 20,00 over four: everyone at 5,00, and each of those is a way in.
+    const way = await screen.findByRole('button', { name: /Bedrag voor Ik zelf invullen/i });
+    await user.click(way);
+
+    // Now every bearer has a field of their own, seeded with what they had.
+    const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    const fields = within(sheet).getAllByPlaceholderText('0,00');
+    expect(fields.length).toBeGreaterThanOrEqual(4);
+    expect(fields.map((f) => f.value)).toContain('5,00');
+  }, 30000);
+});
