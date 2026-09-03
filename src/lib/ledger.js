@@ -13,7 +13,7 @@
 // counts fully: it can be owed money (everyone's share of what went out of it)
 // and it can owe money (see routeThrough below).
 
-import { perMonth, perYear, isActive } from './cadence.js';
+import { perMonth, perYear, isActive, chargedIn, setAside } from './cadence.js';
 import { split, byWeight, isAccountBearer, accountOfBearer } from './split.js';
 import { categoryName } from '../data/categories.js';
 
@@ -88,6 +88,9 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
   const perCharge = {};
   let monthlyTotal = 0;
   let unassigned = 0;
+  const realPerAccount = {};
+  const asidePerAccount = {};
+  const unknownCharge = new Set();
   let yearlyTotal = 0;
 
   for (const expense of running) {
@@ -119,7 +122,18 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     const category = categoryName(expense.category);
     monthlyTotal += amount;
     yearlyTotal += perYear(expense.amount, expense.cadence);
-    if (expense.payer?.kind === 'account') perAccount[expense.payer.id] += amount;
+    if (expense.payer?.kind === 'account') {
+      const account = expense.payer.id;
+      perAccount[account] += amount;
+      // Two more numbers per account, and they answer different questions than
+      // the monthly load does. What actually leaves it this month, and what is
+      // sitting on it waiting for a bill that comes once a year.
+      const charged = chargedIn(expense, month);
+      if (charged === null) unknownCharge.add(account);
+      else if (charged) realPerAccount[account] = (realPerAccount[account] || 0) + expense.amount;
+      const aside = setAside(expense, month);
+      if (aside) asidePerAccount[account] = (asidePerAccount[account] || 0) + aside;
+    }
     perCategory[category] = (perCategory[category] || 0) + amount;
     if (expense.charge) perCharge[expense.charge] = (perCharge[expense.charge] || 0) + amount;
 
@@ -150,7 +164,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     perCategory,
     perCharge,
     transfers,
-    pots: potOverview(transfers, accounts, perAccount),
+    pots: potOverview(transfers, accounts, perAccount, { realPerAccount, asidePerAccount, unknownCharge }),
     hub,
     warnings: [...new Set(warnings)],
   };
@@ -251,7 +265,7 @@ export function net(matrix) {
 }
 
 /** Per shared account: what goes out, what should come in, and what is paid in. */
-function potOverview(transfers, accounts, perAccount) {
+function potOverview(transfers, accounts, perAccount, saving) {
   return accounts
     .filter((a) => a.kind === 'shared')
     .map((account) => {
@@ -265,7 +279,20 @@ function potOverview(transfers, accounts, perAccount) {
       const contributions = account.contributions || {};
       const paidIn = Object.values(contributions).reduce((sum, c) => sum + (Number(c) || 0), 0);
       const out = perAccount[account.id] || 0;
-      return { account, out, incoming, outgoing, contributions, paidIn, difference: paidIn - out };
+      return {
+        account,
+        out,
+        incoming,
+        outgoing,
+        contributions,
+        paidIn,
+        difference: paidIn - out,
+        // What really leaves this month, what is being saved for later, and
+        // whether some expense could not say which month it goes out.
+        charged: saving.realPerAccount[account.id] || 0,
+        aside: saving.asidePerAccount[account.id] || 0,
+        chargeUnknown: saving.unknownCharge.has(account.id),
+      };
     });
 }
 

@@ -17,10 +17,30 @@ import {
   accountParty,
   isBusiness,
 } from '../lib/ledger.js';
-import { perMonth, perYear, cadenceOf, isActive, formatMonth } from '../lib/cadence.js';
+import {
+  perMonth,
+  perYear,
+  cadenceOf,
+  isActive,
+  formatMonth,
+  shiftMonth,
+  chargedIn,
+  setAside,
+} from '../lib/cadence.js';
 import { split, possibleBearers, bearerName } from '../lib/split.js';
 import { categoryOf } from '../data/categories.js';
 import { formatMoney } from '../lib/money.js';
+
+/** The next month this expense is charged, from its start and its rhythm. */
+function nextCharge(expense, month) {
+  const step = 12 / cadenceOf(expense.cadence).perYear;
+  let candidate = month;
+  for (let i = 0; i < step; i += 1) {
+    candidate = shiftMonth(candidate, 1);
+    if (chargedIn(expense, candidate)) return candidate;
+  }
+  return candidate;
+}
 
 export default function ExpenseView({
   expense,
@@ -121,6 +141,30 @@ export default function ExpenseView({
                 .join(' · ')}
         </div>
       </div>
+
+      {/* Charged less often than monthly: then the amount above is what you put
+          aside each month, and the account only feels it once. */}
+      {!once && cadenceOf(expense.cadence).perYear < 12 && (
+        <div className="panel" style={{ marginBottom: 14 }}>
+          {expense.from ? (
+            <>
+              <Line
+                what={chargedIn(expense, month) ? `Wordt deze maand afgeschreven` : 'Wordt afgeschreven in'}
+                sub={chargedIn(expense, month) ? undefined : formatMonth(nextCharge(expense, month))}
+                cents={expense.amount}
+              />
+              <Line what="Staat er nu opzij" sub="uit wat er elke maand voor wordt ingelegd" cents={setAside(expense, month)} />
+            </>
+          ) : (
+            <div className="box">
+              <div className="small muted">
+                Vul bij <strong>Loopt vanaf</strong> in wanneer deze post begon, dan weet Pay in
+                welke maand hij wordt afgeschreven — en hoeveel er inmiddels voor opzij staat.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {!running && (
         <div className="hint warn" style={{ marginBottom: 14 }}>

@@ -521,3 +521,53 @@ describe('getting rid of a label', () => {
     expect(screen.getByText(/Nog geen incasso/)).toBeTruthy();
   }, 30000);
 });
+
+describe('saving up for a yearly expense', () => {
+  const household = () => {
+    const set = exampleHousehold();
+    // The quarterly one starts in January, so it is charged in January, April,
+    // July and October — not in September.
+    set.expenses = set.expenses.map((e) =>
+      e.name === 'Gemeentelijke heffingen' ? { ...e, from: '2024-01-01' } : e
+    );
+    return set;
+  };
+
+  it('shows what really leaves the account, next to the monthly load', async () => {
+    await withData(household());
+    const user = await start();
+
+    // The pot: 171,00 a month in the books, of which the 30,00 quarterly share
+    // is being saved up — so in September only 141,00 actually goes out.
+    await screen.findByText(/Elke maand overmaken/);
+    const pot = [...document.querySelectorAll('.section')]
+      .find((s) => s.textContent === 'Vaste lasten').nextElementSibling;
+    expect(within(pot).getByText('Maandlast').closest('.line').textContent).toContain('171,00');
+    expect(within(pot).getByText(/echt af/).closest('.line').textContent).toContain('141,00');
+    // Two instalments in since July: 60,00.
+    expect(within(pot).getByText(/opzij voor later/).closest('.line').textContent)
+      .toContain('60,00');
+
+    // And the expense itself says when it goes out and what is put by.
+    await user.click(screen.getByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Gemeentelijke heffingen'));
+    const sheet = (await screen.findByRole('heading', { name: 'Gemeentelijke heffingen' }))
+      .closest('.sheet');
+    expect(within(sheet).getByText('Wordt afgeschreven in').closest('.line').textContent)
+      .toContain('oktober 2026');
+    expect(within(sheet).getByText('Staat er nu opzij').closest('.line').textContent)
+      .toContain('60,00');
+  }, 30000);
+
+  it('asks for the start date rather than guessing the month', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Gemeentelijke heffingen'));
+
+    const sheet = (await screen.findByRole('heading', { name: 'Gemeentelijke heffingen' }))
+      .closest('.sheet');
+    expect(within(sheet).getByText(/Loopt vanaf/)).toBeTruthy();
+    expect(within(sheet).queryByText('Staat er nu opzij')).toBe(null);
+  }, 30000);
+});

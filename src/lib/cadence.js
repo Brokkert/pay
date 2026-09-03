@@ -48,6 +48,44 @@ export function isActive(expense, month) {
 
 export const thisMonth = () => new Date().toISOString().slice(0, 7);
 
+/** Whole months from one 'yyyy-mm' to another. Negative if the second is earlier. */
+export function monthsBetween(from, to) {
+  const [fy, fm] = String(from).split('-').map(Number);
+  const [ty, tm] = String(to).split('-').map(Number);
+  return (ty - fy) * 12 + (tm - fm);
+}
+
+/**
+ * Is this the month the money actually leaves?
+ *
+ * An expense charged less often than monthly still counts every month in the
+ * books — that is the saving up — but the account only feels it once. Which
+ * month follows from when it starts: a yearly policy running from March is
+ * charged every March. Returns null when there is no start date, because then
+ * it is not known and guessing would be worse than saying so.
+ */
+export function chargedIn(expense, month) {
+  const c = cadenceOf(expense.cadence);
+  if (c.id === 'once') return false;
+  if (c.perYear >= 12) return true;
+  if (!expense.from) return null;
+  const since = monthsBetween(expense.from.slice(0, 7), month);
+  return since >= 0 && since % (12 / c.perYear) === 0;
+}
+
+/**
+ * What is set aside for it by this month: one monthly instalment for every
+ * month since it was last charged. Nothing in the month it goes out, because
+ * that is when the saving is spent.
+ */
+export function setAside(expense, month) {
+  const c = cadenceOf(expense.cadence);
+  if (c.perYear >= 12 || c.id === 'once' || !expense.from) return 0;
+  const since = monthsBetween(expense.from.slice(0, 7), month);
+  if (since < 0) return 0;
+  return (since % (12 / c.perYear)) * perMonth(expense.amount, expense.cadence);
+}
+
 const MONTH_NAMES = ['januari', 'februari', 'maart', 'april', 'mei', 'juni',
   'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 

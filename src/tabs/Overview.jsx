@@ -101,7 +101,7 @@ export default function Overview({ store, month, onMonth }) {
       )}
 
       {result.pots.map((pot) => (
-        <Pot key={pot.account.id} pot={pot} people={people} hub={result.hub} />
+        <Pot key={pot.account.id} pot={pot} people={people} hub={result.hub} month={month} />
       ))}
 
       {charges.length > 0 && (
@@ -283,7 +283,7 @@ function Transfer({ transfer, context, me, explain = false }) {
   );
 }
 
-function Pot({ pot, people, hub }) {
+function Pot({ pot, people, hub, month }) {
   const hasContributions = Object.values(pot.contributions || {}).some((c) => Number(c) > 0);
   const isHub = hub?.id === pot.account.id;
   const nameOf = (id) => people.find((p) => p.id === id)?.name || '?';
@@ -292,7 +292,24 @@ function Pot({ pot, people, hub }) {
     <>
       <div className="section">{pot.account.name}</div>
       <div className="panel">
-        <Line what="Gaat er deze maand af" cents={pot.out} />
+        <Line
+          what="Maandlast"
+          sub="wat jaarposten kosten is hierin uitgesmeerd over twaalf maanden"
+          cents={pot.out}
+        />
+        {(pot.charged !== pot.out || pot.aside > 0) && !pot.chargeUnknown && (
+          <Line
+            what={`Gaat er in ${formatMonth(month).split(' ')[0]} echt af`}
+            cents={pot.charged}
+          />
+        )}
+        {pot.aside > 0 && (
+          <Line
+            what="Staat opzij voor later"
+            sub="opgespaard voor posten die niet elke maand worden afgeschreven"
+            cents={pot.aside}
+          />
+        )}
         {Object.entries(pot.incoming).map(([id, cents]) => (
           <Line
             key={`in-${id}`}
