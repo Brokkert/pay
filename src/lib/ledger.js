@@ -15,6 +15,7 @@
 
 import { perMonth, perYear, isActive } from './cadence.js';
 import { split, byWeight, isAccountBearer, accountOfBearer } from './split.js';
+import { categoryName } from '../data/categories.js';
 
 export const personParty = (id) => `person:${id}`;
 export const accountParty = (id) => `account:${id}`;
@@ -113,7 +114,9 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
       );
     }
 
-    const category = expense.category || 'other';
+    // By name, so an expense saved before categories were names lands in the
+    // same bucket as one saved after.
+    const category = categoryName(expense.category);
     monthlyTotal += amount;
     yearlyTotal += perYear(expense.amount, expense.cadence);
     if (expense.payer?.kind === 'account') perAccount[expense.payer.id] += amount;

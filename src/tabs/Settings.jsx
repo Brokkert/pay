@@ -11,7 +11,7 @@ import { createInvite, listInvites, revokeInvite } from '../lib/invites.js';
 import { exampleHousehold } from '../data/example.js';
 import { readBackup } from '../lib/backup.js';
 import { CADENCES } from '../lib/cadence.js';
-import { CATEGORIES } from '../data/categories.js';
+import { SUGGESTED, categoryName } from '../data/categories.js';
 
 export default function Settings({ user, store, keyring, theme, onTheme, onSignIn }) {
   const [panel, setPanel] = useState(null);
@@ -161,6 +161,9 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
         het bestand wordt pas versleuteld op het moment dat het hier binnenkomt.
       </div>
 
+      <div className="section">Labels</div>
+      <LabelList store={store} onMessage={setMessage} />
+
       <div className="section">Samen bijhouden</div>
       {store.cloud ? (
         <>
@@ -255,7 +258,7 @@ function PastePanel({ store, onDone, onClose }) {
   const [text, setText] = useState('');
   const [account, setAccount] = useState(accounts[0]?.id || null);
   const [participants, setParticipants] = useState(() => people.filter((p) => p.isMe).map((p) => p.id));
-  const [category, setCategory] = useState('other');
+  const [category, setCategory] = useState('Overig');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -355,7 +358,7 @@ function PastePanel({ store, onDone, onClose }) {
 
           <Field label="Categorie">
             <select className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
-              {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+              {SUGGESTED.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
             </select>
           </Field>
 
@@ -478,6 +481,104 @@ function InvitePanel({ onClose }) {
           </div>
         </>
       )}
+    </Sheet>
+  );
+}
+
+
+/**
+ * Renaming a category or a charge.
+ *
+ * Neither is a record of its own — both are just a name carried by the expenses
+ * that use it, which is what keeps them from needing a list to maintain. The
+ * price is that renaming one means writing every expense that carries it, and
+ * that has to happen somewhere. Here.
+ */
+function LabelList({ store, onMessage }) {
+  const [editing, setEditing] = useState(null);
+
+  const count = (field) => {
+    const tally = new Map();
+    for (const expense of store.expenses) {
+      const name = field === 'category' ? categoryName(expense.category) : (expense.charge || '');
+      if (name) tally.set(name, (tally.get(name) || 0) + 1);
+    }
+    return [...tally].sort((a, b) => a[0].localeCompare(b[0], 'nl'));
+  };
+
+  const rename = async (field, from, to) => {
+    const name = to.trim();
+    if (!name || name === from) return setEditing(null);
+    onMessage('Bezig…');
+    try {
+      const hit = (expense) =>
+        (field === 'category' ? categoryName(expense.category) : expense.charge) === from;
+      const touched = store.expenses.filter(hit);
+      for (const expense of touched) await store.save('expenses', { ...expense, [field]: name });
+      onMessage(`${touched.length} ${touched.length === 1 ? 'post' : 'posten'} aangepast.`);
+      setEditing(null);
+    } catch (err) {
+      onMessage(err.message || String(err));
+    }
+  };
+
+  const section = (field, title, empty) => {
+    const rows = count(field);
+    return (
+      <>
+        <div className="hint" style={{ marginBottom: 6 }}>{title}</div>
+        {rows.length ? (
+          <div className="panel" style={{ marginBottom: 14 }}>
+            {rows.map(([name, n]) => (
+              <Line
+                key={name}
+                what={name}
+                sub={`${n} ${n === 1 ? 'post' : 'posten'}`}
+                right={<span className="chev"><Icon name="right" size={16} /></span>}
+                onClick={() => setEditing({ field, name })}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="panel" style={{ marginBottom: 14 }}>
+            <div className="box"><div className="small muted">{empty}</div></div>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  return (
+    <>
+      {section('category', 'Categorieën — wát je posten zijn.', 'Nog geen posten.')}
+      {section('charge', 'Incasso’s — posten die als één regel van je rekening gaan.',
+        'Nog geen incasso ingevuld. Dat hoeft ook niet.')}
+      {editing && (
+        <RenameSheet
+          label={editing.field === 'category' ? 'Categorie' : 'Incasso'}
+          name={editing.name}
+          onSave={(to) => rename(editing.field, editing.name, to)}
+          onClose={() => setEditing(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function RenameSheet({ label, name, onSave, onClose }) {
+  const [value, setValue] = useState(name);
+  return (
+    <Sheet title={`${label} hernoemen`} onClose={onClose}>
+      <Field label="Naam" hint="Elke post met deze naam gaat mee.">
+        <input className="input" autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
+      </Field>
+      <button
+        className="btn primary wide"
+        disabled={!value.trim() || value.trim() === name}
+        onClick={() => onSave(value)}
+      >
+        Bewaren
+      </button>
     </Sheet>
   );
 }

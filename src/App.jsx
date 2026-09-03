@@ -14,6 +14,7 @@ import { useStore } from './lib/store.js';
 import { useKeyring } from './lib/keyring.js';
 import { isConfigured } from './lib/config.js';
 import { thisMonth } from './lib/cadence.js';
+import { categoryName } from './data/categories.js';
 
 const TABS = [
   { id: 'overview', label: 'Overzicht' },
@@ -169,6 +170,7 @@ export default function App() {
           people={store.people}
           accounts={store.accounts}
           charges={[...new Set(store.expenses.map((e) => e.charge).filter(Boolean))].sort()}
+          categories={[...new Set(store.expenses.map((e) => categoryName(e.category)))]}
           onSave={(expense) => store.save('expenses', expense)}
           onRemove={(id) => store.remove('expenses', id)}
           onClose={() => {

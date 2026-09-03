@@ -1,25 +1,68 @@
-// Categories for expenses. Deliberately short: nobody fills in a list of thirty
-// boxes consistently, and then the breakdown by category stops meaning anything.
+// Categories for expenses.
 //
-// Every category has a colour instead of an icon. One coloured dot next to the
-// name is enough to scan a list by, and it stays calm.
+// A category is a name, the same as a charge is a name — that is the whole
+// point. Both are labels you put on an expense; they differ only in what they
+// answer. What is this for, and which posts leave your account as one line.
+// Making one a fixed list and the other free text made two mechanics out of one
+// idea, and then nobody could say what the difference was.
+//
+// So these twelve are a starting set, not a closed one: they show up as
+// suggestions on a fresh household and you can add or rename anything.
+//
+// A colour instead of an icon. One coloured dot next to the name is enough to
+// scan a list by, and it stays calm.
 
-export const CATEGORIES = [
-  { id: 'housing', label: 'Wonen', colour: '#6b5bd2' },
-  { id: 'utilities', label: 'Energie & water', colour: '#2f80c4' },
-  { id: 'insurance', label: 'Verzekeringen', colour: '#1f7a68' },
-  { id: 'telecom', label: 'Internet & telefoon', colour: '#2aa3a3' },
-  { id: 'media', label: 'Streaming & media', colour: '#c2554d' },
-  { id: 'software', label: 'Software & diensten', colour: '#8a5cc4' },
-  { id: 'transport', label: 'Vervoer', colour: '#b07a1e' },
-  { id: 'groceries', label: 'Boodschappen', colour: '#5d8a2b' },
-  { id: 'health', label: 'Gezondheid & sport', colour: '#c26a9a' },
-  { id: 'charity', label: 'Goede doelen', colour: '#c98a2e' },
-  { id: 'tax', label: 'Belastingen & heffingen', colour: '#7a6a5a' },
-  { id: 'other', label: 'Overig', colour: '#8a9099' },
+export const SUGGESTED = [
+  { name: 'Wonen', colour: '#6b5bd2' },
+  { name: 'Energie & water', colour: '#2f80c4' },
+  { name: 'Verzekeringen', colour: '#1f7a68' },
+  { name: 'Internet & telefoon', colour: '#2aa3a3' },
+  { name: 'Streaming & media', colour: '#c2554d' },
+  { name: 'Software & diensten', colour: '#8a5cc4' },
+  { name: 'Vervoer', colour: '#b07a1e' },
+  { name: 'Boodschappen', colour: '#5d8a2b' },
+  { name: 'Gezondheid & sport', colour: '#c26a9a' },
+  { name: 'Goede doelen', colour: '#c98a2e' },
+  { name: 'Belastingen & heffingen', colour: '#7a6a5a' },
+  { name: 'Overig', colour: '#8a9099' },
 ];
 
-export const categoryOf = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES.at(-1);
+// What earlier versions stored: an id per category. Kept so saved expenses keep
+// their category, and written back as a name the first time one is saved.
+const LEGACY = {
+  housing: 'Wonen',
+  utilities: 'Energie & water',
+  insurance: 'Verzekeringen',
+  telecom: 'Internet & telefoon',
+  media: 'Streaming & media',
+  software: 'Software & diensten',
+  transport: 'Vervoer',
+  groceries: 'Boodschappen',
+  health: 'Gezondheid & sport',
+  charity: 'Goede doelen',
+  tax: 'Belastingen & heffingen',
+  other: 'Overig',
+};
+
+const PALETTE = SUGGESTED.map((c) => c.colour);
+
+/** A colour for a name you made up: the same one every time, for everyone. */
+function colourFor(name) {
+  let sum = 0;
+  for (let i = 0; i < name.length; i += 1) sum = (sum * 31 + name.charCodeAt(i)) % 100000;
+  return PALETTE[sum % PALETTE.length];
+}
+
+/** The name a stored value stands for. */
+export const categoryName = (value) => {
+  const raw = String(value ?? '').trim();
+  return LEGACY[raw] || raw || 'Overig';
+};
+
+export function categoryOf(value) {
+  const label = categoryName(value);
+  return { label, colour: SUGGESTED.find((c) => c.name === label)?.colour || colourFor(label) };
+}
 
 export const ACCOUNT_KINDS = [
   {

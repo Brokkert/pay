@@ -74,7 +74,6 @@ describe('readBackup', () => {
 
     bad((c) => { c.expenses[0].amount = 12.5; }, /heel aantal centen/i);
     bad((c) => { c.expenses[0].cadence = 'weekly'; }, /ritme/i);
-    bad((c) => { c.expenses[0].category = 'gokken'; }, /categorie/i);
     bad((c) => { c.expenses[0].name = '   '; }, /naam ontbreekt/i);
     bad((c) => { c.expenses[0].payer = { kind: 'kat', id: 'x' }; }, /persoon of een rekening/i);
     bad((c) => { c.expenses[0].payer.id = 'bestaat-niet'; }, /niet in het bestand/i);
@@ -101,7 +100,7 @@ describe('readBackup', () => {
     };
     const back = readBackup(JSON.stringify(minimal));
     expect(back.expenses[0]).toMatchObject({
-      cadence: 'month', category: 'other', charge: '', note: '', paused: false,
+      cadence: 'month', category: 'Overig', charge: '', note: '', paused: false,
     });
     // Whether it is business follows from the account, so it is not a field.
     expect(back.expenses[0].business).toBeUndefined();

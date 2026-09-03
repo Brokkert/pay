@@ -12,11 +12,10 @@
 import { newId } from './store.js';
 import { CADENCES } from './cadence.js';
 import { SPLIT_KINDS, ACCOUNT_PREFIX } from './split.js';
-import { CATEGORIES, ACCOUNT_KINDS } from '../data/categories.js';
+import { ACCOUNT_KINDS, categoryName } from '../data/categories.js';
 
 const CADENCE_IDS = new Set(CADENCES.map((c) => c.id));
 const SPLIT_IDS = new Set(SPLIT_KINDS.map((s) => s.id));
-const CATEGORY_IDS = new Set(CATEGORIES.map((c) => c.id));
 const ACCOUNT_KIND_IDS = new Set(ACCOUNT_KINDS.map((k) => k.id));
 
 const fail = (message) => {
@@ -121,8 +120,9 @@ export function readBackup(source) {
     const cadence = text(e.cadence) || 'month';
     if (!CADENCE_IDS.has(cadence)) fail(`${where}: ritme "${cadence}" bestaat niet.`);
 
-    const category = text(e.category) || 'other';
-    if (!CATEGORY_IDS.has(category)) fail(`${where}: categorie "${category}" bestaat niet.`);
+    // A category is a name of your own, so there is no list to check it
+    // against. Old ids still resolve to the name they stood for.
+    const category = categoryName(e.category);
 
     const payerKind = text(e.payer?.kind);
     if (payerKind !== 'person' && payerKind !== 'account') {

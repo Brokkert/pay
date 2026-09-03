@@ -4,13 +4,14 @@ import { useMemo, useState } from 'react';
 import { Sheet, Field, Notice, AmountInput, Avatar, Confirm, Icon } from './ui.jsx';
 import SplitPicker from './SplitPicker.jsx';
 import { CADENCES } from '../lib/cadence.js';
-import { CATEGORIES } from '../data/categories.js';
+import { SUGGESTED, categoryName } from '../data/categories.js';
+import LabelPicker from './LabelPicker.jsx';
 
 const blank = (meId) => ({
   name: '',
   amount: 0,
   cadence: 'month',
-  category: 'other',
+  category: 'Overig',
   charge: '',
   payer: { kind: 'account', id: null },
   split: { kind: 'equal', participants: meId ? [meId] : [], weights: {} },
@@ -25,6 +26,7 @@ export default function ExpenseForm({
   people,
   accounts,
   charges = [],
+  categories = [],
   onSave,
   onRemove,
   onClose,
@@ -35,11 +37,17 @@ export default function ExpenseForm({
   // already in use, plus whatever you type here. One less thing to keep tidy,
   // and picking from them is what stops "Verzekeringspakket" and
   // "Verzekeringpakket" from quietly becoming two different charges.
-  const known = useMemo(
-    () => [...new Set([...charges, expense?.charge].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'nl')),
+  const dutch = (a, b) => a.localeCompare(b, 'nl');
+  const knownCharges = useMemo(
+    () => [...new Set([...charges, expense?.charge].filter(Boolean))].sort(dutch),
     [charges, expense?.charge]
   );
-  const [naming, setNaming] = useState(() => Boolean(expense?.charge) && !charges.includes(expense.charge));
+  // Your own categories first; the starting set fills in behind them so a fresh
+  // household is not staring at an empty row.
+  const knownCategories = useMemo(() => {
+    const mine = [...categories, categoryName(expense?.category)].filter(Boolean);
+    return [...new Set([...mine.sort(dutch), ...SUGGESTED.map((c) => c.name)])];
+  }, [categories, expense?.category]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [asking, setAsking] = useState(false);
@@ -137,52 +145,26 @@ export default function ExpenseForm({
         onChange={(spec) => set({ split: spec })}
       />
 
-      <Field label="Categorie">
-        <select className="select" value={draft.category} onChange={(e) => set({ category: e.target.value })}>
-          {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-        </select>
-      </Field>
+      <LabelPicker
+        label="Categorie"
+        hint="Wát deze post is. Pay telt je posten per categorie op, zodat je ziet waar je geld heen gaat."
+        icon="overview"
+        known={knownCategories}
+        value={categoryName(draft.category)}
+        placeholder="Naam van de categorie"
+        clearable={false}
+        onChange={(name) => set({ category: name })}
+      />
 
-      <Field
+      <LabelPicker
         label="Incasso"
-        hint="Alleen voor posten die als één regel van je rekening gaan: je verzekeringspakket, je zorgverzekeraar. Pay telt ze op, zodat je dat bedrag herkent op je afschrift. Wat een post ís hoort bij de categorie hierboven — daar is dit niet voor."
-      >
-        <div className="chips">
-          {known.map((name) => (
-            <button
-              key={name}
-              type="button"
-              className={`chip${draft.charge === name ? ' on' : ''}`}
-              onClick={() => {
-                setNaming(false);
-                set({ charge: draft.charge === name ? '' : name });
-              }}
-            >
-              <Icon name="receipt" size={14} /> {name}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={`chip${naming ? ' on' : ''}`}
-            onClick={() => {
-              setNaming(true);
-              if (known.includes(draft.charge)) set({ charge: '' });
-            }}
-          >
-            <Icon name="plus" size={14} /> Nieuwe
-          </button>
-        </div>
-        {naming && (
-          <input
-            className="input"
-            style={{ marginTop: 9 }}
-            autoFocus
-            placeholder="Naam van de afschrijving"
-            value={draft.charge || ''}
-            onChange={(e) => set({ charge: e.target.value })}
-          />
-        )}
-      </Field>
+        hint="Alleen als deze post samen met andere als één regel van je rekening gaat — je verzekeringspakket bijvoorbeeld. Pay telt die op zodat je het bedrag op je afschrift herkent. Wát de post is, is de categorie hierboven."
+        icon="receipt"
+        known={knownCharges}
+        value={draft.charge || ''}
+        placeholder="Naam van de afschrijving"
+        onChange={(name) => set({ charge: name })}
+      />
 
       <details className="disclose" style={{ marginBottom: 18 }}>
         <summary>Looptijd, notitie en zakelijk</summary>

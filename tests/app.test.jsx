@@ -301,21 +301,22 @@ describe('grouping expenses', () => {
     await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
 
     const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
-    // Two expenses share the group "Verzekeringen", so it is on offer here.
-    const chip = within(sheet).getByRole('button', { name: /Verzekeringen/ });
+    // Category and charge look the same on purpose, so scope to the right one.
+    const field = within(sheet).getByText('Incasso').closest('.field');
+    // Two expenses share the charge "Verzekeringen", so it is on offer here.
+    const chip = within(field).getByRole('button', { name: /Verzekeringen/ });
     expect(chip.className).toContain('on');
     // No free-text field until you ask for one: that is what makes typos into
     // second groups.
-    expect(within(sheet).queryByPlaceholderText(/Naam van de afschrijving/)).toBe(null);
+    expect(within(field).queryByPlaceholderText(/Naam van de afschrijving/)).toBe(null);
 
     // Tapping it again takes this expense out of the group.
     await user.click(chip);
-    expect(within(sheet).getByRole('button', { name: /Verzekeringen/ }).className).not.toContain('on');
+    expect(within(field).getByRole('button', { name: /Verzekeringen/ }).className).not.toContain('on');
 
     // And a new one is a deliberate step.
-    await user.click(within(sheet).getByRole('button', { name: /Nieuwe/ }));
-    const field = within(sheet).getByPlaceholderText(/Naam van de afschrijving/);
-    await user.type(field, 'Zorgverzekeraar');
+    await user.click(within(field).getByRole('button', { name: /Nieuwe/ }));
+    await user.type(within(field).getByPlaceholderText(/Naam van de afschrijving/), 'Zorgverzekeraar');
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
     // Which then shows up as a group of its own on the overview.
@@ -412,5 +413,59 @@ describe('the expense list', () => {
     // The coloured dot alone does not tell you which category it stands for.
     expect(row.textContent).toContain('Streaming & media');
     expect(row.textContent).toContain('van Privé');
+  }, 30000);
+});
+
+describe('renaming a label', () => {
+  it('carries every expense that uses it along', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+
+    // "Verzekeringen" is a category here as well as a charge, so aim at the
+    // charges panel, which sits right under its own line of explanation.
+    const charges = (await screen.findByText(/^Incasso/)).nextElementSibling;
+    const row = within(charges).getByText('Verzekeringen').closest('.line');
+    expect(row.textContent).toContain('2 posten');
+    await user.click(row);
+
+    const sheet = screen.getByRole('heading', { name: 'Incasso hernoemen' }).closest('.sheet');
+    const field = within(sheet).getByRole('textbox');
+    await user.clear(field);
+    await user.type(field, 'Verzekeringspakket');
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    expect(await screen.findByText(/2 posten aangepast/)).toBeTruthy();
+    expect(within(charges).queryByText('Verzekeringen')).toBe(null);
+    expect(within(charges).getByText('Verzekeringspakket').closest('.line').textContent)
+      .toContain('2 posten');
+
+    // And it is one group on the overview, not two.
+    await user.click(screen.getByRole('button', { name: /Overzicht/ }));
+    expect((await screen.findAllByText('Verzekeringspakket')).length).toBe(1);
+  }, 30000);
+
+  it('renames a category across expenses saved under the old ids too', async () => {
+    // Expenses saved before categories were names carry an id like "telecom".
+    const set = exampleHousehold();
+    set.expenses = set.expenses.map((e) =>
+      e.name === 'Internet' ? { ...e, category: 'telecom' } : e
+    );
+    await withData(set);
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+
+    const categories = (await screen.findByText(/^Categorie/)).nextElementSibling;
+    const row = within(categories).getByText('Internet & telefoon').closest('.line');
+    expect(row.textContent).toContain('1 post');
+    await user.click(row);
+
+    const sheet = screen.getByRole('heading', { name: 'Categorie hernoemen' }).closest('.sheet');
+    const field = within(sheet).getByRole('textbox');
+    await user.clear(field);
+    await user.type(field, 'Internet');
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    expect(await screen.findByText(/1 post aangepast/)).toBeTruthy();
   }, 30000);
 });
