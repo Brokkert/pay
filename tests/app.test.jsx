@@ -303,8 +303,8 @@ describe('grouping expenses', () => {
     const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
     // Category and charge look the same on purpose, so scope to the right one.
     const field = within(sheet).getByText('Incasso').closest('.field');
-    // Two expenses share the charge "Verzekeringen", so it is on offer here.
-    const chip = within(field).getByRole('button', { name: /Verzekeringen/ });
+    // Two expenses share the charge "Verzekeraar", so it is on offer here.
+    const chip = within(field).getByRole('button', { name: /Verzekeraar/ });
     expect(chip.className).toContain('on');
     // No free-text field until you ask for one: that is what makes typos into
     // second groups.
@@ -312,7 +312,7 @@ describe('grouping expenses', () => {
 
     // Tapping it again takes this expense out of the group.
     await user.click(chip);
-    expect(within(field).getByRole('button', { name: /Verzekeringen/ }).className).not.toContain('on');
+    expect(within(field).getByRole('button', { name: /Verzekeraar/ }).className).not.toContain('on');
 
     // And a new one is a deliberate step.
     await user.click(within(field).getByRole('button', { name: /Nieuwe/ }));
@@ -422,10 +422,8 @@ describe('renaming a label', () => {
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Meer/ }));
 
-    // "Verzekeringen" is a category here as well as a charge, so aim at the
-    // charges panel, which sits right under its own line of explanation.
     const charges = (await screen.findByText(/^Incasso/)).nextElementSibling;
-    const row = within(charges).getByText('Verzekeringen').closest('.line');
+    const row = within(charges).getByText('Verzekeraar').closest('.line');
     expect(row.textContent).toContain('2 posten');
     await user.click(row);
 
@@ -436,7 +434,7 @@ describe('renaming a label', () => {
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
     expect(await screen.findByText(/2 posten aangepast/)).toBeTruthy();
-    expect(within(charges).queryByText('Verzekeringen')).toBe(null);
+    expect(within(charges).queryByText('Verzekeraar')).toBe(null);
     expect(within(charges).getByText('Verzekeringspakket').closest('.line').textContent)
       .toContain('2 posten');
 
@@ -467,5 +465,20 @@ describe('renaming a label', () => {
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
     expect(await screen.findByText(/1 post aangepast/)).toBeTruthy();
+  }, 30000);
+});
+
+describe('reading an expense row', () => {
+  it('separates what it is from which debit it rides on', async () => {
+    const set = exampleHousehold();
+    await withData(set);
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+
+    const row = (await screen.findByText('Inboedel')).closest('.item');
+    // The charge is a badge next to the name; the category is in the line below.
+    expect(within(row).getByText('Verzekeraar', { selector: '.chip' })).toBeTruthy();
+    expect(row.querySelector('.sub').textContent).toContain('Verzekeringen ·');
+    expect(row.querySelector('.sub').textContent).toContain('van Vaste lasten');
   }, 30000);
 });

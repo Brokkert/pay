@@ -531,7 +531,7 @@ button.item:active { background: var(--sunk); }
   font-weight: 600;
 }
 .chip.static { cursor: default; background: var(--sunk); border-color: transparent; }
-.chip.tiny { padding: 4px 10px; font-size: 11px; }
+.chip.tiny { padding: 4px 10px; font-size: 11px; gap: 5px; }
 
 /* A choice with an explanation under it: not a pill but a block. */
 .option {

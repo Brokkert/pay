@@ -54,10 +54,12 @@ export function exampleHousehold() {
     { name: 'Water', amount: 1500, category: 'Energie & water',
       payer: { kind: 'account', id: bills }, split: together },
 
-    // Two expenses on a single charge from the same insurer.
-    { name: 'Inboedel', amount: 1200, category: 'Verzekeringen', charge: 'Verzekeringen',
+    // Two expenses on a single debit from the same insurer. The charge is
+    // deliberately not named after the category: one says what these are, the
+    // other which line they arrive on.
+    { name: 'Inboedel', amount: 1200, category: 'Verzekeringen', charge: 'Verzekeraar',
       payer: { kind: 'account', id: bills }, split: together },
-    { name: 'Aansprakelijkheid', amount: 800, category: 'Verzekeringen', charge: 'Verzekeringen',
+    { name: 'Aansprakelijkheid', amount: 800, category: 'Verzekeringen', charge: 'Verzekeraar',
       payer: { kind: 'account', id: bills }, split: together },
 
     { name: 'Gemeentelijke heffingen', amount: 9000, cadence: 'quarter', category: 'Belastingen & heffingen',

@@ -152,6 +152,14 @@ function ExpenseRow({ row, month, people, accounts, onOpen, onSave }) {
         <span className="row" style={{ gap: 7 }}>
           <span className="title truncate">{expense.name}</span>
           {isBusiness(expense, accounts) && <span className="chip static tiny">zakelijk</span>}
+          {/* The charge sits next to the name as a badge, and the category in
+              the grey line below: one says which debit this rides on, the other
+              what the expense is, and they should not read as one list. */}
+          {expense.charge && (
+            <span className="chip static tiny">
+              <Icon name="receipt" size={11} /> {expense.charge}
+            </span>
+          )}
           {expense.paused && <span className="chip static tiny">gepauzeerd</span>}
           {expense.cadence === 'once' && expense.settled && (
             <span className="chip static tiny">afgerekend</span>
