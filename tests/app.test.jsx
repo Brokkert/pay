@@ -355,36 +355,20 @@ describe('opening an expense', () => {
     // And what it ends up inside: my 5,00 of this against the 6,00 the friend
     // pays for his, which is the 1,00 on the overview.
     expect(within(sheet).getByText('Verrekend met')).toBeTruthy();
-    const netted = [...sheet.querySelectorAll('.panel')]
-      .find((el) => el.textContent.includes('deze post'));
-    expect(netted).toBeTruthy();
-    // This expense named first, the largest others after it, and the amount it
-    // all ends up as.
-    expect(netted.textContent).toMatch(/^Streamingdienstdeze post/);
-    expect(netted.textContent).toContain('Energie');
-    expect(netted.textContent).toContain('En nog');
-    // The one that answers the question: this post against the friend's, which
-    // is the 1,00 you see on the overview.
-    const against = [...sheet.querySelectorAll('.panel')]
-      .find((el) => el.textContent.includes('Muziekdienst'));
-    expect(against.textContent).toBe(
-      'Streamingdienstdeze post−€ 5,00Muziekdienst€ 6,00Vaste lasten → Vriend€ 1,00'
-    );
-
-    // And nothing where every expense pulls the same way: those are added up,
-    // not settled against each other.
+    // Exactly one panel, and it is the one that answers the question: this post
+    // against the friend's, which is the 1,00 you see on the overview.
     const panels = [...sheet.querySelectorAll('.panel')].filter((el) =>
       el.textContent.includes('deze post')
     );
-    expect(panels.some((el) => el.textContent.includes('Partner → Vaste lasten'))).toBe(false);
+    expect(panels).toHaveLength(1);
+    expect(panels[0].textContent).toBe(
+      'Streamingdienstdeze post−€ 5,00Muziekdienst€ 6,00Vaste lasten → Vriend€ 1,00'
+    );
 
-    // In the pot, only what pulls the other way is named. Internet is owed to
-    // me like this one is, so listing it here would hide what actually makes
-    // the amount smaller.
-    const pot = panels.find((el) => el.textContent.includes('Ik → Vaste lasten'));
-    expect(pot.textContent).toContain('Energie');
-    expect(pot.textContent).not.toContain('Internet');
-    expect(pot.textContent).toContain('tellen dezelfde kant op');
+    // So: nothing where every expense pulls the same way — those are added up,
+    // not settled against each other — and nothing for your own deposit into
+    // the account, which is everything you owe it gathered into one amount
+    // rather than a settlement with anybody.
 
     // Changing it is a step you take on purpose.
     await user.click(within(sheet).getByRole('button', { name: 'Wijzigen' }));

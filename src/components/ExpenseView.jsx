@@ -9,7 +9,14 @@
 
 import { useMemo } from 'react';
 import { Sheet, Line, Total, BearerAvatar, Icon } from './ui.jsx';
-import { forMonth, explainTransfer, partyName, isBusiness } from '../lib/ledger.js';
+import {
+  forMonth,
+  explainTransfer,
+  partyName,
+  personParty,
+  accountParty,
+  isBusiness,
+} from '../lib/ledger.js';
 import { perMonth, perYear, cadenceOf, isActive, formatMonth } from '../lib/cadence.js';
 import { split, possibleBearers, bearerName } from '../lib/split.js';
 import { categoryOf } from '../data/categories.js';
@@ -42,12 +49,26 @@ export default function ExpenseView({
   // transfer one amount per person — so the interesting question from here is
   // which other expenses it was netted against on the way there.
   const settled = useMemo(() => {
+    const me = people.find((p) => p.isMe);
     const result = forMonth({ people, accounts, expenses }, month);
     return result.transfers
       .map((transfer) => ({
         transfer,
         rows: explainTransfer(transfer, { lines: result.lines, accounts }),
       }))
+      // Your own deposit into the settlement account is not a settlement, it is
+      // a contribution: everything you owe that account gathered into one
+      // amount. Calling it "verrekend met" and naming three of the thirty
+      // expenses in it dresses up a total as a netting. A settlement has
+      // someone on the other side.
+      .filter(({ transfer }) => {
+        const mine = me ? personParty(me.id) : null;
+        const hub = result.hub ? accountParty(result.hub.id) : null;
+        return !(hub && mine && (
+          (transfer.from === mine && transfer.to === hub) ||
+          (transfer.from === hub && transfer.to === mine)
+        ));
+      })
       .filter(({ rows }) => rows.length > 1 && rows.some((r) => r.expense.id === expense.id))
       // A transfer can gather a dozen expenses, and listing all of them here
       // turns the answer into a wall. This one always, then the largest few.
