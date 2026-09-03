@@ -602,3 +602,40 @@ describe('why this app exists', () => {
     expect(screen.getByText(/uit één spreadsheet met echte vaste lasten/)).toBeTruthy();
   }, 30000);
 });
+
+describe('taking a charge off one expense', () => {
+  it('offers "Geen" rather than making you guess that tapping again lets go', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Inboedel'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
+
+    const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    const field = within(sheet).getByText('Incasso').closest('.field');
+    expect(within(field).getByRole('button', { name: /Verzekeraar/ }).className).toContain('on');
+
+    await user.click(within(field).getByRole('button', { name: 'Geen' }));
+    expect(within(field).getByRole('button', { name: 'Geen' }).className).toContain('on');
+    expect(within(field).getByRole('button', { name: /Verzekeraar/ }).className).not.toContain('on');
+
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    // Only this expense loses it; the other one on that charge keeps it.
+    await user.click(screen.getByRole('button', { name: /Overzicht/ }));
+    const charges = (await screen.findByText('Per incasso')).nextElementSibling;
+    expect(within(charges).getByText('1 post op één afschrijving')).toBeTruthy();
+  }, 30000);
+
+  it('has no "Geen" for a category, because an expense always has one', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Inboedel'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
+
+    const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    const field = within(sheet).getByText('Categorie').closest('.field');
+    expect(within(field).queryByRole('button', { name: 'Geen' })).toBe(null);
+  }, 30000);
+});

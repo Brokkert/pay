@@ -27,6 +27,20 @@ export default function LabelPicker({
   return (
     <Field label={label} hint={hint}>
       <div className="chips">
+        {/* Tapping the chosen one again also lets go of it, but nothing on
+            screen says so. A choice you can decline needs somewhere to say no. */}
+        {clearable && (
+          <button
+            type="button"
+            className={`chip${value ? '' : ' on'}`}
+            onClick={() => {
+              setNaming(false);
+              onChange('');
+            }}
+          >
+            Geen
+          </button>
+        )}
         {known.map((name) => (
           <button
             key={name}
