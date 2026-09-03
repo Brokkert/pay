@@ -1,7 +1,7 @@
 // Creating or changing an expense.
 
-import { useState } from 'react';
-import { Sheet, Field, Notice, AmountInput, Avatar, Confirm } from './ui.jsx';
+import { useMemo, useState } from 'react';
+import { Sheet, Field, Notice, AmountInput, Avatar, Confirm, Icon } from './ui.jsx';
 import SplitPicker from './SplitPicker.jsx';
 import { CADENCES } from '../lib/cadence.js';
 import { CATEGORIES } from '../data/categories.js';
@@ -32,6 +32,15 @@ export default function ExpenseForm({
 }) {
   const meId = people.find((p) => p.isMe)?.id;
   const [draft, setDraft] = useState(() => ({ ...blank(meId), ...expense }));
+  // Charges are not a list you maintain somewhere — they are simply the names
+  // already in use, plus whatever you type here. One less thing to keep tidy,
+  // and picking from them is what stops "Verzekeringspakket" and
+  // "Verzekeringpakket" from quietly becoming two different charges.
+  const known = useMemo(
+    () => [...new Set([...charges, expense?.charge].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'nl')),
+    [charges, expense?.charge]
+  );
+  const [naming, setNaming] = useState(() => Boolean(expense?.charge) && !charges.includes(expense.charge));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [asking, setAsking] = useState(false);
@@ -134,18 +143,43 @@ export default function ExpenseForm({
 
       <Field
         label="Incasso"
-        hint="Staat deze post samen met andere op één afschrijving? Geef die afschrijving dan een naam, dan telt Pay ze bij elkaar op — handig om tegen je bankafschrift te houden. Leeg laten mag."
+        hint="Staat deze post samen met andere op één afschrijving? Kies die afschrijving, dan telt Pay ze bij elkaar op — handig om tegen je bankafschrift te houden. Geen incasso is prima."
       >
-        <input
-          className="input"
-          list="pay-charges"
-          placeholder="Naam van de afschrijving"
-          value={draft.charge || ''}
-          onChange={(e) => set({ charge: e.target.value })}
-        />
-        <datalist id="pay-charges">
-          {charges.map((c) => <option key={c} value={c} />)}
-        </datalist>
+        <div className="chips">
+          {known.map((name) => (
+            <button
+              key={name}
+              type="button"
+              className={`chip${draft.charge === name ? ' on' : ''}`}
+              onClick={() => {
+                setNaming(false);
+                set({ charge: draft.charge === name ? '' : name });
+              }}
+            >
+              <Icon name="receipt" size={14} /> {name}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`chip${naming ? ' on' : ''}`}
+            onClick={() => {
+              setNaming(true);
+              if (known.includes(draft.charge)) set({ charge: '' });
+            }}
+          >
+            <Icon name="plus" size={14} /> Nieuwe
+          </button>
+        </div>
+        {naming && (
+          <input
+            className="input"
+            style={{ marginTop: 9 }}
+            autoFocus
+            placeholder="Naam van de afschrijving"
+            value={draft.charge || ''}
+            onChange={(e) => set({ charge: e.target.value })}
+          />
+        )}
       </Field>
 
       <details className="disclose" style={{ marginBottom: 18 }}>
