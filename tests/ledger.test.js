@@ -383,7 +383,7 @@ describe('someone outside the household with something either way', () => {
     { id: me, name: 'Ik', isMe: true }, { id: mau, name: 'Mau' }, { id: frans, name: 'Frans' },
   ];
   const equal = (...ids) => ({ kind: 'equal', participants: ids, weights: {} });
-  const base = { cadence: 'month', category: 'media', charge: '', note: '', business: false, paused: false };
+  const base = { cadence: 'month', category: 'media', charge: '', note: '', paused: false };
   const expenses = [
     { ...base, id: 'yt', name: 'YouTube', amount: 2400,
       payer: { kind: 'account', id: bills }, split: equal(me, mau, frans) },
@@ -453,7 +453,7 @@ describe('explaining a transfer', () => {
     { id: bills, name: 'BUNQ', kind: 'shared', members: [me, mau], settlement: true },
   ];
   const equal = (...ids) => ({ kind: 'equal', participants: ids, weights: {} });
-  const base = { cadence: 'month', category: 'media', charge: '', note: '', business: false, paused: false };
+  const base = { cadence: 'month', category: 'media', charge: '', note: '', paused: false };
   const expenses = [
     { ...base, id: 'yt', name: 'YouTube', amount: 1497,
       payer: { kind: 'account', id: bills }, split: equal(me, mau, frans) },
@@ -505,7 +505,7 @@ describe('fixed amounts that do not add up to the expense', () => {
   const weights = Object.fromEntries([...friends, me, mau].map((id) => [id, 499]));
   const expense = (payer) => ({
     id: 'yt', name: 'YouTube', amount: 2999, cadence: 'month', category: 'media',
-    charge: '', note: '', business: false, paused: false,
+    charge: '', note: '', paused: false,
     payer, split: { kind: 'amount', participants: [], weights },
   });
   const borneTotal = (r) => Object.values(r.borne).reduce((sum, c) => sum + c, 0);

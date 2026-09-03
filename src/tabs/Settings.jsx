@@ -279,7 +279,6 @@ function PastePanel({ store, onDone, onClose }) {
           payer: { kind: 'account', id: account },
           split: { kind: 'equal', participants, weights: {} },
           paused: false,
-          business: false,
           note: '',
         });
       }

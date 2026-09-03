@@ -178,7 +178,7 @@ describe('a friend who settles through the bills account', () => {
   const household = () => {
     const me = 'me', mau = 'mau', frans = 'frans', bills = 'bills';
     const equal = (...ids) => ({ kind: 'equal', participants: ids, weights: {} });
-    const base = { cadence: 'month', category: 'media', charge: '', note: '', business: false, paused: false };
+    const base = { cadence: 'month', category: 'media', charge: '', note: '', paused: false };
     return {
       people: [
         { id: me, name: 'Ik', colour: '#0d6e5c', isMe: true },
