@@ -60,12 +60,17 @@ export default function ExpenseView({
       // way are added up, not settled against each other, and saying otherwise
       // would make the word mean nothing.
       .filter(({ mine, others }) => others.some((r) => Math.sign(r.cents) !== Math.sign(mine.cents)))
-      .map(({ transfer, mine, others }) => ({
-        transfer,
-        mine,
-        shown: others.slice(0, 3),
-        rest: Math.max(0, others.length - 3),
-      }));
+      .map(({ transfer, mine, others }) => {
+        // Only what pulls the other way earns a place here. In a pot with
+        // thirty expenses in it the biggest ones are simply the biggest ones;
+        // showing those under "verrekend met" hides the very thing the heading
+        // promises, which is what makes the amount smaller.
+        const against = others
+          .filter((r) => Math.sign(r.cents) !== Math.sign(mine.cents))
+          .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
+        const shown = against.slice(0, 3);
+        return { transfer, mine, shown, rest: others.length - shown.length };
+      });
   }, [expense.id, expenses, people, accounts, month]);
 
   return (
@@ -136,7 +141,12 @@ export default function ExpenseView({
               {shown.map(({ expense: other, cents }) => (
                 <Line key={other.id} what={other.name} cents={cents} />
               ))}
-              {rest > 0 && <Line what={`En nog ${rest} ${rest === 1 ? 'post' : 'posten'}`} />}
+              {rest > 0 && (
+                <Line
+                  what={`En nog ${rest} ${rest === 1 ? 'post' : 'posten'}`}
+                  sub="tellen dezelfde kant op"
+                />
+              )}
               <Total
                 label={`${partyName(transfer.from, { people, accounts })} → ${partyName(transfer.to, { people, accounts })}`}
                 cents={transfer.cents}

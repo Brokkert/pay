@@ -377,6 +377,14 @@ describe('opening an expense', () => {
     );
     expect(panels.some((el) => el.textContent.includes('Partner → Vaste lasten'))).toBe(false);
 
+    // In the pot, only what pulls the other way is named. Internet is owed to
+    // me like this one is, so listing it here would hide what actually makes
+    // the amount smaller.
+    const pot = panels.find((el) => el.textContent.includes('Ik → Vaste lasten'));
+    expect(pot.textContent).toContain('Energie');
+    expect(pot.textContent).not.toContain('Internet');
+    expect(pot.textContent).toContain('tellen dezelfde kant op');
+
     // Changing it is a step you take on purpose.
     await user.click(within(sheet).getByRole('button', { name: 'Wijzigen' }));
     expect(await screen.findByRole('heading', { name: 'Post wijzigen' })).toBeTruthy();
