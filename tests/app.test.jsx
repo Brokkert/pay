@@ -250,6 +250,7 @@ describe('changing one person\'s amount', () => {
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Lasten/ }));
     await user.click(await screen.findByText('Streamingdienst'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
 
     // 20,00 over four: everyone at 5,00, and each of those is a way in.
     const way = await screen.findByRole('button', { name: /Bedrag voor Ik zelf invullen/i });
@@ -269,6 +270,7 @@ describe('clearing an amount to retype it', () => {
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Lasten/ }));
     await user.click(await screen.findByText('Streamingdienst'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
     await user.click(await screen.findByRole('button', { name: /Bedrag voor Ik zelf invullen/i }));
 
     const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
@@ -296,6 +298,7 @@ describe('grouping expenses', () => {
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Lasten/ }));
     await user.click(await screen.findByText('Inboedel'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
 
     const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
     // Two expenses share the group "Verzekeringen", so it is on offer here.
@@ -318,5 +321,46 @@ describe('grouping expenses', () => {
     // Which then shows up as a group of its own on the overview.
     await user.click(screen.getByRole('button', { name: /Overzicht/ }));
     expect(await screen.findByText('Zorgverzekeraar')).toBeTruthy();
+  }, 30000);
+});
+
+describe('opening an expense', () => {
+  it('shows it, without a keyboard and without a form', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Streamingdienst'));
+
+    // A sheet named after the expense, not "Post wijzigen".
+    const sheet = (await screen.findByRole('heading', { name: 'Streamingdienst' })).closest('.sheet');
+    expect(screen.queryByRole('heading', { name: 'Post wijzigen' })).toBe(null);
+
+    // Nothing to type into, so nothing can pull the keyboard up or be changed
+    // by a stray tap.
+    expect(within(sheet).queryAllByRole('textbox').length).toBe(0);
+    // Nothing with a keyboard behind it has the focus.
+    expect(['INPUT', 'TEXTAREA', 'SELECT']).not.toContain(document.activeElement.tagName);
+
+    // What you came to see: the amount, the year figure, who it comes off, and
+    // what it costs each of you.
+    expect(sheet.querySelector('.headline .figure').textContent).toBe('€ 20,00');
+    expect(within(sheet).getByText(/240,00 per jaar/)).toBeTruthy();
+    expect(within(sheet).getByText('Privé')).toBeTruthy();
+    expect(within(sheet).getAllByText('€ 5,00').length).toBe(4);
+
+    // Changing it is a step you take on purpose.
+    await user.click(within(sheet).getByRole('button', { name: 'Wijzigen' }));
+    expect(await screen.findByRole('heading', { name: 'Post wijzigen' })).toBeTruthy();
+  }, 30000);
+
+  it('still opens a new expense straight into the form', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(screen.getByRole('button', { name: 'Nieuwe post' }));
+
+    // An empty field is the whole point here, so it may take the focus.
+    expect(await screen.findByRole('heading', { name: 'Nieuwe post' })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByPlaceholderText(/Energie, internet/));
   }, 30000);
 });

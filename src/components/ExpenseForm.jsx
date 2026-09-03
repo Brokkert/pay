@@ -71,7 +71,10 @@ export default function ExpenseForm({
       <Field label="Wat is het">
         <input
           className="input"
-          autoFocus
+          // Only on a new expense, where an empty field is the first thing you
+          // came to fill in. On an existing one it just throws the keyboard over
+          // half the screen before you have read anything.
+          autoFocus={!expense?.id}
           placeholder="Energie, internet, verzekering…"
           value={draft.name}
           onChange={(e) => set({ name: e.target.value })}

@@ -57,8 +57,12 @@ for (const tab of ['Overzicht', 'Lasten', 'Verrekenen', 'Mensen']) {
 await page.getByRole('button', { name: /Lasten/ }).click();
 await page.getByText('Streamingdienst').first().click();
 await page.waitForTimeout(200);
+await shot('expense-view');
+await page.getByRole('button', { name: 'Wijzigen' }).click();
+await page.waitForTimeout(200);
 await shot('expense');
 await page.getByRole('button', { name: 'Sluiten' }).click();
+await page.waitForTimeout(200);
 
 // And the screen you actually start on: filling in a blank expense.
 await page.getByRole('button', { name: 'Nieuwe post' }).click();

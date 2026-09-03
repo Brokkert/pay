@@ -7,6 +7,7 @@ import Settings from './tabs/Settings.jsx';
 import Login from './views/Login.jsx';
 import Unlock from './views/Unlock.jsx';
 import ExpenseForm from './components/ExpenseForm.jsx';
+import ExpenseView from './components/ExpenseView.jsx';
 import { Notice, Icon } from './components/ui.jsx';
 import { useSession, signOut } from './lib/auth.js';
 import { useStore } from './lib/store.js';
@@ -38,6 +39,9 @@ export default function App() {
   const { joinCode } = useHashRoute();
   const [tab, setTab] = useState('overview');
   const [month, setMonth] = useState(thisMonth);
+  // An expense you tapped is `open`; `editing` is the form on top of it.
+  // Opening one is nearly always to look, so looking is what a tap does.
+  const [open, setOpen] = useState(null);
   const [editing, setEditing] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('pay:theme') || 'light');
   const [withoutAccount, setWithoutAccount] = useState(
@@ -113,7 +117,7 @@ export default function App() {
           <Expenses
             store={store}
             month={month}
-            onOpen={setEditing}
+            onOpen={setOpen}
             onNew={() => setEditing({})}
             onSave={(expense) => store.save('expenses', expense)}
           />
@@ -147,6 +151,17 @@ export default function App() {
         ))}
       </nav>
 
+      {open && !editing && (
+        <ExpenseView
+          expense={open}
+          people={store.people}
+          accounts={store.accounts}
+          month={month}
+          onEdit={() => setEditing(open)}
+          onClose={() => setOpen(null)}
+        />
+      )}
+
       {editing && (
         <ExpenseForm
           expense={editing}
@@ -155,7 +170,10 @@ export default function App() {
           charges={[...new Set(store.expenses.map((e) => e.charge).filter(Boolean))].sort()}
           onSave={(expense) => store.save('expenses', expense)}
           onRemove={(id) => store.remove('expenses', id)}
-          onClose={() => setEditing(null)}
+          onClose={() => {
+            setEditing(null);
+            setOpen(null);
+          }}
         />
       )}
     </div>
