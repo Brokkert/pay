@@ -346,7 +346,36 @@ describe('opening an expense', () => {
     expect(sheet.querySelector('.headline .figure').textContent).toBe('€ 20,00');
     expect(within(sheet).getByText(/240,00 per jaar/)).toBeTruthy();
     expect(within(sheet).getByText('Privé')).toBeTruthy();
-    expect(within(sheet).getAllByText('€ 5,00').length).toBe(4);
+
+    // Four bearers at 5,00, under the heading that says so.
+    const bearers = within(sheet).getByText('Wie draagt het').nextElementSibling;
+    expect(within(bearers).getAllByText('€ 5,00').length).toBe(4);
+
+    // And what it ends up inside: my 5,00 of this against the 6,00 the friend
+    // pays for his, which is the 1,00 on the overview.
+    expect(within(sheet).getByText('Verrekend met')).toBeTruthy();
+    const netted = [...sheet.querySelectorAll('.panel')]
+      .find((el) => el.textContent.includes('deze post'));
+    expect(netted).toBeTruthy();
+    // This expense named first, the largest others after it, and the amount it
+    // all ends up as.
+    expect(netted.textContent).toMatch(/^Streamingdienstdeze post/);
+    expect(netted.textContent).toContain('Energie');
+    expect(netted.textContent).toContain('En nog');
+    // The one that answers the question: this post against the friend's, which
+    // is the 1,00 you see on the overview.
+    const against = [...sheet.querySelectorAll('.panel')]
+      .find((el) => el.textContent.includes('Muziekdienst'));
+    expect(against.textContent).toBe(
+      'Streamingdienstdeze post−€ 5,00Muziekdienst€ 6,00Vaste lasten → Vriend€ 1,00'
+    );
+
+    // And nothing where every expense pulls the same way: those are added up,
+    // not settled against each other.
+    const panels = [...sheet.querySelectorAll('.panel')].filter((el) =>
+      el.textContent.includes('deze post')
+    );
+    expect(panels.some((el) => el.textContent.includes('Partner → Vaste lasten'))).toBe(false);
 
     // Changing it is a step you take on purpose.
     await user.click(within(sheet).getByRole('button', { name: 'Wijzigen' }));

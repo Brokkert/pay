@@ -7,13 +7,23 @@
 //
 // So this is the plain answer, and changing it is a step you take on purpose.
 
-import { Sheet, Line, Total, Money, BearerAvatar, Icon } from './ui.jsx';
+import { useMemo } from 'react';
+import { Sheet, Line, Total, BearerAvatar, Icon } from './ui.jsx';
+import { forMonth, explainTransfer, partyName } from '../lib/ledger.js';
 import { perMonth, perYear, cadenceOf, isActive, formatMonth } from '../lib/cadence.js';
 import { split, possibleBearers, bearerName } from '../lib/split.js';
 import { categoryOf } from '../data/categories.js';
 import { formatMoney } from '../lib/money.js';
 
-export default function ExpenseView({ expense, people, accounts, month, onEdit, onClose }) {
+export default function ExpenseView({
+  expense,
+  expenses,
+  people,
+  accounts,
+  month,
+  onEdit,
+  onClose,
+}) {
   const cadence = cadenceOf(expense.cadence);
   const once = expense.cadence === 'once';
   const monthly = once ? expense.amount : perMonth(expense.amount, expense.cadence);
@@ -27,6 +37,36 @@ export default function ExpenseView({ expense, people, accounts, month, onEdit, 
 
   const running = once || isActive(expense, month);
   const category = categoryOf(expense.category);
+
+  // What this expense ends up inside. Nobody transfers per expense — you
+  // transfer one amount per person — so the interesting question from here is
+  // which other expenses it was netted against on the way there.
+  const settled = useMemo(() => {
+    const result = forMonth({ people, accounts, expenses }, month);
+    return result.transfers
+      .map((transfer) => ({
+        transfer,
+        rows: explainTransfer(transfer, { lines: result.lines, accounts }),
+      }))
+      .filter(({ rows }) => rows.length > 1 && rows.some((r) => r.expense.id === expense.id))
+      // A transfer can gather a dozen expenses, and listing all of them here
+      // turns the answer into a wall. This one always, then the largest few.
+      .map(({ transfer, rows }) => {
+        const mine = rows.find((r) => r.expense.id === expense.id);
+        const others = rows.filter((r) => r.expense.id !== expense.id);
+        return { transfer, mine, others };
+      })
+      // Only where something actually cancels. Expenses all pulling the same
+      // way are added up, not settled against each other, and saying otherwise
+      // would make the word mean nothing.
+      .filter(({ mine, others }) => others.some((r) => Math.sign(r.cents) !== Math.sign(mine.cents)))
+      .map(({ transfer, mine, others }) => ({
+        transfer,
+        mine,
+        shown: others.slice(0, 3),
+        rest: Math.max(0, others.length - 3),
+      }));
+  }, [expense.id, expenses, people, accounts, month]);
 
   return (
     <Sheet
@@ -86,6 +126,29 @@ export default function ExpenseView({ expense, people, accounts, month, onEdit, 
         ))}
         <Total label={once ? 'Eenmalig' : 'Per maand'} cents={monthly} />
       </div>
+
+      {settled.length > 0 && (
+        <>
+          <div className="section">Verrekend met</div>
+          {settled.map(({ transfer, mine, shown, rest }) => (
+            <div className="panel" key={`${transfer.from}-${transfer.to}`} style={{ marginBottom: 10 }}>
+              <Line what={expense.name} sub="deze post" cents={mine.cents} />
+              {shown.map(({ expense: other, cents }) => (
+                <Line key={other.id} what={other.name} cents={cents} />
+              ))}
+              {rest > 0 && <Line what={`En nog ${rest} ${rest === 1 ? 'post' : 'posten'}`} />}
+              <Total
+                label={`${partyName(transfer.from, { people, accounts })} → ${partyName(transfer.to, { people, accounts })}`}
+                cents={transfer.cents}
+              />
+            </div>
+          ))}
+          <div className="hint">
+            Je maakt niet per post iets over, maar één bedrag per persoon. Dit is waar deze post in
+            terechtkomt en waar hij tegen wegvalt.
+          </div>
+        </>
+      )}
 
       {(expense.note || expense.from || expense.until) && (
         <div className="panel" style={{ marginTop: 14 }}>

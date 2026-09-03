@@ -154,6 +154,7 @@ export default function App() {
       {open && !editing && (
         <ExpenseView
           expense={open}
+          expenses={store.expenses}
           people={store.people}
           accounts={store.accounts}
           month={month}
