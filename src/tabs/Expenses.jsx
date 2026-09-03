@@ -3,8 +3,8 @@
 
 import { useMemo, useState } from 'react';
 import { Money, Empty, BearerAvatar, Icon } from '../components/ui.jsx';
-import { perMonth, perYear, cadenceOf, isActive } from '../lib/cadence.js';
-import { split, describeSplit, possibleBearers, bearerName } from '../lib/split.js';
+import { perMonth, cadenceOf, isActive } from '../lib/cadence.js';
+import { split, possibleBearers } from '../lib/split.js';
 import { isBusiness } from '../lib/ledger.js';
 import { categoryOf } from '../data/categories.js';
 import { formatMoney } from '../lib/money.js';
@@ -142,7 +142,6 @@ function ExpenseRow({ row, month, people, accounts, onOpen, onSave }) {
       : people.find((p) => p.id === expense.payer?.id)?.name;
   const bearers = possibleBearers(people, accounts);
   const taking = Object.keys(parts);
-  const nameOf = (key) => bearerName(key, people, accounts);
 
   return (
     <button className="item" onClick={() => onOpen(expense)} style={active ? undefined : { opacity: 0.5 }}>
@@ -165,9 +164,11 @@ function ExpenseRow({ row, month, people, accounts, onOpen, onSave }) {
             <span className="chip static tiny">afgerekend</span>
           )}
         </span>
+        {/* Two facts, not four. Who bears it is the row of faces underneath,
+            which says it better than "gelijk over 2" ever did, and how it is
+            divided belongs on the expense itself. */}
         <span className="sub truncate" style={{ display: 'block' }}>
-          {cat.label} · {payer ? `van ${payer}` : 'geen rekening'} ·{' '}
-          {describeSplit(expense.split, nameOf)}
+          {cat.label} · {payer ? `van ${payer}` : 'geen rekening'}
         </span>
         <span className="stack" style={{ marginTop: 6 }}>
           {taking.slice(0, 5).map((key) => (
@@ -183,14 +184,13 @@ function ExpenseRow({ row, month, people, accounts, onOpen, onSave }) {
 
       <span className="right">
         <Money cents={expense.cadence === 'once' ? expense.amount : monthly} size="mid" />
-        <span className="sub" style={{ display: 'block' }}>
-          {expense.cadence === 'month' || expense.cadence === 'once'
-            ? cadence.short
-            : `${formatMoney(expense.amount)} ${cadence.short}`}
-        </span>
-        {expense.cadence !== 'once' && (
+        {/* The column is per month — the header above says so — and repeating
+            "/mnd" on every row says nothing. What is worth a second line is an
+            expense charged in some other rhythm, because then the big number is
+            not what leaves your account. */}
+        {expense.cadence !== 'month' && expense.cadence !== 'once' && (
           <span className="sub" style={{ display: 'block' }}>
-            {formatMoney(perYear(expense.amount, expense.cadence))} /jr
+            {formatMoney(expense.amount)} {cadence.short}
           </span>
         )}
         {expense.cadence === 'once' && (
