@@ -25,7 +25,7 @@ const amount = (cents) => String((cents / 100).toFixed(2)).replace('.', ',');
 export function toCsv({ expenses, people, accounts }) {
   const bearers = possibleBearers(people, accounts);
   const header = [
-    'Post', 'Categorie', 'Incasso', 'Bedrag', 'Ritme', 'Per maand', 'Per jaar',
+    'Post', 'Categorie', 'Groep', 'Bedrag', 'Ritme', 'Per maand', 'Per jaar',
     'Betaald door', 'Zakelijk', 'Loopt vanaf', 'Loopt tot', 'Notitie',
     ...bearers.map((b) => `Aandeel ${b.name}`),
   ];

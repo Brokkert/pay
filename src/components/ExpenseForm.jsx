@@ -32,10 +32,14 @@ export default function ExpenseForm({
 }) {
   const meId = people.find((p) => p.isMe)?.id;
   const [draft, setDraft] = useState(() => ({ ...blank(meId), ...expense }));
-  // Charges are not a list you maintain somewhere — they are simply the names
+  // Groups are not a list you maintain somewhere — they are simply the names
   // already in use, plus whatever you type here. One less thing to keep tidy,
   // and picking from them is what stops "Verzekeringspakket" and
-  // "Verzekeringpakket" from quietly becoming two different charges.
+  // "Verzekeringpakket" from quietly becoming two different groups.
+  //
+  // The stored field is still called `charge`, from when this only meant "one
+  // direct debit". Renaming it would mean rewriting every saved row, encrypted
+  // and all, for a word.
   const known = useMemo(
     () => [...new Set([...charges, expense?.charge].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'nl')),
     [charges, expense?.charge]
@@ -142,8 +146,8 @@ export default function ExpenseForm({
       </Field>
 
       <Field
-        label="Incasso"
-        hint="Staat deze post samen met andere op één afschrijving? Kies die afschrijving, dan telt Pay ze bij elkaar op — handig om tegen je bankafschrift te houden. Geen incasso is prima."
+        label="Groep"
+        hint="Posten met dezelfde groep worden bij elkaar opgeteld. Handig als ze samen op één afschrijving staan — dan houd je dat bedrag tegen je bankafschrift — maar net zo goed om iets als je goede doelen als één post te zien, ook al gaan ze los van je rekening af."
       >
         <div className="chips">
           {known.map((name) => (
@@ -175,7 +179,7 @@ export default function ExpenseForm({
             className="input"
             style={{ marginTop: 9 }}
             autoFocus
-            placeholder="Naam van de afschrijving"
+            placeholder="Naam van de groep"
             value={draft.charge || ''}
             onChange={(e) => set({ charge: e.target.value })}
           />
@@ -203,7 +207,7 @@ export default function ExpenseForm({
           <Field label="Notitie">
             <textarea
               className="textarea"
-              placeholder="Opzegtermijn, klantnummer, op welke incasso hij meelift — wat je ook wilt onthouden."
+              placeholder="Opzegtermijn, klantnummer, waar hij op meelift — wat je ook wilt onthouden."
               value={draft.note || ''}
               onChange={(e) => set({ note: e.target.value })}
             />

@@ -290,28 +290,28 @@ describe('clearing an amount to retype it', () => {
   }, 30000);
 });
 
-describe('picking a direct debit', () => {
-  it('offers the ones already in use, and keeps them one group', async () => {
+describe('grouping expenses', () => {
+  it('offers the groups already in use, and keeps them one group', async () => {
     await withData(exampleHousehold());
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Lasten/ }));
     await user.click(await screen.findByText('Inboedel'));
 
     const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
-    // Two expenses share "Verzekeringen", so it is on offer and this one is on it.
+    // Two expenses share the group "Verzekeringen", so it is on offer here.
     const chip = within(sheet).getByRole('button', { name: /Verzekeringen/ });
     expect(chip.className).toContain('on');
     // No free-text field until you ask for one: that is what makes typos into
     // second groups.
-    expect(within(sheet).queryByPlaceholderText(/Naam van de afschrijving/)).toBe(null);
+    expect(within(sheet).queryByPlaceholderText(/Naam van de groep/)).toBe(null);
 
-    // Tapping it again takes this expense off the charge.
+    // Tapping it again takes this expense out of the group.
     await user.click(chip);
     expect(within(sheet).getByRole('button', { name: /Verzekeringen/ }).className).not.toContain('on');
 
     // And a new one is a deliberate step.
     await user.click(within(sheet).getByRole('button', { name: /Nieuwe/ }));
-    const field = within(sheet).getByPlaceholderText(/Naam van de afschrijving/);
+    const field = within(sheet).getByPlaceholderText(/Naam van de groep/);
     await user.type(field, 'Zorgverzekeraar');
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
