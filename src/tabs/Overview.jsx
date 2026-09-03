@@ -14,6 +14,7 @@ import { formatMonth, shiftMonth, thisMonth } from '../lib/cadence.js';
 import { categoryOf, accountKindOf } from '../data/categories.js';
 import { possibleBearers } from '../lib/split.js';
 import { formatMoney } from '../lib/money.js';
+import { count } from '../lib/words.js';
 
 export default function Overview({ store, month, onMonth }) {
   const { people, accounts, expenses } = store;
@@ -56,7 +57,7 @@ export default function Overview({ store, month, onMonth }) {
             <div className="label">Loopt deze maand</div>
             <div className="figure">{formatMoney(result.monthlyTotal)}</div>
             <div className="under">
-              {formatMoney(result.yearlyTotal)} per jaar · {result.lines.length} posten
+              {formatMoney(result.yearlyTotal)} per jaar · {count(result.lines.length, 'post', 'posten')}
             </div>
           </div>
           {me && (
@@ -112,7 +113,7 @@ export default function Overview({ store, month, onMonth }) {
               <Line
                 key={name}
                 what={name}
-                sub={`${result.lines.filter((l) => l.expense.charge === name).length} posten op één afschrijving`}
+                sub={`${count(result.lines.filter((l) => l.expense.charge === name).length, 'post', 'posten')} op één afschrijving`}
                 cents={cents}
               />
             ))}

@@ -30,6 +30,7 @@ import {
 import { split, possibleBearers, bearerName } from '../lib/split.js';
 import { categoryOf } from '../data/categories.js';
 import { formatMoney } from '../lib/money.js';
+import { count } from '../lib/words.js';
 
 /** The next month this expense is charged, from its start and its rhythm. */
 function nextCharge(expense, month) {
@@ -210,7 +211,7 @@ export default function ExpenseView({
               ))}
               {rest > 0 && (
                 <Line
-                  what={`En nog ${rest} ${rest === 1 ? 'post' : 'posten'}`}
+                  what={`En nog ${count(rest, 'post', 'posten')}`}
                   sub="tellen dezelfde kant op"
                 />
               )}

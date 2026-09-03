@@ -8,6 +8,7 @@ import { split, possibleBearers } from '../lib/split.js';
 import { isBusiness } from '../lib/ledger.js';
 import { categoryOf } from '../data/categories.js';
 import { formatMoney } from '../lib/money.js';
+import { count } from '../lib/words.js';
 
 const SORTS = [
   { id: 'amount', label: 'Duurste eerst' },
@@ -89,7 +90,7 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
 
       <div className="row small dim" style={{ marginBottom: 10 }}>
         <span className="grow">
-          {rows.length} {rows.length === 1 ? 'post' : 'posten'} · {formatMoney(total)} per maand
+          {count(rows.length, 'post', 'posten')} · {formatMoney(total)} per maand
         </span>
         <select
           className="select"

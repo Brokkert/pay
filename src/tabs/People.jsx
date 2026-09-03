@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Sheet, Field, Notice, Avatar, AmountInput, Confirm, Total, Money, Icon } from '../components/ui.jsx';
 import { ACCOUNT_KINDS, accountKindOf, COLOURS } from '../data/categories.js';
+import { count } from '../lib/words.js';
 
 export default function People({ store }) {
   const { people, accounts, save, remove, claim, cloud } = store;
@@ -58,7 +59,7 @@ export default function People({ store }) {
                   <span className="sub truncate" style={{ display: 'block' }}>
                     {kind.label}
                     {a.kind === 'shared'
-                      ? ` · ${(a.members || []).length} deelnemers`
+                      ? ` · ${count((a.members || []).length, 'deelnemer', 'deelnemers')}`
                       : owner ? ` · van ${owner.name}` : ' · geen eigenaar'}
                   </span>
                 </span>

@@ -571,3 +571,19 @@ describe('saving up for a yearly expense', () => {
     expect(within(sheet).queryByText('Staat er nu opzij')).toBe(null);
   }, 30000);
 });
+
+describe('counting things', () => {
+  it('writes one of something in the singular', async () => {
+    const set = exampleHousehold();
+    // Leave one expense alone on a charge of its own.
+    set.expenses = set.expenses.map((e) =>
+      e.name === 'Aansprakelijkheid' ? { ...e, charge: 'Rechtsbijstand' } : e
+    );
+    await withData(set);
+    await start();
+
+    const charges = (await screen.findByText('Per incasso')).nextElementSibling;
+    expect(within(charges).getAllByText('1 post op één afschrijving').length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toContain('1 posten');
+  }, 30000);
+});

@@ -12,6 +12,7 @@ import { exampleHousehold } from '../data/example.js';
 import { readBackup } from '../lib/backup.js';
 import { CADENCES } from '../lib/cadence.js';
 import { SUGGESTED, categoryName } from '../data/categories.js';
+import { count } from '../lib/words.js';
 
 export default function Settings({ user, store, keyring, theme, onTheme, onSignIn }) {
   const [panel, setPanel] = useState(null);
@@ -309,7 +310,7 @@ function PastePanel({ store, onDone, onClose }) {
       {found.length > 0 && (
         <>
           <div className="section" style={{ marginTop: 4 }}>
-            {found.length} {found.length === 1 ? 'post' : 'posten'} herkend
+            {count(found.length, 'post', 'posten')} herkend
           </div>
           <div className="panel">
             {found.slice(0, 8).map((r, i) => (
@@ -362,7 +363,7 @@ function PastePanel({ store, onDone, onClose }) {
           </Field>
 
           <button className="btn primary wide" disabled={!canImport || busy} onClick={run}>
-            {busy ? <span className="spinner" /> : `${found.length} posten toevoegen`}
+            {busy ? <span className="spinner" /> : `${count(found.length, 'post', 'posten')} toevoegen`}
           </button>
           {!canImport && <div className="hint">Kies een rekening en minstens één persoon die het draagt.</div>}
         </>
@@ -496,7 +497,7 @@ function InvitePanel({ onClose }) {
 function LabelList({ store, onMessage }) {
   const [editing, setEditing] = useState(null);
 
-  const count = (field) => {
+  const namesIn = (field) => {
     const tally = new Map();
     for (const expense of store.expenses) {
       const name = field === 'category' ? categoryName(expense.category) : (expense.charge || '');
@@ -520,8 +521,8 @@ function LabelList({ store, onMessage }) {
       for (const expense of touched) await store.save('expenses', { ...expense, [field]: name });
       onMessage(
         name
-          ? `${touched.length} ${touched.length === 1 ? 'post' : 'posten'} aangepast.`
-          : `Incasso weggehaald bij ${touched.length} ${touched.length === 1 ? 'post' : 'posten'}.`
+          ? `${count(touched.length, 'post', 'posten')} aangepast.`
+          : `Incasso weggehaald bij ${count(touched.length, 'post', 'posten')}.`
       );
       setEditing(null);
     } catch (err) {
@@ -530,7 +531,7 @@ function LabelList({ store, onMessage }) {
   };
 
   const section = (field, title, empty) => {
-    const rows = count(field);
+    const rows = namesIn(field);
     return (
       <>
         <div className="hint" style={{ marginBottom: 6 }}>{title}</div>
@@ -540,7 +541,7 @@ function LabelList({ store, onMessage }) {
               <Line
                 key={name}
                 what={name}
-                sub={`${n} ${n === 1 ? 'post' : 'posten'}`}
+                sub={count(n, 'post', 'posten')}
                 right={<span className="chev"><Icon name="right" size={16} /></span>}
                 onClick={() => setEditing({ field, name })}
               />
@@ -564,7 +565,7 @@ function LabelList({ store, onMessage }) {
         <RenameSheet
           field={editing.field}
           name={editing.name}
-          others={count(editing.field).map(([name]) => name).filter((n) => n !== editing.name)}
+          others={namesIn(editing.field).map(([name]) => name).filter((n) => n !== editing.name)}
           onSave={(to) => rename(editing.field, editing.name, to)}
           onClose={() => setEditing(null)}
         />
