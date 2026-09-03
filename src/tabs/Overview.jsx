@@ -34,7 +34,11 @@ export default function Overview({ store, month, onMonth }) {
     );
   }
 
-  const business = result.lines.filter((l) => l.expense.business).reduce((s, l) => s + l.amount, 0);
+  // What ran on the business this month: exactly what came off the business
+  // accounts, which the panel further down lists per account anyway.
+  const business = accounts
+    .filter((a) => a.kind === 'business')
+    .reduce((sum, a) => sum + (result.perAccount[a.id] || 0), 0);
   const charges = Object.entries(result.perCharge).sort((a, b) => b[1] - a[1]);
 
   return (

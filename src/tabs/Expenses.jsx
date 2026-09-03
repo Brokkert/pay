@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { Money, Empty, BearerAvatar, Icon } from '../components/ui.jsx';
 import { perMonth, perYear, cadenceOf, isActive } from '../lib/cadence.js';
 import { split, describeSplit, possibleBearers, bearerName } from '../lib/split.js';
+import { isBusiness } from '../lib/ledger.js';
 import { categoryOf } from '../data/categories.js';
 import { formatMoney } from '../lib/money.js';
 
@@ -42,7 +43,7 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
         if (filter === 'once') return e.cadence === 'once';
         if (filter === 'shared') return participants > 1;
         if (filter === 'mine') return participants === 1 && me && e.split?.participants?.[0] === me.id;
-        if (filter === 'business') return Boolean(e.business);
+        if (filter === 'business') return isBusiness(e, accounts);
         if (filter === 'stopped') return !isActive(e, month) && e.cadence !== 'once';
         return true;
       })
@@ -150,7 +151,7 @@ function ExpenseRow({ row, month, people, accounts, onOpen, onSave }) {
       <span className="mid">
         <span className="row" style={{ gap: 7 }}>
           <span className="title truncate">{expense.name}</span>
-          {expense.business && <span className="chip static tiny">zakelijk</span>}
+          {isBusiness(expense, accounts) && <span className="chip static tiny">zakelijk</span>}
           {expense.paused && <span className="chip static tiny">gepauzeerd</span>}
           {expense.cadence === 'once' && expense.settled && (
             <span className="chip static tiny">afgerekend</span>

@@ -66,7 +66,7 @@ export function exampleHousehold() {
     // Runs on the business, but we both use it at home. The partner pays her
     // half into the bills account as usual, and that account pays it back to me
     // — which is why I have to put in less myself.
-    { name: 'Internet', amount: 5000, category: 'telecom', business: true,
+    { name: 'Internet', amount: 5000, category: 'telecom',
       note: 'Loopt op de zaak; thuis gebruiken we het allebei.',
       payer: { kind: 'account', id: business }, split: together },
 
@@ -102,7 +102,6 @@ export function exampleHousehold() {
       cadence: 'month',
       charge: '',
       paused: false,
-      business: false,
       note: '',
       ...e,
     })),

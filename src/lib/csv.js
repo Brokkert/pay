@@ -9,7 +9,7 @@
 
 import { perMonth, perYear, cadenceOf, CADENCES } from './cadence.js';
 import { split, possibleBearers } from './split.js';
-import { payerParty, isAccountParty, partyId } from './ledger.js';
+import { payerParty, isAccountParty, partyId, isBusiness } from './ledger.js';
 import { parseMoney } from './money.js';
 import { categoryOf } from '../data/categories.js';
 
@@ -47,7 +47,7 @@ export function toCsv({ expenses, people, accounts }) {
       amount(monthly),
       amount(perYear(expense.amount, expense.cadence)),
       payer || '',
-      expense.business ? 'ja' : '',
+      isBusiness(expense, accounts) ? 'ja' : '',
       expense.from || '',
       expense.until || '',
       expense.note || '',

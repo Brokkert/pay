@@ -9,7 +9,7 @@
 
 import { useMemo } from 'react';
 import { Sheet, Line, Total, BearerAvatar, Icon } from './ui.jsx';
-import { forMonth, explainTransfer, partyName } from '../lib/ledger.js';
+import { forMonth, explainTransfer, partyName, isBusiness } from '../lib/ledger.js';
 import { perMonth, perYear, cadenceOf, isActive, formatMonth } from '../lib/cadence.js';
 import { split, possibleBearers, bearerName } from '../lib/split.js';
 import { categoryOf } from '../data/categories.js';
@@ -115,7 +115,9 @@ export default function ExpenseView({
         />
         <Line what={payer || 'Geen rekening'} sub="gaat hiervan af" />
         {expense.charge && <Line what={expense.charge} sub="incasso" />}
-        {expense.business && <Line what="Zakelijk" sub="telt apart mee voor de boekhouding" />}
+        {isBusiness(expense, accounts) && (
+          <Line what="Zakelijk" sub="loopt op een zakelijke rekening" />
+        )}
         {expense.paused && <Line what="Gepauzeerd" sub="telt nergens in mee" />}
       </div>
 

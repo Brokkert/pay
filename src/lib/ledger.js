@@ -48,6 +48,19 @@ export function partyName(party, { people, accounts }) {
   return people.find((p) => p.id === id)?.name || 'onbekend';
 }
 
+/**
+ * Does this expense run on a business account?
+ *
+ * Derived, never stored. A separate flag next to the payer is a second answer
+ * to the same question, and two answers can disagree: ticking "zakelijk" on
+ * something paid from the household account would count it as business money
+ * that never touched the business.
+ */
+export function isBusiness(expense, accounts) {
+  if (expense?.payer?.kind !== 'account') return false;
+  return accounts.some((a) => a.id === expense.payer.id && a.kind === 'business');
+}
+
 /** The account that settlements are routed through, if there is one. */
 export const settlementAccount = (accounts) =>
   accounts.find((a) => a.kind === 'shared' && a.settlement) || null;

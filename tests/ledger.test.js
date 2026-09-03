@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { forMonth, openSettlements, net, payerParty, explainTransfer } from '../src/lib/ledger.js';
+import { forMonth, openSettlements, net, payerParty, explainTransfer, isBusiness } from '../src/lib/ledger.js';
 
 // A household with everything in it that makes this hard: two people with a
 // household bills account, a business account that also pays for shared things,
@@ -571,5 +571,41 @@ describe('fixed amounts that do not add up to the expense', () => {
     );
     expect(r.warnings.join(' ')).toMatch(/5,04/);
     expect(r.warnings.join(' ')).toMatch(/nog bij niemand/);
+  });
+});
+
+describe('what counts as business', () => {
+  const me = 'me';
+  const people = [{ id: me, name: 'Ik', isMe: true }];
+  const accounts = [
+    { id: 'a-bills', name: 'BUNQ', kind: 'shared', members: [me], settlement: true },
+    { id: 'a-biz', name: 'Brokkr', kind: 'business', ownerId: me },
+  ];
+  const one = (payer) => ({
+    id: 'x', name: 'Internet', amount: 6739, cadence: 'month', category: 'telecom',
+    charge: '', note: '', paused: false,
+    payer, split: { kind: 'equal', participants: [me], weights: {} },
+  });
+
+  it('follows the account it comes off, and nothing else', () => {
+    expect(isBusiness(one({ kind: 'account', id: 'a-biz' }), accounts)).toBe(true);
+    expect(isBusiness(one({ kind: 'account', id: 'a-bills' }), accounts)).toBe(false);
+    expect(isBusiness(one({ kind: 'person', id: me }), accounts)).toBe(false);
+  });
+
+  it('cannot be claimed by a stored flag that says otherwise', () => {
+    // Old data may still carry one. It decides nothing.
+    const lying = { ...one({ kind: 'account', id: 'a-bills' }), business: true };
+    expect(isBusiness(lying, accounts)).toBe(false);
+  });
+
+  it('adds up to what the business account paid', () => {
+    const result = forMonth({
+      people, accounts,
+      expenses: [one({ kind: 'account', id: 'a-biz' }), {
+        ...one({ kind: 'account', id: 'a-bills' }), id: 'y', name: 'Gas', amount: 11700,
+      }],
+    }, '2026-09');
+    expect(result.perAccount['a-biz']).toBe(6739);
   });
 });

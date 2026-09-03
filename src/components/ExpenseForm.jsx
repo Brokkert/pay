@@ -17,7 +17,6 @@ const blank = (meId) => ({
   from: '',
   until: '',
   paused: false,
-  business: false,
   note: '',
 });
 
@@ -211,12 +210,6 @@ export default function ExpenseForm({
               onChange={(e) => set({ note: e.target.value })}
             />
           </Field>
-
-          <label className="row" style={{ gap: 10, marginBottom: 12 }}>
-            <input type="checkbox" checked={Boolean(draft.business)}
-              onChange={(e) => set({ business: e.target.checked })} />
-            <span className="small">Zakelijk — apart optellen voor de boekhouding</span>
-          </label>
 
           <label className="row" style={{ gap: 10 }}>
             <input type="checkbox" checked={Boolean(draft.paused)}

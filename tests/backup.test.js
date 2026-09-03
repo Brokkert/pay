@@ -101,8 +101,10 @@ describe('readBackup', () => {
     };
     const back = readBackup(JSON.stringify(minimal));
     expect(back.expenses[0]).toMatchObject({
-      cadence: 'month', category: 'other', charge: '', note: '', business: false, paused: false,
+      cadence: 'month', category: 'other', charge: '', note: '', paused: false,
     });
+    // Whether it is business follows from the account, so it is not a field.
+    expect(back.expenses[0].business).toBeUndefined();
     expect(back.expenses[0].id).toBeTruthy();
   });
 });

@@ -158,7 +158,6 @@ export function readBackup(source) {
       category,
       charge: text(e.charge),
       note: text(e.note),
-      business: e.business === true,
       paused: e.paused === true,
       ...(text(e.from) ? { from: text(e.from) } : {}),
       ...(text(e.until) ? { until: text(e.until) } : {}),
