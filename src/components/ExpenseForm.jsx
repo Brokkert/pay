@@ -32,14 +32,10 @@ export default function ExpenseForm({
 }) {
   const meId = people.find((p) => p.isMe)?.id;
   const [draft, setDraft] = useState(() => ({ ...blank(meId), ...expense }));
-  // Groups are not a list you maintain somewhere — they are simply the names
+  // Charges are not a list you maintain somewhere — they are simply the names
   // already in use, plus whatever you type here. One less thing to keep tidy,
   // and picking from them is what stops "Verzekeringspakket" and
-  // "Verzekeringpakket" from quietly becoming two different groups.
-  //
-  // The stored field is still called `charge`, from when this only meant "one
-  // direct debit". Renaming it would mean rewriting every saved row, encrypted
-  // and all, for a word.
+  // "Verzekeringpakket" from quietly becoming two different charges.
   const known = useMemo(
     () => [...new Set([...charges, expense?.charge].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'nl')),
     [charges, expense?.charge]
@@ -149,8 +145,8 @@ export default function ExpenseForm({
       </Field>
 
       <Field
-        label="Groep"
-        hint="Posten met dezelfde groep worden bij elkaar opgeteld. Handig als ze samen op één afschrijving staan — dan houd je dat bedrag tegen je bankafschrift — maar net zo goed om iets als je goede doelen als één post te zien, ook al gaan ze los van je rekening af."
+        label="Incasso"
+        hint="Alleen voor posten die als één regel van je rekening gaan: je verzekeringspakket, je zorgverzekeraar. Pay telt ze op, zodat je dat bedrag herkent op je afschrift. Wat een post ís hoort bij de categorie hierboven — daar is dit niet voor."
       >
         <div className="chips">
           {known.map((name) => (
@@ -182,7 +178,7 @@ export default function ExpenseForm({
             className="input"
             style={{ marginTop: 9 }}
             autoFocus
-            placeholder="Naam van de groep"
+            placeholder="Naam van de afschrijving"
             value={draft.charge || ''}
             onChange={(e) => set({ charge: e.target.value })}
           />

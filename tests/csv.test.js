@@ -13,7 +13,7 @@ describe('toCsv', () => {
   it('writes a sheet Excel puts straight into columns', () => {
     const rows = toCsv({ expenses, people, accounts }).split('\r\n');
     expect(rows[0].split(';')).toContain('Aandeel Partner');
-    expect(rows[0].split(';')).toContain('Groep');
+    expect(rows[0].split(';')).toContain('Incasso');
     expect(rows[1]).toContain('Energie;Energie & water;Nutsbedrijf;90,00');
     expect(rows[1].endsWith('45,00;45,00')).toBe(true);
   });

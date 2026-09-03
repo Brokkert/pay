@@ -109,7 +109,7 @@ export default function ExpenseView({
           sub="categorie"
         />
         <Line what={payer || 'Geen rekening'} sub="gaat hiervan af" />
-        {expense.charge && <Line what={expense.charge} sub="groep" />}
+        {expense.charge && <Line what={expense.charge} sub="incasso" />}
         {expense.business && <Line what="Zakelijk geboekt" sub="je krijgt dit terug van de zaak" />}
         {expense.paused && <Line what="Gepauzeerd" sub="telt nergens in mee" />}
       </div>

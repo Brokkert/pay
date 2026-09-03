@@ -306,7 +306,7 @@ describe('grouping expenses', () => {
     expect(chip.className).toContain('on');
     // No free-text field until you ask for one: that is what makes typos into
     // second groups.
-    expect(within(sheet).queryByPlaceholderText(/Naam van de groep/)).toBe(null);
+    expect(within(sheet).queryByPlaceholderText(/Naam van de afschrijving/)).toBe(null);
 
     // Tapping it again takes this expense out of the group.
     await user.click(chip);
@@ -314,7 +314,7 @@ describe('grouping expenses', () => {
 
     // And a new one is a deliberate step.
     await user.click(within(sheet).getByRole('button', { name: /Nieuwe/ }));
-    const field = within(sheet).getByPlaceholderText(/Naam van de groep/);
+    const field = within(sheet).getByPlaceholderText(/Naam van de afschrijving/);
     await user.type(field, 'Zorgverzekeraar');
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
@@ -391,5 +391,18 @@ describe('opening an expense', () => {
     // An empty field is the whole point here, so it may take the focus.
     expect(await screen.findByRole('heading', { name: 'Nieuwe post' })).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByPlaceholderText(/Energie, internet/));
+  }, 30000);
+});
+
+describe('the expense list', () => {
+  it('says what kind of expense each one is, in the row itself', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+
+    const row = (await screen.findByText('Streamingdienst')).closest('.item');
+    // The coloured dot alone does not tell you which category it stands for.
+    expect(row.textContent).toContain('Streaming & media');
+    expect(row.textContent).toContain('van Privé');
   }, 30000);
 });

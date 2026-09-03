@@ -75,10 +75,10 @@ staat één regel.
   navertellen ga je niet vertrouwen.
 - **👥 Mensen** — personen en rekeningen. Niet iedere persoon hoeft een account
   te hebben: de vriend met wie je een abonnement deelt staat er gewoon in.
-- **Per groep** — posten die je bij elkaar wilt zien geef je dezelfde groepsnaam
-  en Pay telt ze op. Staan ze samen op één afschrijving, dan herken je dat bedrag
-  op je bankafschrift; maar het werkt net zo goed voor iets als je goede doelen,
-  die los van je rekening af gaan.
+- **Per incasso** — posten die samen als één regel van je rekening gaan geef je
+  dezelfde incassonaam. Pay telt ze op, zodat je dat bedrag herkent op je
+  bankafschrift. Wát een post is, is een andere vraag: die staat in de categorie,
+  en daar telt Pay ze los van op.
 - **📋 Plakken uit Excel of Numbers** — sleep twee kolommen uit je bestaande
   overzicht hierheen; tabs, puntkomma's, euro-tekens en kopregels worden
   herkend.

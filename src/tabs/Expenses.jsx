@@ -157,7 +157,8 @@ function ExpenseRow({ row, month, people, accounts, onOpen, onSave }) {
           )}
         </span>
         <span className="sub truncate" style={{ display: 'block' }}>
-          {payer ? `van ${payer}` : 'geen rekening'} · {describeSplit(expense.split, nameOf)}
+          {cat.label} · {payer ? `van ${payer}` : 'geen rekening'} ·{' '}
+          {describeSplit(expense.split, nameOf)}
         </span>
         <span className="stack" style={{ marginTop: 6 }}>
           {taking.slice(0, 5).map((key) => (

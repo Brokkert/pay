@@ -102,20 +102,20 @@ export default function Overview({ store, month, onMonth }) {
 
       {charges.length > 0 && (
         <>
-          <div className="section">Per groep</div>
+          <div className="section">Per incasso</div>
           <div className="panel">
             {charges.map(([name, cents]) => (
               <Line
                 key={name}
                 what={name}
-                sub={`${result.lines.filter((l) => l.expense.charge === name).length} posten bij elkaar`}
+                sub={`${result.lines.filter((l) => l.expense.charge === name).length} posten op één afschrijving`}
                 cents={cents}
               />
             ))}
           </div>
           <div className="hint" style={{ marginTop: -4 }}>
-            Posten die je bij elkaar wilt zien. Staan ze samen op één afschrijving, dan is dit het
-            bedrag dat je op je bankafschrift terugvindt.
+            Posten die samen als één regel van je rekening gaan. Dit is het bedrag dat je op je
+            bankafschrift terugvindt. Wat je posten zíjn staat hieronder, bij de categorieën.
           </div>
         </>
       )}
