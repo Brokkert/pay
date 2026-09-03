@@ -531,6 +531,18 @@ button.item:active { background: var(--sunk); }
   font-weight: 600;
 }
 .chip.static { cursor: default; background: var(--sunk); border-color: transparent; }
+/* The charge on a row. A pill asks for attention this does not need: it is
+   there for the one moment you hold the list against a bank statement. Same
+   grey as the line below, with the icon doing the telling apart. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
 /* A suggestion, not a choice you have made: lighter than the row above it. */
 .chip.quiet { background: none; border-style: dashed; color: var(--text-2); }
 .chip.tiny { padding: 4px 10px; font-size: 11px; gap: 5px; }

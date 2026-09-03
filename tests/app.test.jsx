@@ -406,7 +406,7 @@ describe('renaming a label', () => {
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Meer/ }));
 
-    const charges = (await screen.findByText(/^Incasso/)).nextElementSibling;
+    const charges = (await screen.findByText(/Incasso.s — posten/)).nextElementSibling;
     const row = within(charges).getByText('Verzekeraar').closest('.line');
     expect(row.textContent).toContain('2 posten');
     await user.click(row);
@@ -437,7 +437,7 @@ describe('renaming a label', () => {
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Meer/ }));
 
-    const categories = (await screen.findByText(/^Categorie/)).nextElementSibling;
+    const categories = (await screen.findByText(/Categorieën — wát/)).nextElementSibling;
     const row = within(categories).getByText('Internet & telefoon').closest('.line');
     expect(row.textContent).toContain('1 post');
     await user.click(row);
@@ -461,7 +461,7 @@ describe('reading an expense row', () => {
 
     const row = (await screen.findByText('Inboedel')).closest('.item');
     // The charge is a badge next to the name; the category is in the line below.
-    expect(within(row).getByText('Verzekeraar', { selector: '.chip' })).toBeTruthy();
+    expect(within(row).getByText('Verzekeraar', { selector: '.tag' })).toBeTruthy();
     expect(row.querySelector('.sub').textContent).toContain('Verzekeringen ·');
     expect(row.querySelector('.sub').textContent).toContain('van Vaste lasten');
   }, 30000);
@@ -494,7 +494,7 @@ describe('getting rid of a label', () => {
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Meer/ }));
 
-    const categories = (await screen.findByText(/^Categorie/)).nextElementSibling;
+    const categories = (await screen.findByText(/Categorieën — wát/)).nextElementSibling;
     await user.click(within(categories).getByText('Streaming & media').closest('.line'));
 
     const sheet = screen.getByRole('heading', { name: 'Categorie hernoemen' }).closest('.sheet');
@@ -504,7 +504,7 @@ describe('getting rid of a label', () => {
     await user.click(within(sheet).getByRole('button', { name: 'Samenvoegen' }));
 
     expect(await screen.findByText(/2 posten aangepast/)).toBeTruthy();
-    const after = (await screen.findByText(/^Categorie/)).nextElementSibling;
+    const after = (await screen.findByText(/Categorieën — wát/)).nextElementSibling;
     expect(within(after).queryByText('Streaming & media')).toBe(null);
   }, 30000);
 
@@ -513,7 +513,7 @@ describe('getting rid of a label', () => {
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Meer/ }));
 
-    const charges = (await screen.findByText(/^Incasso/)).nextElementSibling;
+    const charges = (await screen.findByText(/Incasso.s — posten/)).nextElementSibling;
     await user.click(within(charges).getByText('Verzekeraar').closest('.line'));
     await user.click(screen.getByRole('button', { name: 'Overal weghalen' }));
 
@@ -585,5 +585,20 @@ describe('counting things', () => {
     const charges = (await screen.findByText('Per incasso')).nextElementSibling;
     expect(within(charges).getAllByText('1 post op één afschrijving').length).toBeGreaterThan(0);
     expect(document.body.textContent).not.toContain('1 posten');
+  }, 30000);
+});
+
+describe('why this app exists', () => {
+  it('says so at the bottom of the settings, in its own words', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+
+    expect(await screen.findByText('Waarom deze app')).toBeTruthy();
+    // The things that are actually different, not a feature list.
+    expect(screen.getByText(/Vaste lasten, geen tikkies/)).toBeTruthy();
+    expect(screen.getByText(/Een rekening is een partij/)).toBeTruthy();
+    expect(screen.getByText(/Versleuteld voordat het je apparaat verlaat/)).toBeTruthy();
+    expect(screen.getByText(/uit één spreadsheet met echte vaste lasten/)).toBeTruthy();
   }, 30000);
 });

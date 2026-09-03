@@ -156,7 +156,7 @@ function ExpenseRow({ row, month, people, accounts, onOpen, onSave }) {
               the grey line below: one says which debit this rides on, the other
               what the expense is, and they should not read as one list. */}
           {expense.charge && (
-            <span className="chip static tiny">
+            <span className="tag truncate">
               <Icon name="receipt" size={11} /> {expense.charge}
             </span>
           )}

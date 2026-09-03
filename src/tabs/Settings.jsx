@@ -236,6 +236,9 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
         </div>
       )}
 
+      <div className="section">Waarom deze app</div>
+      <Why />
+
       <div className="tiny dim center" style={{ marginTop: 32 }}>
         Pay · gebouwd {typeof __BUILD__ === 'string' ? __BUILD__ : 'lokaal'}
       </div>
@@ -243,7 +246,7 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
       {panel === 'paste' && (
         <PastePanel
           store={store}
-          onDone={(n) => { setMessage(`${n} posten toegevoegd.`); setPanel(null); }}
+          onDone={(n) => { setMessage(`${count(n, 'post', 'posten')} toegevoegd.`); setPanel(null); }}
           onClose={() => setPanel(null)}
         />
       )}
@@ -624,5 +627,56 @@ function RenameSheet({ field, name, others, onSave, onClose }) {
           : 'Weghalen laat de posten staan; ze horen daarna alleen niet meer bij één afschrijving.'}
       </div>
     </Sheet>
+  );
+}
+
+
+/**
+ * What this does that a general-purpose splitter does not.
+ *
+ * Not a sales page — there is nobody to sell to. It is here because months go
+ * by between edits, and by then it is easy to forget why an expense is entered
+ * the way it is. Every line below is a decision that came out of one real
+ * spreadsheet, and knowing which they are is what keeps the thing usable.
+ */
+function Why() {
+  const points = [
+    ['Vaste lasten, geen tikkies',
+     'Splitwise en Tricount rekenen losse uitgaven af. Dit rekent met wat elke maand doorloopt, en zegt welk bedrag je als vaste overboeking klaarzet.'],
+    ['Een rekening is een partij',
+     'De gezamenlijke rekening telt mee als deelnemer, niet als etiket. Daardoor is "wat moet zij overmaken" dezelfde som als al het andere, en geen apart lijstje.'],
+    ['Eén bedrag per persoon',
+     'Alle onderlinge verrekeningen lopen langs die rekening. Wat iemand jou schuldig is komt daar binnen en gaat er weer uit, dus jij stort minder in plaats van dat er tientjes heen en weer gaan.'],
+    ['De zaak schiet voor, en draagt soms zelf',
+     'Iets dat zakelijk wordt afgeschreven maar privé gebruikt, komt terug bij jou. En een deel van een post kan bij de zaak liggen in plaats van bij een persoon — dat kwart bankkosten dat nergens thuishoorde.'],
+    ['Kruislingse abonnementen strepen zichzelf weg',
+     'Jouw YouTube waar hij op zit, tegen zijn Tidal waar jij op zit: één regel met het verschil, en eronder waar dat vandaan komt.'],
+    ['Jaarposten worden opgespaard',
+     'Wat één keer per jaar wordt afgeschreven telt elke maand voor een twaalfde mee. Je ziet wat er die maand werkelijk af gaat en wat er opzij staat voor later.'],
+    ['Incasso naast categorie',
+     'Een categorie zegt wat iets is; een incasso zegt welke posten samen als één regel van je rekening gaan. Zo houd je het naast je bankafschrift zonder te rekenen.'],
+    ['Tot op de cent',
+     'Alles in hele centen, verdeeld met de methode van de grootste rest. De delen tellen exact op tot het bedrag en de uitkomst wisselt niet per keer.'],
+    ['Versleuteld voordat het je apparaat verlaat',
+     'Namen, bedragen en notities gaan als versleutelde blob de database in. Er bestaat geen leesbare kolom, dus ook Supabase ziet niets — alleen hoeveel rijen er zijn.'],
+    ['Van jou',
+     'Eén HTML-bestand op je eigen adres, je eigen database erachter. Geen bedrijf ertussen dat de prijs kan veranderen of ermee kan stoppen.'],
+  ];
+
+  return (
+    <>
+      <div className="panel">
+        {points.map(([title, blurb]) => (
+          <div className="box" key={title}>
+            <div className="small"><strong>{title}</strong></div>
+            <div className="tiny dim" style={{ marginTop: 3, lineHeight: 1.55 }}>{blurb}</div>
+          </div>
+        ))}
+      </div>
+      <div className="hint">
+        Alles hierboven komt uit één spreadsheet met echte vaste lasten. Het is geen lijstje
+        functies dat leuk leek — het is wat er nodig bleek om dat blad overbodig te maken.
+      </div>
+    </>
   );
 }
