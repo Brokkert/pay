@@ -342,9 +342,10 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
                 </span>
                 <span className="b" style={{ display: 'block' }}>
                   Iedereen stort zijn hele aandeel op deze rekening — ook voor dingen die van een
-                  eigen of zakelijke rekening af gingen. Deze rekening betaalt dat daarna terug aan
-                  wie het voorschoot, zodat er één bedrag per persoon overblijft in plaats van losse
-                  verrekeningen.
+                  eigen of zakelijke rekening af gingen, en ook vrienden die alleen een abonnement
+                  met je delen. Deze rekening betaalt het daarna terug aan wie het voorschoot, zodat
+                  er één bedrag per persoon overblijft in plaats van losse verrekeningen. Schiet jij
+                  iets voor, dan hoef je zelf minder te storten.
                 </span>
               </span>
             </label>

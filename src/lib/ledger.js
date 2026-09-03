@@ -52,35 +52,6 @@ export function partyName(party, { people, accounts }) {
 export const settlementAccount = (accounts) =>
   accounts.find((a) => a.kind === 'shared' && a.settlement) || null;
 
-/**
- * Who settles through the account, worked out rather than asked.
- *
- * The people who fill it, always. And on top of that anyone who this month has
- * something going out *and* something coming in with them: a friend on your
- * YouTube who also pays for a service you use. Those two have to meet somewhere
- * to cancel, and this is where.
- *
- * Someone who only owes — the rest of the people on that subscription — is left
- * alone. There is nothing to cancel, so routing would only move the arrow
- * without changing a cent.
- */
-function settlersIn(matrix, hub, members) {
-  const settlers = new Set(members);
-  const owes = new Set();
-  const owed = new Set();
-  const orbit = (party) =>
-    party === hub || (!isAccountParty(party) && members.has(partyId(party)));
-
-  for (const [from, targets] of Object.entries(matrix)) {
-    for (const [to, cents] of Object.entries(targets)) {
-      if (!cents) continue;
-      if (!isAccountParty(from) && orbit(to)) owes.add(partyId(from));
-      if (!isAccountParty(to) && orbit(from)) owed.add(partyId(to));
-    }
-  }
-  for (const id of owes) if (owed.has(id)) settlers.add(id);
-  return settlers;
-}
 
 /**
  * Works out one month. `month` is 'yyyy-mm'.
@@ -148,10 +119,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
   }
 
   const hub = settlementAccount(accounts);
-  if (hub) {
-    const party = accountParty(hub.id);
-    routeThrough(raw, party, settlersIn(raw, party, new Set(hub.members || [])));
-  }
+  if (hub) routeThrough(raw, accountParty(hub.id), hub);
 
   const transfers = net(raw);
 
@@ -218,14 +186,19 @@ function book(matrix, from, to, cents) {
  * still have to put in. In the end nobody moves a loose amount around, and you
  * transfer less yourself.
  *
- * Only between those who settle through it — see settlersIn. What you owe a
- * friend who has nothing else to do with you, you simply pay him directly.
+ * It holds for everyone, not only the people who fill the account. A friend on
+ * a shared subscription pays into it too — that is the account you gave him —
+ * and what he pays in is then owed to whoever fronted it. Marking an account as
+ * the settlement point says precisely that: settlements run through here.
+ *
+ * What is already owed straight to the account needs no routing: the money is
+ * going to the right place as it is.
  */
-function routeThrough(matrix, hub, settlers) {
+function routeThrough(matrix, hub) {
   for (const [from, targets] of Object.entries(matrix)) {
-    if (from === hub || isAccountParty(from) || !settlers.has(partyId(from))) continue;
+    if (from === hub || isAccountParty(from)) continue;
     for (const [to, cents] of Object.entries(targets)) {
-      if (!cents || to === hub || isAccountParty(to) || !settlers.has(partyId(to))) continue;
+      if (!cents || to === hub || isAccountParty(to)) continue;
       targets[to] = 0;
       book(matrix, from, hub, cents);
       book(matrix, hub, to, cents);

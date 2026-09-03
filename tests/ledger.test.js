@@ -230,7 +230,11 @@ describe('settling through the bills account', () => {
     expect(intoAccount).toBe(9000);
   });
 
-  it('leaves someone outside the account alone', () => {
+  it('pays a friend out of the account too, because that is where you pay from', () => {
+    // Marking an account as the settlement point means settlements run through
+    // it — all of them, not only between the people who fill it. You pay this
+    // friend from that account, so that is where the 7,00 leaves from, and it
+    // comes off what you have to put in yourself.
     const result = forMonth({
       people, accounts: withHub,
       expenses: [expense({ id: 'c', name: 'Muziekdienst', amount: 1400,
@@ -238,7 +242,23 @@ describe('settling through the bills account', () => {
         split: { kind: 'equal', participants: [ME, FRIEND] } })],
     }, '2026-09');
     expect(result.transfers).toEqual([
-      { from: `person:${ME}`, to: `person:${FRIEND}`, cents: 700 },
+      { from: `person:${ME}`, to: 'account:a-bills', cents: 700 },
+      { from: 'account:a-bills', to: `person:${FRIEND}`, cents: 700 },
+    ]);
+  });
+
+  it('does not touch what is already owed to the account itself', () => {
+    // The friend is on something the account pays for. His 7,00 is going to the
+    // right place already, so there is nothing to route.
+    const result = forMonth({
+      people, accounts: withHub,
+      expenses: [expense({ id: 'c', name: 'Muziekdienst', amount: 1400,
+        payer: { kind: 'account', id: 'a-bills' },
+        split: { kind: 'equal', participants: [ME, FRIEND] } })],
+    }, '2026-09');
+    expect(result.transfers).toEqual([
+      { from: `person:${ME}`, to: 'account:a-bills', cents: 700 },
+      { from: `person:${FRIEND}`, to: 'account:a-bills', cents: 700 },
     ]);
   });
 
