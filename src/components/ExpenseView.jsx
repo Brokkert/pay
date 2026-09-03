@@ -115,7 +115,7 @@ export default function ExpenseView({
         />
         <Line what={payer || 'Geen rekening'} sub="gaat hiervan af" />
         {expense.charge && <Line what={expense.charge} sub="incasso" />}
-        {expense.business && <Line what="Zakelijk geboekt" sub="je krijgt dit terug van de zaak" />}
+        {expense.business && <Line what="Zakelijk" sub="telt apart mee voor de boekhouding" />}
         {expense.paused && <Line what="Gepauzeerd" sub="telt nergens in mee" />}
       </div>
 
