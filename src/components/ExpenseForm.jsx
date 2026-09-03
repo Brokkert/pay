@@ -32,7 +32,13 @@ export default function ExpenseForm({
   onClose,
 }) {
   const meId = people.find((p) => p.isMe)?.id;
-  const [draft, setDraft] = useState(() => ({ ...blank(meId), ...expense }));
+  // Resolve an old stored id to the name it stood for once, here, rather than on
+  // every render: doing it on the way to the field meant clearing that field
+  // refilled it with "Overig" while you were still typing.
+  const [draft, setDraft] = useState(() => {
+    const start = { ...blank(meId), ...expense };
+    return { ...start, category: categoryName(start.category) };
+  });
   // Charges are not a list you maintain somewhere — they are simply the names
   // already in use, plus whatever you type here. One less thing to keep tidy,
   // and picking from them is what stops "Verzekeringspakket" and
@@ -44,10 +50,14 @@ export default function ExpenseForm({
   );
   // Your own categories first; the starting set fills in behind them so a fresh
   // household is not staring at an empty row.
-  const knownCategories = useMemo(() => {
-    const mine = [...categories, categoryName(expense?.category)].filter(Boolean);
-    return [...new Set([...mine.sort(dutch), ...SUGGESTED.map((c) => c.name)])];
-  }, [categories, expense?.category]);
+  const knownCategories = useMemo(
+    () => [...new Set([...categories, categoryName(expense?.category)].filter(Boolean))].sort(dutch),
+    [categories, expense?.category]
+  );
+  const suggestions = useMemo(
+    () => SUGGESTED.map((c) => c.name).filter((name) => !knownCategories.includes(name)),
+    [knownCategories]
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [asking, setAsking] = useState(false);
@@ -59,7 +69,12 @@ export default function ExpenseForm({
     setBusy(true);
     setError(null);
     try {
-      await onSave({ ...draft, name: draft.name.trim() });
+      await onSave({
+        ...draft,
+        name: draft.name.trim(),
+        category: draft.category.trim() || 'Overig',
+        charge: (draft.charge || '').trim(),
+      });
       onClose();
     } catch (err) {
       setError(err.message || String(err));
@@ -150,7 +165,8 @@ export default function ExpenseForm({
         hint="Wát deze post is. Pay telt je posten per categorie op, zodat je ziet waar je geld heen gaat."
         icon="overview"
         known={knownCategories}
-        value={categoryName(draft.category)}
+        suggestions={suggestions}
+        value={draft.category}
         placeholder="Naam van de categorie"
         clearable={false}
         onChange={(name) => set({ category: name })}

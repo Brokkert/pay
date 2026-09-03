@@ -482,3 +482,58 @@ describe('reading an expense row', () => {
     expect(row.querySelector('.sub').textContent).toContain('van Vaste lasten');
   }, 30000);
 });
+
+describe('getting rid of a label', () => {
+  it('clears a category field instead of refilling it while you type', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Sportclub'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
+
+    const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    const field = within(sheet).getByText('Categorie').closest('.field');
+    await user.click(within(field).getByRole('button', { name: /Nieuwe/ }));
+
+    const input = within(field).getByPlaceholderText(/Naam van de categorie/);
+    await user.type(input, 'Sport');
+    await user.clear(input);
+    // It used to come back as "Overig" the moment the field went empty.
+    expect(input.value).toBe('');
+
+    await user.type(input, 'Sport');
+    expect(input.value).toBe('Sport');
+  }, 30000);
+
+  it('merges a category into another, which is how one goes away', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+
+    const categories = (await screen.findByText(/^Categorie/)).nextElementSibling;
+    await user.click(within(categories).getByText('Streaming & media').closest('.line'));
+
+    const sheet = screen.getByRole('heading', { name: 'Categorie hernoemen' }).closest('.sheet');
+    // The other categories are offered, because merging is the way out.
+    await user.click(within(sheet).getByRole('button', { name: 'Overig' }));
+    expect(within(sheet).getByText(/bestaat al/)).toBeTruthy();
+    await user.click(within(sheet).getByRole('button', { name: 'Samenvoegen' }));
+
+    expect(await screen.findByText(/2 posten aangepast/)).toBeTruthy();
+    const after = (await screen.findByText(/^Categorie/)).nextElementSibling;
+    expect(within(after).queryByText('Streaming & media')).toBe(null);
+  }, 30000);
+
+  it('takes a charge off every expense at once', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+
+    const charges = (await screen.findByText(/^Incasso/)).nextElementSibling;
+    await user.click(within(charges).getByText('Verzekeraar').closest('.line'));
+    await user.click(screen.getByRole('button', { name: 'Overal weghalen' }));
+
+    expect(await screen.findByText(/weggehaald bij 2 posten/)).toBeTruthy();
+    expect(screen.getByText(/Nog geen incasso/)).toBeTruthy();
+  }, 30000);
+});

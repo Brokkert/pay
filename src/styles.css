@@ -531,6 +531,8 @@ button.item:active { background: var(--sunk); }
   font-weight: 600;
 }
 .chip.static { cursor: default; background: var(--sunk); border-color: transparent; }
+/* A suggestion, not a choice you have made: lighter than the row above it. */
+.chip.quiet { background: none; border-style: dashed; color: var(--text-2); }
 .chip.tiny { padding: 4px 10px; font-size: 11px; gap: 5px; }
 
 /* A choice with an explanation under it: not a pill but a block. */

@@ -505,16 +505,24 @@ function LabelList({ store, onMessage }) {
     return [...tally].sort((a, b) => a[0].localeCompare(b[0], 'nl'));
   };
 
+  // Renaming onto a name that already exists merges the two, which is also how
+  // you get rid of one: a label is nothing but the expenses carrying it, so the
+  // last expense to leave is the last of the label.
   const rename = async (field, from, to) => {
     const name = to.trim();
-    if (!name || name === from) return setEditing(null);
+    if (name === from) return setEditing(null);
+    if (!name && field === 'category') return setEditing(null);
     onMessage('Bezig…');
     try {
       const hit = (expense) =>
         (field === 'category' ? categoryName(expense.category) : expense.charge) === from;
       const touched = store.expenses.filter(hit);
       for (const expense of touched) await store.save('expenses', { ...expense, [field]: name });
-      onMessage(`${touched.length} ${touched.length === 1 ? 'post' : 'posten'} aangepast.`);
+      onMessage(
+        name
+          ? `${touched.length} ${touched.length === 1 ? 'post' : 'posten'} aangepast.`
+          : `Incasso weggehaald bij ${touched.length} ${touched.length === 1 ? 'post' : 'posten'}.`
+      );
       setEditing(null);
     } catch (err) {
       onMessage(err.message || String(err));
@@ -554,8 +562,9 @@ function LabelList({ store, onMessage }) {
         'Nog geen incasso ingevuld. Dat hoeft ook niet.')}
       {editing && (
         <RenameSheet
-          label={editing.field === 'category' ? 'Categorie' : 'Incasso'}
+          field={editing.field}
           name={editing.name}
+          others={count(editing.field).map(([name]) => name).filter((n) => n !== editing.name)}
           onSave={(to) => rename(editing.field, editing.name, to)}
           onClose={() => setEditing(null)}
         />
@@ -564,20 +573,55 @@ function LabelList({ store, onMessage }) {
   );
 }
 
-function RenameSheet({ label, name, onSave, onClose }) {
+function RenameSheet({ field, name, others, onSave, onClose }) {
   const [value, setValue] = useState(name);
+  const category = field === 'category';
+  const merges = others.includes(value.trim()) && value.trim() !== name;
+
   return (
-    <Sheet title={`${label} hernoemen`} onClose={onClose}>
-      <Field label="Naam" hint="Elke post met deze naam gaat mee.">
+    <Sheet title={`${category ? 'Categorie' : 'Incasso'} hernoemen`} onClose={onClose}>
+      <Field
+        label="Naam"
+        hint={
+          merges
+            ? `Deze naam bestaat al. De posten van "${name}" gaan er dan bij, en "${name}" verdwijnt.`
+            : 'Elke post met deze naam gaat mee.'
+        }
+      >
         <input className="input" autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
       </Field>
+
+      {others.length > 0 && (
+        <div className="chips" style={{ marginBottom: 16 }}>
+          {others.map((other) => (
+            <button key={other} type="button" className="chip quiet" onClick={() => setValue(other)}>
+              {other}
+            </button>
+          ))}
+        </div>
+      )}
+
       <button
         className="btn primary wide"
         disabled={!value.trim() || value.trim() === name}
         onClick={() => onSave(value)}
       >
-        Bewaren
+        {merges ? 'Samenvoegen' : 'Bewaren'}
       </button>
+
+      {/* An expense always has a category, so there is nothing to empty there —
+          merging into another is how one goes away. A charge can simply be
+          absent. */}
+      {!category && (
+        <button className="btn wide danger" style={{ marginTop: 10 }} onClick={() => onSave('')}>
+          Overal weghalen
+        </button>
+      )}
+      <div className="hint">
+        {category
+          ? 'Een categorie bestaat zolang er posten op staan. Wil je er een kwijt, voeg hem dan samen met een andere.'
+          : 'Weghalen laat de posten staan; ze horen daarna alleen niet meer bij één afschrijving.'}
+      </div>
     </Sheet>
   );
 }

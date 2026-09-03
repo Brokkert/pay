@@ -16,6 +16,7 @@ export default function LabelPicker({
   hint,
   icon,
   known,
+  suggestions = [],
   value,
   placeholder,
   clearable = true,
@@ -51,14 +52,28 @@ export default function LabelPicker({
         </button>
       </div>
       {naming && (
-        <input
-          className="input"
-          style={{ marginTop: 9 }}
-          autoFocus
-          placeholder={placeholder}
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <>
+          <input
+            className="input"
+            style={{ marginTop: 9 }}
+            autoFocus
+            placeholder={placeholder}
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {/* Suggestions belong to making a new one, not to the row you pick
+              from every day. Once you have your own names, a starter set among
+              them is just a list of things you never chose. */}
+          {suggestions.length > 0 && (
+            <div className="chips" style={{ marginTop: 9 }}>
+              {suggestions.map((name) => (
+                <button key={name} type="button" className="chip quiet" onClick={() => onChange(name)}>
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </Field>
   );
