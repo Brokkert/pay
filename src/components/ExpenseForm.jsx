@@ -223,27 +223,27 @@ export default function ExpenseForm({
       />
 
       <details className="disclose" style={{ marginBottom: 18 }}>
-        <summary>Looptijd, notitie en zakelijk</summary>
+        <summary>Looptijd, notitie en pauzeren</summary>
         <div style={{ marginTop: 16 }}>
-          <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
-            <div className="grow">
-              <Field label="Loopt vanaf" hint="Leeg = loopt al. Alleen om te weten vanaf wanneer hij meetelt.">
-                <input className="input" type="date" value={draft.from || ''}
-                  onChange={(e) => set({ from: e.target.value })} />
-              </Field>
-            </div>
-            <div className="grow">
-              <Field label="Loopt tot" hint="Leeg = doorlopend">
-                <input className="input" type="date" value={draft.until || ''}
-                  onChange={(e) => set({ until: e.target.value })} />
-              </Field>
-            </div>
-          </div>
+          {/* Stacked, not side by side: a date field is as wide as the date in
+              it, so two of them in one row on a phone leaves neither room. */}
+          <Field
+            label="Loopt vanaf"
+            hint="Vanaf wanneer deze post meetelt. Leeg = loopt al."
+          >
+            <input className="input" type="date" value={draft.from || ''}
+              onChange={(e) => set({ from: e.target.value })} />
+          </Field>
+
+          <Field label="Loopt tot" hint="Tot wanneer. Leeg = doorlopend.">
+            <input className="input" type="date" value={draft.until || ''}
+              onChange={(e) => set({ until: e.target.value })} />
+          </Field>
 
           <Field label="Notitie">
             <textarea
               className="textarea"
-              placeholder="Opzegtermijn, klantnummer, waar hij op meelift — wat je ook wilt onthouden."
+              placeholder="Opzegtermijn, klantnummer, waar hij op meelift…"
               value={draft.note || ''}
               onChange={(e) => set({ note: e.target.value })}
             />

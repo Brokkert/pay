@@ -491,6 +491,7 @@ button.item:active { background: var(--sunk); }
 
 .input, .select, .textarea {
   width: 100%;
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
@@ -866,6 +867,9 @@ button.item:active { background: var(--sunk); }
   padding: 13px 15px;
   margin-top: 10px;
 }
+/* An empty date renders as a blank box in most browsers; give it the height of
+   an ordinary field so it does not sit there as a slab. */
+.input[type='date'] { min-height: 46px; }
 .disclose > summary { cursor: pointer; font-size: 13px; color: var(--text-2); list-style: none; font-weight: 500; }
 .disclose > summary::-webkit-details-marker { display: none; }
 .disclose > summary::before { content: '›'; display: inline-block; margin-right: 8px; color: var(--text-3); transition: transform 0.15s; }
