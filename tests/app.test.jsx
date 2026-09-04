@@ -629,16 +629,16 @@ describe('taking the overview apart', () => {
   it('opens every kind of figure and shows the posts behind it', async () => {
     await withData(exampleHousehold());
     const user = await start();
-    await screen.findByText('Loopt deze maand');
+    await screen.findByText('Jouw deel');
 
     // The two figures in the hero.
-    await user.click(screen.getByText('Loopt deze maand'));
-    let sheet = screen.getByRole('heading', { name: 'Loopt deze maand' }).closest('.sheet');
+    await user.click(screen.getByText('Jouw deel'));
+    let sheet = screen.getByRole('heading', { name: 'Jouw deel' }).closest('.sheet');
     expect(within(sheet).getByText('Streamingdienst')).toBeTruthy();
     await user.click(within(sheet).getByRole('button', { name: 'Sluiten' }));
 
-    await user.click(screen.getByText('Jouw deel'));
-    sheet = screen.getByRole('heading', { name: 'Jouw deel' }).closest('.sheet');
+    await user.click(screen.getByText('Loopt in totaal'));
+    sheet = screen.getByRole('heading', { name: 'Loopt in totaal' }).closest('.sheet');
     expect(within(sheet).getByText('Streamingdienst')).toBeTruthy();
     await user.click(within(sheet).getByRole('button', { name: 'Sluiten' }));
 
@@ -653,8 +653,8 @@ describe('taking the overview apart', () => {
     await withData(exampleHousehold());
     const user = await start();
 
-    await user.click(await screen.findByText('Loopt deze maand'));
-    const sheet = screen.getByRole('heading', { name: 'Loopt deze maand' }).closest('.sheet');
+    await user.click(await screen.findByText('Loopt in totaal'));
+    const sheet = screen.getByRole('heading', { name: 'Loopt in totaal' }).closest('.sheet');
     const amounts = [...sheet.querySelectorAll('.line .amount')].map((el) =>
       Math.round(Number(el.textContent.replace(/[^\d,-]/g, '').replace(',', '.')) * 100)
     );

@@ -91,6 +91,15 @@ export default function Overview({ store, month, onMonth }) {
     );
   }
 
+  const mine = me ? result.borne[me.id] || 0 : 0;
+  const totalDetail = {
+    title: 'Loopt in totaal',
+    label: 'Per maand',
+    cents: result.monthlyTotal,
+    rows: postRows(result.lines),
+    note: 'Alles wat er loopt, op het maandbedrag — ook de delen die anderen dragen. Wat een jaarpost kost is uitgesmeerd over twaalf maanden.',
+  };
+
   // What ran on the business this month: exactly what came off the business
   // accounts, which the panel further down lists per account anyway.
   const business = accounts
@@ -106,43 +115,45 @@ export default function Overview({ store, month, onMonth }) {
       {/* The two numbers it is all about: what runs in total, and how much of
           that is ultimately yours. The one card in the app that carries colour —
           everything else stays quiet so your eye lands here. */}
+      {/* The big number is your own share, not the sum of everything in the
+          ledger. That sum counts Mau's half and a friend's part of a
+          subscription, so putting a friend on one makes the headline go up
+          while your own costs go down — a figure that moves the wrong way on
+          good news. Your share moves the way you expect, means the same thing
+          every month, and is the one you have to set aside. What runs in total
+          stays as context, beside it. */}
       <div className="hero">
         <div className="row" style={{ alignItems: 'flex-start' }}>
           <button
             type="button"
             className="bare grow"
             onClick={() =>
-              setDetail({
-                title: 'Loopt deze maand',
-                label: 'Per maand',
-                cents: result.monthlyTotal,
-                rows: postRows(result.lines),
-                note: 'Elke post op zijn maandbedrag: wat een jaarpost kost is uitgesmeerd over twaalf maanden.',
-              })
+              setDetail(
+                me
+                  ? {
+                      title: 'Jouw deel',
+                      label: 'Draagt per maand',
+                      cents: mine,
+                      rows: postRows(result.lines, (l) => l.shares[me.id] || 0),
+                      note: 'Wat jij uiteindelijk draagt, ongeacht van welke rekening het wordt afgeschreven.',
+                    }
+                  : totalDetail
+              )
             }
           >
-            <div className="label">Loopt deze maand</div>
-            <div className="figure">{formatMoney(result.monthlyTotal)}</div>
+            <div className="label">{me ? 'Jouw deel' : 'Loopt deze maand'}</div>
+            <div className="figure">{formatMoney(me ? mine : result.monthlyTotal)}</div>
             <div className="under">
-              {formatMoney(result.yearlyTotal)} per jaar · {count(result.lines.length, 'post', 'posten')}
+              {me
+                ? `${formatMoney(mine * 12)} per jaar`
+                : `${formatMoney(result.yearlyTotal)} per jaar`}{' '}
+              · {count(result.lines.length, 'post', 'posten')}
             </div>
           </button>
           {me && (
-            <button
-              type="button"
-              className="bare side"
-              onClick={() =>
-                setDetail({
-                  title: 'Jouw deel',
-                  label: 'Per maand',
-                  cents: result.borne[me.id] || 0,
-                  rows: postRows(result.lines, (l) => l.shares[me.id] || 0),
-                  note: 'Wat jij uiteindelijk draagt, ongeacht van welke rekening het wordt afgeschreven.',
-                })
-              }
-            >
-              <div className="label">Jouw deel</div>
-              <div className="figure">{formatMoney(result.borne[me.id] || 0)}</div>
+            <button type="button" className="bare side" onClick={() => setDetail(totalDetail)}>
+              <div className="label">Loopt in totaal</div>
+              <div className="figure">{formatMoney(result.monthlyTotal)}</div>
             </button>
           )}
         </div>
