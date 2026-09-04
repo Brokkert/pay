@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Sheet, Field, Notice, AmountInput, Avatar, Confirm, Icon } from './ui.jsx';
 import SplitPicker from './SplitPicker.jsx';
-import { CADENCES } from '../lib/cadence.js';
+import { CADENCES, MONTH_NAMES, cadenceOf, chargeAnchor } from '../lib/cadence.js';
 import { SUGGESTED, categoryName } from '../data/categories.js';
 import LabelPicker from './LabelPicker.jsx';
 
@@ -15,6 +15,7 @@ const blank = (meId) => ({
   charge: '',
   payer: { kind: 'account', id: null },
   split: { kind: 'equal', participants: meId ? [meId] : [], weights: {} },
+  chargeMonth: '',
   from: '',
   until: '',
   paused: false,
@@ -37,7 +38,15 @@ export default function ExpenseForm({
   // refilled it with "Overig" while you were still typing.
   const [draft, setDraft] = useState(() => {
     const start = { ...blank(meId), ...expense };
-    return { ...start, category: categoryName(start.category) };
+    // An expense entered before there was a field for the charge month kept it
+    // in its start date. Reading it out here means saving the expense once
+    // moves it across, and the start date goes back to meaning only that.
+    const anchor = chargeAnchor(start);
+    return {
+      ...start,
+      category: categoryName(start.category),
+      chargeMonth: start.chargeMonth || (anchor === null ? '' : anchor + 1),
+    };
   });
   // Charges are not a list you maintain somewhere — they are simply the names
   // already in use, plus whatever you type here. One less thing to keep tidy,
@@ -122,6 +131,29 @@ export default function ExpenseForm({
         </div>
       </div>
 
+      {cadenceOf(draft.cadence).perYear < 12 && draft.cadence !== 'once' && (
+        <Field
+          label="Wordt afgeschreven in"
+          warn={!draft.chargeMonth}
+          hint={
+            draft.chargeMonth
+              ? 'De maand waarin de bank het afschrijft. Elk jaar dezelfde — Pay rekent de rest zelf uit.'
+              : 'Vul dit in, anders weet Pay niet in welke maand het geld eraf gaat en kan hij niet zeggen hoeveel er voor deze post opzij hoort te staan.'
+          }
+        >
+          <select
+            className="select"
+            value={draft.chargeMonth || ''}
+            onChange={(e) => set({ chargeMonth: e.target.value ? Number(e.target.value) : '' })}
+          >
+            <option value="">Kies een maand…</option>
+            {MONTH_NAMES.map((name, i) => (
+              <option key={name} value={i + 1}>{name}</option>
+            ))}
+          </select>
+        </Field>
+      )}
+
       <Field
         label="Waar gaat het vanaf"
         hint="De rekening waar het daadwerkelijk van afgeschreven wordt. Dat hoeft niet dezelfde te zijn als wie het uiteindelijk draagt — daar is de verdeling hieronder voor."
@@ -195,7 +227,7 @@ export default function ExpenseForm({
         <div style={{ marginTop: 16 }}>
           <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
             <div className="grow">
-              <Field label="Loopt vanaf" hint="Leeg = loopt al">
+              <Field label="Loopt vanaf" hint="Leeg = loopt al. Alleen om te weten vanaf wanneer hij meetelt.">
                 <input className="input" type="date" value={draft.from || ''}
                   onChange={(e) => set({ from: e.target.value })} />
               </Field>

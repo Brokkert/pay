@@ -44,7 +44,7 @@ export default function ChargeView({ charge, accounts, month, onClose }) {
       {charge.chargeUnknown && (
         <div className="hint warn" style={{ marginBottom: 14 }}>
           Van een post hieronder is niet bekend wanneer hij begon, dus kan Pay niet zeggen of hij
-          deze maand meegaat. Vul bij die post <strong>Loopt vanaf</strong> in.
+          deze maand meegaat. Vul bij die post <strong>Wordt afgeschreven in</strong> in.
         </div>
       )}
 
@@ -70,7 +70,7 @@ export default function ChargeView({ charge, accounts, month, onClose }) {
                   : cadence.perYear >= 12
                     ? 'elke maand'
                     : due === null
-                      ? `${formatMoney(expense.amount)} ${cadence.short} · begindatum onbekend`
+                      ? `${formatMoney(expense.amount)} ${cadence.short} · afschrijfmaand onbekend`
                       : due
                         ? `${formatMoney(expense.amount)} ${cadence.short} · deze maand`
                         : `${formatMoney(expense.amount)} ${cadence.short} · niet deze maand`

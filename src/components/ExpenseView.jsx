@@ -26,6 +26,7 @@ import {
   chargedIn,
   setAside,
   nextCharge,
+  chargeAnchor,
 } from '../lib/cadence.js';
 import { split, possibleBearers, bearerName } from '../lib/split.js';
 import { categoryOf } from '../data/categories.js';
@@ -138,7 +139,7 @@ export default function ExpenseView({
           aside each month, and the account only feels it once. */}
       {!once && cadenceOf(expense.cadence).perYear < 12 && (
         <div className="panel" style={{ marginBottom: 14 }}>
-          {expense.from ? (
+          {chargeAnchor(expense) !== null ? (
             <>
               <Line
                 what={chargedIn(expense, month) ? `Wordt deze maand afgeschreven` : 'Wordt afgeschreven in'}
@@ -150,8 +151,9 @@ export default function ExpenseView({
           ) : (
             <div className="box">
               <div className="small muted">
-                Vul bij <strong>Loopt vanaf</strong> in wanneer deze post begon, dan weet Pay in
-                welke maand hij wordt afgeschreven — en hoeveel er inmiddels voor opzij staat.
+                Vul bij <strong>Wordt afgeschreven in</strong> de maand in waarin de bank dit
+                afschrijft, dan weet Pay wanneer het eraf gaat — en hoeveel er inmiddels voor
+                opzij staat.
               </div>
             </div>
           )}

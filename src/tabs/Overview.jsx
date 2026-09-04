@@ -550,12 +550,12 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                   what: l.expense.name,
                   sub: l.expense.from
                     ? `${formatMoney(l.expense.amount)} ${c.short} · volgende keer ${formatMonth(due).split(' ')[0]}`
-                    : `${formatMoney(l.expense.amount)} ${c.short} · begindatum onbekend`,
+                    : `${formatMoney(l.expense.amount)} ${c.short} · afschrijfmaand onbekend`,
                   cents: setAside(l.expense, month),
                 };
               }),
               empty: 'Alles op deze rekening wordt maandelijks afgeschreven, dus er hoeft niets op te blijven staan.',
-              note: 'Zet dit bedrag erop en stort daarna elke maand de maandlast, dan staat er precies genoeg op het moment dat een jaarpost wordt afgeschreven — en is de rekening daarna weer leeg. Van een post zonder begindatum weet Pay niet wanneer hij afgaat; die telt hier voor niets mee.',
+              note: 'Zet dit bedrag erop en stort daarna elke maand de maandlast, dan staat er precies genoeg op het moment dat een jaarpost wordt afgeschreven — en is de rekening daarna weer leeg. Staat bij een post geen afschrijfmaand, dan weet Pay niet wanneer hij eraf gaat; die telt hier voor niets mee.',
             })
           }
         />
@@ -656,8 +656,8 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
       </div>
       {pot.chargeUnknown && (
         <div className="hint warn" style={{ marginTop: -4 }}>
-          Van een post op deze rekening is niet bekend wanneer hij begon, dus kan Pay niet zeggen
-          in welke maand hij afgaat. Vul bij die post <strong>Loopt vanaf</strong> in.
+          Van een post op deze rekening is niet bekend in welke maand hij wordt afgeschreven.
+          Vul bij die post <strong>Wordt afgeschreven in</strong> in.
         </div>
       )}
       {isHub && (

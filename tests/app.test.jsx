@@ -559,7 +559,7 @@ describe('saving up for a yearly expense', () => {
       .toContain('60,00');
   }, 30000);
 
-  it('asks for the start date rather than guessing the month', async () => {
+  it('asks which month it is charged rather than guessing', async () => {
     await withData(exampleHousehold());
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Lasten/ }));
@@ -567,8 +567,30 @@ describe('saving up for a yearly expense', () => {
 
     const sheet = (await screen.findByRole('heading', { name: 'Gemeentelijke heffingen' }))
       .closest('.sheet');
-    expect(within(sheet).getByText(/Loopt vanaf/)).toBeTruthy();
+    expect(within(sheet).getByText(/Wordt afgeschreven in/)).toBeTruthy();
     expect(within(sheet).queryByText('Staat er nu opzij')).toBe(null);
+  }, 30000);
+
+  it('takes the charge month from the form and saves up from there', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Gemeentelijke heffingen'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
+
+    const form = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    const field = within(form).getByText('Wordt afgeschreven in').closest('.field');
+    // Quarterly, charged in July: in September two instalments are in.
+    await user.selectOptions(within(field).getByRole('combobox'), '7');
+    await user.click(within(form).getByRole('button', { name: 'Bewaren' }));
+
+    await user.click(await screen.findByText('Gemeentelijke heffingen'));
+    const sheet = (await screen.findByRole('heading', { name: 'Gemeentelijke heffingen' }))
+      .closest('.sheet');
+    expect(within(sheet).getByText('Staat er nu opzij').closest('.line').textContent)
+      .toContain('60,00');
+    expect(within(sheet).getByText('Wordt afgeschreven in').closest('.line').textContent)
+      .toContain('oktober');
   }, 30000);
 });
 

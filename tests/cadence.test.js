@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chargedIn, formatMonth, isActive, perMonth, perYear, setAside, shiftMonth } from '../src/lib/cadence.js';
+import { chargedIn, formatMonth, isActive, nextCharge, perMonth, perYear, setAside, shiftMonth } from '../src/lib/cadence.js';
 
 describe('perMonth', () => {
   it('converts every cadence to whole cents per month', () => {
@@ -80,5 +80,49 @@ describe('saving up for what is charged less often', () => {
 
   it('sets nothing aside for something charged every month', () => {
     expect(setAside({ cadence: 'month', amount: 5000, from: '2020-01-01' }, '2026-09')).toBe(0);
+  });
+});
+
+describe('which month the money leaves', () => {
+  const yearly = (o) => ({ name: 'Verzekering', amount: 12000, cadence: 'year', ...o });
+
+  it('takes the month you gave it, whatever the year', () => {
+    const e = yearly({ chargeMonth: 3 });
+    expect(chargedIn(e, '2026-03')).toBe(true);
+    expect(chargedIn(e, '2031-03')).toBe(true);
+    expect(chargedIn(e, '2026-04')).toBe(false);
+  });
+
+  it('saves up one instalment a month and spends it in the charge month', () => {
+    const e = yearly({ chargeMonth: 3 });
+    expect(setAside(e, '2026-03')).toBe(0);
+    expect(setAside(e, '2026-04')).toBe(1000);
+    expect(setAside(e, '2027-02')).toBe(11000);
+  });
+
+  it('falls back to the start date, so an old expense keeps working', () => {
+    const e = yearly({ from: '2020-03-01' });
+    expect(chargedIn(e, '2026-03')).toBe(true);
+    expect(setAside(e, '2026-09')).toBe(6000);
+  });
+
+  it('prefers the month you gave over the date it started', () => {
+    const e = yearly({ chargeMonth: 9, from: '2020-03-01' });
+    expect(chargedIn(e, '2026-03')).toBe(false);
+    expect(chargedIn(e, '2026-09')).toBe(true);
+  });
+
+  it('says it does not know rather than guessing', () => {
+    const e = yearly({});
+    expect(chargedIn(e, '2026-03')).toBe(null);
+    expect(setAside(e, '2026-03')).toBe(0);
+    expect(nextCharge(e, '2026-03')).toBe(null);
+  });
+
+  it('counts a quarterly one every three months from the month given', () => {
+    const e = { name: 'Heffingen', amount: 9000, cadence: 'quarter', chargeMonth: 1 };
+    expect([1, 4, 7, 10].every((m) => chargedIn(e, `2026-${String(m).padStart(2, '0')}`))).toBe(true);
+    expect(chargedIn(e, '2026-02')).toBe(false);
+    expect(setAside(e, '2026-03')).toBe(6000);
   });
 });

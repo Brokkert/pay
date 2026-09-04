@@ -56,21 +56,50 @@ export function monthsBetween(from, to) {
 }
 
 /**
+ * The month an expense is charged in, as 0-11, or null when it is not known.
+ *
+ * Asked for directly, because that is the fact: an insurance is charged in
+ * March. The start date is only a fallback for expenses entered before there
+ * was a field for it — it happened to give the right answer when a policy is
+ * charged in the month it started, and the wrong one whenever the renewal has
+ * since moved.
+ *
+ * Only the month matters, never the year: every rhythm here divides twelve, so
+ * a quarterly bill charged in January is charged in April, July and October
+ * too, year in year out.
+ */
+export function chargeAnchor(expense) {
+  const given = Number(expense?.chargeMonth);
+  if (given >= 1 && given <= 12) return given - 1;
+  if (expense?.from) return Number(expense.from.slice(5, 7)) - 1;
+  return null;
+}
+
+/** How many months apart this expense is charged. */
+const stepOf = (cadence) => 12 / cadenceOf(cadence).perYear;
+
+/** Months from the last charge to this one, 0 in the month it goes out. */
+function sinceCharge(expense, month) {
+  const anchor = chargeAnchor(expense);
+  if (anchor === null) return null;
+  const step = stepOf(expense.cadence);
+  return (((Number(String(month).slice(5, 7)) - 1 - anchor) % step) + step) % step;
+}
+
+/**
  * Is this the month the money actually leaves?
  *
  * An expense charged less often than monthly still counts every month in the
- * books — that is the saving up — but the account only feels it once. Which
- * month follows from when it starts: a yearly policy running from March is
- * charged every March. Returns null when there is no start date, because then
- * it is not known and guessing would be worse than saying so.
+ * books — that is the saving up — but the account only feels it once. Returns
+ * null when the charge month is not known, because then guessing would be
+ * worse than saying so.
  */
 export function chargedIn(expense, month) {
   const c = cadenceOf(expense.cadence);
   if (c.id === 'once') return false;
   if (c.perYear >= 12) return true;
-  if (!expense.from) return null;
-  const since = monthsBetween(expense.from.slice(0, 7), month);
-  return since >= 0 && since % (12 / c.perYear) === 0;
+  const since = sinceCharge(expense, month);
+  return since === null ? null : since === 0;
 }
 
 /**
@@ -80,10 +109,10 @@ export function chargedIn(expense, month) {
  */
 export function setAside(expense, month) {
   const c = cadenceOf(expense.cadence);
-  if (c.perYear >= 12 || c.id === 'once' || !expense.from) return 0;
-  const since = monthsBetween(expense.from.slice(0, 7), month);
-  if (since < 0) return 0;
-  return (since % (12 / c.perYear)) * perMonth(expense.amount, expense.cadence);
+  if (c.perYear >= 12 || c.id === 'once') return 0;
+  const since = sinceCharge(expense, month);
+  if (since === null) return 0;
+  return since * perMonth(expense.amount, expense.cadence);
 }
 
 /**
@@ -92,8 +121,8 @@ export function setAside(expense, month) {
  */
 export function nextCharge(expense, month) {
   const c = cadenceOf(expense.cadence);
-  if (c.id === 'once' || c.perYear >= 12 || !expense.from) return null;
-  const step = 12 / c.perYear;
+  if (c.id === 'once' || c.perYear >= 12 || chargeAnchor(expense) === null) return null;
+  const step = stepOf(expense.cadence);
   let candidate = month;
   for (let i = 0; i <= step; i += 1) {
     if (chargedIn(expense, candidate)) return candidate;
@@ -102,7 +131,7 @@ export function nextCharge(expense, month) {
   return null;
 }
 
-const MONTH_NAMES = ['januari', 'februari', 'maart', 'april', 'mei', 'juni',
+export const MONTH_NAMES = ['januari', 'februari', 'maart', 'april', 'mei', 'juni',
   'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 
 export function formatMonth(month) {

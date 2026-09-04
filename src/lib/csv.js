@@ -7,7 +7,7 @@
 // In: pasting. Your existing overview has a column of names and a column of
 // amounts; you drag those two over here and fill in the rest once.
 
-import { perMonth, perYear, cadenceOf, CADENCES } from './cadence.js';
+import { perMonth, perYear, cadenceOf, CADENCES, MONTH_NAMES, chargeAnchor } from './cadence.js';
 import { split, possibleBearers } from './split.js';
 import { payerParty, isAccountParty, partyId, isBusiness } from './ledger.js';
 import { parseMoney } from './money.js';
@@ -26,7 +26,7 @@ export function toCsv({ expenses, people, accounts }) {
   const bearers = possibleBearers(people, accounts);
   const header = [
     'Post', 'Categorie', 'Incasso', 'Bedrag', 'Ritme', 'Per maand', 'Per jaar',
-    'Betaald door', 'Zakelijk', 'Loopt vanaf', 'Loopt tot', 'Notitie',
+    'Betaald door', 'Zakelijk', 'Afgeschreven in', 'Loopt vanaf', 'Loopt tot', 'Notitie',
     ...bearers.map((b) => `Aandeel ${b.name}`),
   ];
 
@@ -48,6 +48,7 @@ export function toCsv({ expenses, people, accounts }) {
       amount(perYear(expense.amount, expense.cadence)),
       payer || '',
       isBusiness(expense, accounts) ? 'ja' : '',
+      chargeAnchor(expense) === null ? '' : MONTH_NAMES[chargeAnchor(expense)],
       expense.from || '',
       expense.until || '',
       expense.note || '',
