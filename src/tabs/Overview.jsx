@@ -1,7 +1,8 @@
 // The overview: what is running, and who owes who what.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Line, Total, Money, Avatar, BearerAvatar, Notice, Empty, Icon } from '../components/ui.jsx';
+import ChargeView from '../components/ChargeView.jsx';
 import {
   forMonth,
   openSettlements,
@@ -25,6 +26,8 @@ export default function Overview({ store, month, onMonth }) {
   const loose = useMemo(() => openSettlements(expenses, accounts), [expenses, accounts]);
   const me = people.find((p) => p.isMe);
   const context = { people, accounts, lines: result.lines };
+  const [openCharge, setOpenCharge] = useState(null);
+  const charge = result.charges.find((c) => c.name === openCharge) || null;
 
   if (!expenses.length) {
     return (
@@ -40,7 +43,6 @@ export default function Overview({ store, month, onMonth }) {
   const business = accounts
     .filter((a) => a.kind === 'business')
     .reduce((sum, a) => sum + (result.perAccount[a.id] || 0), 0);
-  const charges = Object.entries(result.perCharge).sort((a, b) => b[1] - a[1]);
 
   return (
     <>
@@ -105,22 +107,36 @@ export default function Overview({ store, month, onMonth }) {
         <Pot key={pot.account.id} pot={pot} people={people} hub={result.hub} month={month} />
       ))}
 
-      {charges.length > 0 && (
+      {result.charges.length > 0 && (
         <>
           <div className="section">Per incasso</div>
           <div className="panel">
-            {charges.map(([name, cents]) => (
+            {result.charges.map((group) => (
               <Line
-                key={name}
-                what={name}
-                sub={`${count(result.lines.filter((l) => l.expense.charge === name).length, 'post', 'posten')} op één afschrijving`}
-                cents={cents}
+                key={group.name}
+                what={group.name}
+                sub={[
+                  count(group.lines.length, 'post', 'posten'),
+                  // What comes off is the number you hold against your
+                  // statement, and it only differs from the monthly load when
+                  // something in there is not charged monthly. Then it is worth
+                  // saying; otherwise it is the same number twice.
+                  !group.chargeUnknown &&
+                    group.charged !== group.month &&
+                    `${group.charged ? formatMoney(group.charged) : 'niets'} in ${
+                      formatMonth(month).split(' ')[0]
+                    }`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+                cents={group.month}
+                onClick={() => setOpenCharge(group.name)}
               />
             ))}
           </div>
           <div className="hint" style={{ marginTop: -4 }}>
-            Posten die samen als één regel van je rekening gaan. Dit is het bedrag dat je op je
-            bankafschrift terugvindt. Wat je posten zíjn staat hieronder, bij de categorieën.
+            Posten die samen als één regel van je rekening gaan. Tik erop om te zien wat erin zit en
+            wat de bank deze maand echt afschrijft.
           </div>
         </>
       )}
@@ -198,6 +214,15 @@ export default function Overview({ store, month, onMonth }) {
           </>
         )}
       </div>
+
+      {charge && (
+        <ChargeView
+          charge={charge}
+          accounts={accounts}
+          month={month}
+          onClose={() => setOpenCharge(null)}
+        />
+      )}
     </>
   );
 }

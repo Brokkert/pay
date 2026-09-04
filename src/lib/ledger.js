@@ -85,7 +85,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
   const borne = Object.fromEntries(people.map((p) => [p.id, 0]));
   const perAccount = Object.fromEntries(accounts.map((a) => [a.id, 0]));
   const perCategory = {};
-  const perCharge = {};
+  const charges = {};
   let monthlyTotal = 0;
   let unassigned = 0;
   const realPerAccount = {};
@@ -135,7 +135,25 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
       if (aside) asidePerAccount[account] = (asidePerAccount[account] || 0) + aside;
     }
     perCategory[category] = (perCategory[category] || 0) + amount;
-    if (expense.charge) perCharge[expense.charge] = (perCharge[expense.charge] || 0) + amount;
+
+    // A charge is the line you find on your bank statement, so it needs the
+    // same two numbers a pot does: what it costs per month, and what actually
+    // comes off in this one. Those differ the moment a yearly post sits in it.
+    if (expense.charge) {
+      const group = (charges[expense.charge] ||= {
+        name: expense.charge,
+        month: 0,
+        charged: 0,
+        chargeUnknown: false,
+        accounts: new Set(),
+        lines: [],
+      });
+      group.month += amount;
+      const due = chargedIn(expense, month);
+      if (due === null) group.chargeUnknown = true;
+      else if (due) group.charged += expense.amount;
+      if (expense.payer?.kind === 'account') group.accounts.add(expense.payer.id);
+    }
 
     const shares = withRemainder(parts, remainder, party);
     for (const [key, part] of Object.entries(shares)) {
@@ -145,7 +163,9 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
       book(raw, bearerParty(key), party, part);
     }
 
-    lines.push({ expense, amount, party, shares, remainder });
+    const line = { expense, amount, party, shares, remainder };
+    lines.push(line);
+    if (expense.charge) charges[expense.charge].lines.push(line);
   }
 
   const hub = settlementAccount(accounts);
@@ -162,7 +182,9 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     unassigned,
     perAccount,
     perCategory,
-    perCharge,
+    charges: Object.values(charges)
+      .map((c) => ({ ...c, accounts: [...c.accounts] }))
+      .sort((a, b) => b.month - a.month),
     transfers,
     pots: potOverview(transfers, accounts, perAccount, { realPerAccount, asidePerAccount, unknownCharge }),
     hub,

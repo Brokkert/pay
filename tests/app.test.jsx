@@ -583,7 +583,7 @@ describe('counting things', () => {
     await start();
 
     const charges = (await screen.findByText('Per incasso')).nextElementSibling;
-    expect(within(charges).getAllByText('1 post op één afschrijving').length).toBeGreaterThan(0);
+    expect(within(charges).getAllByText(/^1 post( ·|$)/).length).toBeGreaterThan(0);
     expect(document.body.textContent).not.toContain('1 posten');
   }, 30000);
 });
@@ -600,6 +600,22 @@ describe('why this app exists', () => {
     expect(screen.getByText(/Een rekening is een partij/)).toBeTruthy();
     expect(screen.getByText(/Versleuteld voordat het je apparaat verlaat/)).toBeTruthy();
     expect(screen.getByText(/uit één spreadsheet met echte vaste lasten/)).toBeTruthy();
+  }, 30000);
+});
+
+describe('what one charge is made of', () => {
+  it('opens on a tap and names the expenses behind the amount', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+
+    const charges = (await screen.findByText('Per incasso')).nextElementSibling;
+    await user.click(within(charges).getByRole('button', { name: /Verzekeraar/ }));
+
+    const sheet = screen.getByRole('heading', { name: 'Verzekeraar' }).closest('.sheet');
+    // 12,00 and 8,00 on one debit: both by name, and the total they add up to.
+    expect(within(sheet).getByText('Inboedel')).toBeTruthy();
+    expect(within(sheet).getByText('Aansprakelijkheid')).toBeTruthy();
+    expect(within(sheet).getAllByText('€ 20,00').length).toBeGreaterThan(0);
   }, 30000);
 });
 
@@ -624,7 +640,7 @@ describe('taking a charge off one expense', () => {
     // Only this expense loses it; the other one on that charge keeps it.
     await user.click(screen.getByRole('button', { name: /Overzicht/ }));
     const charges = (await screen.findByText('Per incasso')).nextElementSibling;
-    expect(within(charges).getByText('1 post op één afschrijving')).toBeTruthy();
+    expect(within(charges).getByText(/^1 post( ·|$)/)).toBeTruthy();
   }, 30000);
 
   it('has no "Geen" for a category, because an expense always has one', async () => {

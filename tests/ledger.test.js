@@ -163,7 +163,44 @@ describe('forMonth', () => {
       ],
     }, '2026-09');
 
-    expect(result.perCharge).toEqual({ Verzekeringen: 4200, Zorgverzekeraar: 5000 });
+    expect(result.charges.map((c) => [c.name, c.month])).toEqual([
+      ['Zorgverzekeraar', 5000],
+      ['Verzekeringen', 4200],
+    ]);
+    expect(result.charges[1].lines.map((l) => l.expense.name)).toEqual(['Inboedel', 'Opstal']);
+    expect(result.charges[1].accounts).toEqual(['a-bills']);
+  });
+
+  it('separates what a charge costs per month from what it takes this month', () => {
+    const result = forMonth({
+      people, accounts,
+      expenses: [
+        expense({ id: '12a', name: 'Inboedel', amount: 1200, charge: 'Verzekeringen',
+          payer: { kind: 'account', id: 'a-bills' } }),
+        expense({ id: '13a', name: 'Aansprakelijkheid', amount: 6000, cadence: 'year',
+          from: '2026-03-01', charge: 'Verzekeringen',
+          payer: { kind: 'account', id: 'a-bills' } }),
+      ],
+    }, '2026-09');
+
+    const [charge] = result.charges;
+    // 12,00 a month plus a twelfth of 60,00 a year.
+    expect(charge.month).toBe(1700);
+    // The yearly one is charged in March, so September only takes the monthly.
+    expect(charge.charged).toBe(1200);
+    expect(charge.chargeUnknown).toBe(false);
+  });
+
+  it('says so when a charge holds a post whose start is unknown', () => {
+    const result = forMonth({
+      people, accounts,
+      expenses: [
+        expense({ id: '12b', name: 'Aansprakelijkheid', amount: 6000, cadence: 'year',
+          charge: 'Verzekeringen', payer: { kind: 'account', id: 'a-bills' } }),
+      ],
+    }, '2026-09');
+
+    expect(result.charges[0].chargeUnknown).toBe(true);
   });
 
   it('warns when fixed amounts do not add up, and leaves the rest with the payer', () => {
