@@ -639,3 +639,39 @@ describe('taking a charge off one expense', () => {
     expect(within(field).queryByRole('button', { name: 'Geen' })).toBe(null);
   }, 30000);
 });
+
+describe('money that comes back', () => {
+  it('lets an expense be negative, and takes it off what you carry', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(screen.getByRole('button', { name: 'Nieuwe post' }));
+
+    await user.type(screen.getByPlaceholderText(/Energie, internet/), 'Btw terug');
+    await user.type(screen.getByPlaceholderText('0,00'), '-2,59');
+
+    const sheet = screen.getByRole('heading', { name: 'Nieuwe post' }).closest('.sheet');
+    // "Zaak" is both an account to pay from and something that can bear a
+    // share, so aim at the field that asks where it comes off.
+    const from = within(sheet).getByText(/Waar gaat het vanaf/).closest('.field');
+    await user.click(within(from).getByRole('button', { name: /Zaak/ }));
+    const save = within(sheet).getByRole('button', { name: 'Bewaren' });
+    expect(save.disabled).toBe(false);
+    await user.click(save);
+
+    // 278,00 a month, minus the 2,59 that comes back.
+    await user.click(screen.getByRole('button', { name: /Overzicht/ }));
+    expect((await screen.findAllByText('€ 275,41')).length).toBeGreaterThan(0);
+  }, 30000);
+
+  it('still refuses an expense of nothing', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(screen.getByRole('button', { name: 'Nieuwe post' }));
+    await user.type(screen.getByPlaceholderText(/Energie, internet/), 'Niets');
+
+    const sheet = screen.getByRole('heading', { name: 'Nieuwe post' }).closest('.sheet');
+    expect(within(sheet).getByRole('button', { name: 'Bewaren' }).disabled).toBe(true);
+  }, 30000);
+});

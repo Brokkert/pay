@@ -63,7 +63,11 @@ export default function ExpenseForm({
   const [asking, setAsking] = useState(false);
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
 
-  const canSave = draft.name.trim() && draft.amount > 0 && Boolean(draft.payer?.id);
+  // Below zero is allowed, and it is not a curiosity: money that comes back on
+  // something you all carry is a negative cost. A tax refund on a shared
+  // mortgage, the VAT you reclaim on a subscription friends pay you the gross
+  // for. Zero is what makes no sense.
+  const canSave = draft.name.trim() && draft.amount !== 0 && Boolean(draft.payer?.id);
 
   const save = async () => {
     setBusy(true);
@@ -224,7 +228,10 @@ export default function ExpenseForm({
         </button>
       </div>
       {!canSave && (
-        <div className="hint">Een naam, een bedrag en een rekening waar het vanaf gaat zijn het minimum.</div>
+        <div className="hint">
+          Een naam, een bedrag en een rekening waar het vanaf gaat zijn het minimum. Een bedrag mag
+          negatief zijn: dat is geld dat terugkomt op iets wat jullie samen dragen.
+        </div>
       )}
 
       {asking && (

@@ -24,9 +24,14 @@ const fail = (message) => {
 
 const text = (value) => (typeof value === 'string' ? value.trim() : '');
 
-/** Whole cents only: a backup that carries 12.5 is a backup we do not trust. */
+/**
+ * Whole cents only: a backup that carries 12.5 is a backup we do not trust.
+ *
+ * Negative is fine — a refund on something shared is a negative cost — so only
+ * the wholeness is checked here.
+ */
 function cents(value, where) {
-  if (!Number.isInteger(value) || value < 0) {
+  if (!Number.isInteger(value)) {
     fail(`${where}: bedrag moet een heel aantal centen zijn, niet ${JSON.stringify(value)}.`);
   }
   return value;
