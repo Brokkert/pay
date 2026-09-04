@@ -63,7 +63,7 @@ export function Sheet({ title, onClose, children, actions = null }) {
 export function Field({ label, hint, warn = false, htmlFor = null, children }) {
   return (
     <div className="field">
-      {label && <label htmlFor={htmlFor || undefined}>{label}</label>}
+      {label && <label className="field-label" htmlFor={htmlFor || undefined}>{label}</label>}
       {children}
       {hint && <div className={`hint${warn ? ' warn' : ''}`}>{hint}</div>}
     </div>

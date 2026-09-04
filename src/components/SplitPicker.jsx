@@ -106,7 +106,7 @@ export default function SplitPicker({ amount, cadence, spec, people, accounts = 
 
       {taking.length > 0 && (
         <div className="field">
-          <label>Komt neer op {cadence === 'once' ? '(eenmalig)' : '(per maand)'}</label>
+          <label className="field-label">Komt neer op {cadence === 'once' ? '(eenmalig)' : '(per maand)'}</label>
           <div className="panel">
             {taking.map((key) => {
               const bearer = bearerOf(key);

@@ -339,14 +339,12 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
               />
               <span>
                 <span className="t" style={{ display: 'block' }}>
-                  Onderlinge verrekeningen lopen hierlangs
+                  Alles wordt hier verrekend
                 </span>
                 <span className="b" style={{ display: 'block' }}>
-                  Iedereen stort zijn hele aandeel op deze rekening — ook voor dingen die van een
-                  eigen of zakelijke rekening af gingen, en ook vrienden die alleen een abonnement
-                  met je delen. Deze rekening betaalt het daarna terug aan wie het voorschoot, zodat
-                  er één bedrag per persoon overblijft in plaats van losse verrekeningen. Schiet jij
-                  iets voor, dan hoef je zelf minder te storten.
+                  Iedereen stort zijn hele aandeel hierop, ook voor posten die van een andere
+                  rekening af gingen. Wie iets voorschoot krijgt het hiervandaan terug, dus dan
+                  hoef je zelf minder te storten. Zo blijft er per persoon één bedrag over.
                 </span>
               </span>
             </label>

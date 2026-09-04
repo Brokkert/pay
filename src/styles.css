@@ -445,7 +445,10 @@ button.item:active { background: var(--sunk); }
 /* ---------- input ---------- */
 
 .field { margin-bottom: 20px; }
-.field > label {
+/* The caption above a field — not every label inside one. A checkbox with its
+   explanation is a label as well, and styling it as a caption turned a
+   paragraph into eleven-point capitals. */
+.field-label {
   display: block;
   font-size: 11px;
   font-weight: 600;
