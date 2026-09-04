@@ -3,19 +3,69 @@
 import { useMemo, useState } from 'react';
 import { Line, Total, Money, Avatar, BearerAvatar, Notice, Empty, Icon } from '../components/ui.jsx';
 import ChargeView from '../components/ChargeView.jsx';
+import Breakdown from '../components/Breakdown.jsx';
 import {
   forMonth,
   openSettlements,
   explainTransfer,
   isAccountParty,
+  isBusiness,
   partyId,
   partyName,
 } from '../lib/ledger.js';
-import { formatMonth, shiftMonth, thisMonth } from '../lib/cadence.js';
-import { categoryOf, accountKindOf } from '../data/categories.js';
+import {
+  formatMonth,
+  shiftMonth,
+  thisMonth,
+  cadenceOf,
+  chargedIn,
+  setAside,
+  nextCharge,
+} from '../lib/cadence.js';
+import { categoryOf, categoryName, accountKindOf } from '../data/categories.js';
 import { possibleBearers } from '../lib/split.js';
 import { formatMoney } from '../lib/money.js';
 import { count } from '../lib/words.js';
+
+/** Under an expense in a breakdown: its category, and what it is charged as. */
+const postSub = (expense) => {
+  const c = cadenceOf(expense.cadence);
+  return [
+    categoryName(expense.category),
+    c.perYear !== 12 && `${formatMoney(expense.amount)} ${c.short}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+};
+
+/** Ledger lines as rows for a breakdown, biggest first, nothing that is zero. */
+const postRows = (lines, amountOf = (l) => l.amount) =>
+  lines
+    .map((l) => ({
+      key: l.expense.id,
+      what: l.expense.name,
+      sub: postSub(l.expense),
+      cents: amountOf(l),
+    }))
+    .filter((r) => r.cents !== 0)
+    .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
+
+/** What one transfer is made of: every expense netted into it. */
+const transferDetail = (transfer, context) => ({
+  title: `${partyName(transfer.from, context)} → ${partyName(transfer.to, context)}`,
+  label: 'Per maand',
+  cents: transfer.cents,
+  rows: explainTransfer(transfer, context)
+    .map(({ expense, cents }) => ({
+      key: expense.id,
+      what: expense.name,
+      sub: postSub(expense),
+      cents,
+      tone: cents < 0 ? 'credit' : '',
+    }))
+    .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents)),
+  note: 'Alles wat in dit ene bedrag is weggestreept. Wat groen staat trekt de andere kant op en maakt het bedrag dus kleiner.',
+});
 
 export default function Overview({ store, month, onMonth }) {
   const { people, accounts, expenses } = store;
@@ -28,6 +78,9 @@ export default function Overview({ store, month, onMonth }) {
   const context = { people, accounts, lines: result.lines };
   const [openCharge, setOpenCharge] = useState(null);
   const charge = result.charges.find((c) => c.name === openCharge) || null;
+  // Every figure here is a sum, and a sum you cannot open is one you have to
+  // take on trust. Each of them hands this the rows it was made of.
+  const [detail, setDetail] = useState(null);
 
   if (!expenses.length) {
     return (
@@ -55,25 +108,61 @@ export default function Overview({ store, month, onMonth }) {
           everything else stays quiet so your eye lands here. */}
       <div className="hero">
         <div className="row" style={{ alignItems: 'flex-start' }}>
-          <div className="grow">
+          <button
+            type="button"
+            className="bare grow"
+            onClick={() =>
+              setDetail({
+                title: 'Loopt deze maand',
+                label: 'Per maand',
+                cents: result.monthlyTotal,
+                rows: postRows(result.lines),
+                note: 'Elke post op zijn maandbedrag: wat een jaarpost kost is uitgesmeerd over twaalf maanden.',
+              })
+            }
+          >
             <div className="label">Loopt deze maand</div>
             <div className="figure">{formatMoney(result.monthlyTotal)}</div>
             <div className="under">
               {formatMoney(result.yearlyTotal)} per jaar · {count(result.lines.length, 'post', 'posten')}
             </div>
-          </div>
+          </button>
           {me && (
-            <div className="side">
+            <button
+              type="button"
+              className="bare side"
+              onClick={() =>
+                setDetail({
+                  title: 'Jouw deel',
+                  label: 'Per maand',
+                  cents: result.borne[me.id] || 0,
+                  rows: postRows(result.lines, (l) => l.shares[me.id] || 0),
+                  note: 'Wat jij uiteindelijk draagt, ongeacht van welke rekening het wordt afgeschreven.',
+                })
+              }
+            >
               <div className="label">Jouw deel</div>
               <div className="figure">{formatMoney(result.borne[me.id] || 0)}</div>
-            </div>
+            </button>
           )}
         </div>
         {business > 0 && (
-          <div className="strip">
+          <button
+            type="button"
+            className="bare strip"
+            onClick={() =>
+              setDetail({
+                title: 'Zakelijk geboekt',
+                label: 'Per maand',
+                cents: business,
+                rows: postRows(result.lines.filter((l) => isBusiness(l.expense, accounts))),
+                note: 'Posten die van een zakelijke rekening afgaan. Dat zegt nog niets over wie het draagt — dat staat onderaan.',
+              })
+            }
+          >
             <span className="grow">Waarvan zakelijk geboekt</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatMoney(business)}</span>
-          </div>
+          </button>
         )}
       </div>
 
@@ -83,7 +172,14 @@ export default function Overview({ store, month, onMonth }) {
           <div className="section">Elke maand overmaken</div>
           <div className="panel">
             {result.transfers.map((t) => (
-              <Transfer key={`${t.from}-${t.to}`} transfer={t} context={context} me={me} explain />
+              <Transfer
+                key={`${t.from}-${t.to}`}
+                transfer={t}
+                context={context}
+                me={me}
+                explain
+                onOpen={() => setDetail(transferDetail(t, context))}
+              />
             ))}
           </div>
           <div className="hint" style={{ marginTop: -4 }}>
@@ -104,7 +200,17 @@ export default function Overview({ store, month, onMonth }) {
       )}
 
       {result.pots.map((pot) => (
-        <Pot key={pot.account.id} pot={pot} people={people} hub={result.hub} month={month} />
+        <Pot
+          key={pot.account.id}
+          pot={pot}
+          people={people}
+          hub={result.hub}
+          month={month}
+          lines={result.lines}
+          transfers={result.transfers}
+          context={context}
+          onDetail={setDetail}
+        />
       ))}
 
       {result.charges.length > 0 && (
@@ -146,7 +252,15 @@ export default function Overview({ store, month, onMonth }) {
           <div className="section">Nog los af te rekenen</div>
           <div className="panel">
             {loose.transfers.map((t) => (
-              <Transfer key={`loose-${t.from}-${t.to}`} transfer={t} context={context} me={me} />
+              <Transfer
+                key={`loose-${t.from}-${t.to}`}
+                transfer={t}
+                context={context}
+                me={me}
+                onOpen={() =>
+                  setDetail(transferDetail(t, { people, accounts, lines: loose.lines }))
+                }
+              />
             ))}
           </div>
           <div className="hint" style={{ marginTop: -4 }}>
@@ -167,6 +281,17 @@ export default function Overview({ store, month, onMonth }) {
               what={cat.label}
               sub={`${Math.round((cents / result.monthlyTotal) * 100)}% van het totaal`}
               cents={cents}
+              onClick={() =>
+                setDetail({
+                  title: cat.label,
+                  label: 'Per maand',
+                  cents,
+                  rows: postRows(
+                    result.lines.filter((l) => categoryName(l.expense.category) === id)
+                  ),
+                  note: 'Alle posten in deze categorie, op hun maandbedrag.',
+                })
+              }
             />
           );
         })}
@@ -176,7 +301,26 @@ export default function Overview({ store, month, onMonth }) {
       <div className="section">Wat er van welke rekening af gaat</div>
       <div className="panel">
         {accounts.map((a) => (
-          <Line key={a.id} what={a.name} sub={accountKindOf(a.kind).label} cents={result.perAccount[a.id] || 0} />
+          <Line
+            key={a.id}
+            what={a.name}
+            sub={accountKindOf(a.kind).label}
+            cents={result.perAccount[a.id] || 0}
+            onClick={() =>
+              setDetail({
+                title: a.name,
+                label: 'Per maand',
+                cents: result.perAccount[a.id] || 0,
+                rows: postRows(
+                  result.lines.filter(
+                    (l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === a.id
+                  )
+                ),
+                empty: 'Er gaat deze maand niets van deze rekening af.',
+                note: 'Wat er van deze rekening wordt afgeschreven, op het maandbedrag. Wie het draagt kan iemand anders zijn.',
+              })
+            }
+          />
         ))}
       </div>
 
@@ -191,6 +335,15 @@ export default function Overview({ store, month, onMonth }) {
               what={b.name}
               sub={b.account ? 'zakelijk deel' : people.find((p) => p.id === b.key)?.isMe ? 'jij' : undefined}
               cents={result.borne[b.key] || 0}
+              onClick={() =>
+                setDetail({
+                  title: b.name,
+                  label: 'Draagt per maand',
+                  cents: result.borne[b.key] || 0,
+                  rows: postRows(result.lines, (l) => l.shares[b.key] || 0),
+                  note: 'De posten waarin dit aandeel zit, met het deel dat hier landt.',
+                })
+              }
             />
           ))}
         {result.unassigned !== 0 && (
@@ -200,6 +353,18 @@ export default function Overview({ store, month, onMonth }) {
             sub="vaste bedragen die niet optellen tot de post"
             cents={result.unassigned}
             tone="debt"
+            onClick={() =>
+              setDetail({
+                title: 'Nog niet verdeeld',
+                label: 'Per maand',
+                cents: result.unassigned,
+                rows: postRows(
+                  result.lines.filter((l) => l.remainder !== 0 && isAccountParty(l.party)),
+                  (l) => l.remainder
+                ),
+                note: 'Bij deze posten tellen de vaste bedragen niet op tot het postbedrag, en het verschil ligt bij niemand. Open de post en vul in wie dat deel draagt.',
+              })
+            }
           />
         )}
         <Total label="Samen" cents={result.monthlyTotal} />
@@ -214,6 +379,8 @@ export default function Overview({ store, month, onMonth }) {
           </>
         )}
       </div>
+
+      {detail && <Breakdown {...detail} onClose={() => setDetail(null)} />}
 
       {charge && (
         <ChargeView
@@ -285,7 +452,7 @@ function Origin({ transfer, context }) {
   );
 }
 
-function Transfer({ transfer, context, me, explain = false }) {
+function Transfer({ transfer, context, me, explain = false, onOpen = null }) {
   // Red and green mean "in debt" and "owed to you". Money into your own shared
   // account is neither — that is moving your own money — so it stays neutral.
   const mine = me ? `person:${me.id}` : null;
@@ -294,8 +461,8 @@ function Transfer({ transfer, context, me, explain = false }) {
     ? ''
     : transfer.from === mine ? 'debt' : transfer.to === mine ? 'credit' : '';
 
-  return (
-    <div className="transfer-row">
+  const body = (
+    <>
       <div className="transfer">
         <Party party={transfer.from} context={context} />
         <span className="arrow"><Icon name="arrow" size={15} /></span>
@@ -305,14 +472,28 @@ function Transfer({ transfer, context, me, explain = false }) {
         <Money cents={transfer.cents} size="mid" tone={tone} />
       </div>
       {explain && <Origin transfer={transfer} context={context} />}
-    </div>
+    </>
+  );
+
+  return onOpen ? (
+    <button type="button" className="transfer-row tappable" onClick={onOpen}>{body}</button>
+  ) : (
+    <div className="transfer-row">{body}</div>
   );
 }
 
-function Pot({ pot, people, hub, month }) {
+function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
   const hasContributions = Object.values(pot.contributions || {}).some((c) => Number(c) > 0);
   const isHub = hub?.id === pot.account.id;
   const nameOf = (id) => people.find((p) => p.id === id)?.name || '?';
+  const mine = lines.filter(
+    (l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === pot.account.id
+  );
+  // The posts this account has to save up for: the ones it is not charged for
+  // every month.
+  const saving = mine.filter((l) => cadenceOf(l.expense.cadence).perYear < 12);
+  const transferBetween = (from, to) =>
+    transfers.find((t) => t.from === from && t.to === to) || null;
 
   return (
     <>
@@ -322,37 +503,87 @@ function Pot({ pot, people, hub, month }) {
           what="Maandlast"
           sub="wat jaarposten kosten is hierin uitgesmeerd over twaalf maanden"
           cents={pot.out}
+          onClick={() =>
+            onDetail({
+              title: pot.account.name,
+              label: 'Maandlast',
+              cents: pot.out,
+              rows: postRows(mine),
+              empty: 'Er gaat deze maand niets van deze rekening af.',
+              note: 'Alles wat van deze rekening afgaat, op het maandbedrag.',
+            })
+          }
         />
         {(pot.charged !== pot.out || pot.aside > 0) && !pot.chargeUnknown && (
           <Line
             what={`Gaat er in ${formatMonth(month).split(' ')[0]} echt af`}
             cents={pot.charged}
+            onClick={() =>
+              onDetail({
+                title: `Afschrijvingen in ${formatMonth(month)}`,
+                label: 'Deze maand',
+                cents: pot.charged,
+                rows: postRows(
+                  mine.filter((l) => chargedIn(l.expense, month) === true),
+                  (l) => l.expense.amount
+                ),
+                empty: 'Deze maand wordt er niets van deze rekening afgeschreven.',
+                note: 'Wat de bank deze maand echt afschrijft — het volle bedrag, niet het maandgemiddelde.',
+              })
+            }
           />
         )}
-        {pot.aside > 0 && (
-          <Line
-            what="Staat opzij voor later"
-            sub="opgespaard voor posten die niet elke maand worden afgeschreven"
-            cents={pot.aside}
-          />
-        )}
-        {Object.entries(pot.incoming).map(([id, cents]) => (
-          <Line
-            key={`in-${id}`}
-            left={<Avatar person={people.find((p) => p.id === id)} size="sm" />}
-            what={`${nameOf(id)} stort`}
-            cents={cents}
-          />
-        ))}
-        {Object.entries(pot.outgoing).map(([id, cents]) => (
-          <Line
-            key={`out-${id}`}
-            left={<Avatar person={people.find((p) => p.id === id)} size="sm" />}
-            what={`Terug naar ${nameOf(id)}`}
-            sub="voorgeschoten van een andere rekening"
-            cents={-cents}
-          />
-        ))}
+        <Line
+          what="Hoort er nu op te staan"
+          sub="gespaard voor posten die niet elke maand worden afgeschreven"
+          cents={pot.aside}
+          onClick={() =>
+            onDetail({
+              title: 'Hoort er nu op te staan',
+              label: `Na de afschrijvingen van ${formatMonth(month).split(' ')[0]}`,
+              cents: pot.aside,
+              rows: saving.map((l) => {
+                const due = nextCharge(l.expense, month);
+                const c = cadenceOf(l.expense.cadence);
+                return {
+                  key: l.expense.id,
+                  what: l.expense.name,
+                  sub: l.expense.from
+                    ? `${formatMoney(l.expense.amount)} ${c.short} · volgende keer ${formatMonth(due).split(' ')[0]}`
+                    : `${formatMoney(l.expense.amount)} ${c.short} · begindatum onbekend`,
+                  cents: setAside(l.expense, month),
+                };
+              }),
+              empty: 'Alles op deze rekening wordt maandelijks afgeschreven, dus er hoeft niets op te blijven staan.',
+              note: 'Zet dit bedrag erop en stort daarna elke maand de maandlast, dan staat er precies genoeg op het moment dat een jaarpost wordt afgeschreven — en is de rekening daarna weer leeg. Van een post zonder begindatum weet Pay niet wanneer hij afgaat; die telt hier voor niets mee.',
+            })
+          }
+        />
+        {Object.entries(pot.incoming).map(([id, cents]) => {
+          const transfer = transferBetween(`person:${id}`, `account:${pot.account.id}`);
+          return (
+            <Line
+              key={`in-${id}`}
+              left={<Avatar person={people.find((p) => p.id === id)} size="sm" />}
+              what={`${nameOf(id)} stort`}
+              cents={cents}
+              onClick={transfer ? () => onDetail(transferDetail(transfer, context)) : null}
+            />
+          );
+        })}
+        {Object.entries(pot.outgoing).map(([id, cents]) => {
+          const transfer = transferBetween(`account:${pot.account.id}`, `person:${id}`);
+          return (
+            <Line
+              key={`out-${id}`}
+              left={<Avatar person={people.find((p) => p.id === id)} size="sm" />}
+              what={`Terug naar ${nameOf(id)}`}
+              sub="voorgeschoten van een andere rekening"
+              cents={-cents}
+              onClick={transfer ? () => onDetail(transferDetail(transfer, context)) : null}
+            />
+          );
+        })}
         {hasContributions && (
           <>
             {pot.needed !== pot.out && (
@@ -360,17 +591,75 @@ function Pot({ pot, people, hub, month }) {
                 what="Moet er samen op komen"
                 sub="de maandlast plus wat er weer uit gaat naar wie iets voorschoot"
                 cents={pot.needed}
+                onClick={() =>
+                  onDetail({
+                    title: 'Moet er samen op komen',
+                    label: 'Per maand',
+                    cents: pot.needed,
+                    rows: Object.entries(pot.incoming).map(([id, cents]) => ({
+                      key: id,
+                      left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
+                      what: nameOf(id),
+                      cents,
+                    })),
+                    note: 'Wat er volgens de posten op deze rekening moet komen. Dat is de maandlast plus wat er weer uit gaat naar wie iets voorschoot: dat geld gaat er alleen doorheen.',
+                  })
+                }
               />
             )}
-            <Line what="Staat als vaste inleg ingesteld" cents={pot.paidIn} />
+            <Line
+              what="Staat als vaste inleg ingesteld"
+              cents={pot.paidIn}
+              onClick={() =>
+                onDetail({
+                  title: 'Vaste inleg',
+                  label: 'Per maand',
+                  cents: pot.paidIn,
+                  rows: Object.entries(pot.contributions)
+                    .filter(([, cents]) => Number(cents))
+                    .map(([id, cents]) => ({
+                      key: id,
+                      left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
+                      what: nameOf(id),
+                      sub: `hoort ${formatMoney(pot.incoming[id] || 0)} te zijn`,
+                      cents: Number(cents),
+                    })),
+                  note: 'Wat er bij de bank als vaste overboeking staat ingesteld. Dit telt nergens in mee bij het verdelen — het staat er alleen naast, zodat je ziet of de rekening uitkomt.',
+                })
+              }
+            />
             <Total
               label={pot.difference >= 0 ? 'Blijft over' : 'Komt tekort'}
               cents={Math.abs(pot.difference)}
               tone={pot.difference >= 0 ? 'credit' : 'debt'}
+              onClick={() =>
+                onDetail({
+                  title: pot.difference >= 0 ? 'Blijft over' : 'Komt tekort',
+                  label: 'Per maand',
+                  cents: pot.difference,
+                  rows: Object.entries(pot.contributions)
+                    .filter(([id, cents]) => Number(cents) || pot.incoming[id])
+                    .map(([id, cents]) => ({
+                      key: id,
+                      left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
+                      what: nameOf(id),
+                      sub: `${formatMoney(Number(cents) || 0)} ingesteld, ${formatMoney(pot.incoming[id] || 0)} nodig`,
+                      cents: (Number(cents) || 0) - (pot.incoming[id] || 0),
+                      tone: (Number(cents) || 0) - (pot.incoming[id] || 0) < 0 ? 'debt' : 'credit',
+                    })),
+                  note: 'Per persoon het verschil tussen de vaste overboeking en wat er volgens de posten op moet komen. Staat er iets bij, dan loopt de rekening op den duur vol of leeg.',
+                })
+              }
             />
           </>
         )}
       </div>
+      {pot.chargeUnknown && (
+        <div className="hint warn" style={{ marginTop: -4 }}>
+          Van een post op deze rekening is niet bekend wanneer hij begon, dus kan Pay niet zeggen
+          in welke maand hij afgaat. Vul bij die post <strong>Loopt vanaf</strong> in.
+        </div>
+      )}
       {isHub && (
         <div className="hint" style={{ marginTop: -4 }}>
           Alle onderlinge verrekeningen lopen hierlangs. Wat iemand voorschoot van een eigen of

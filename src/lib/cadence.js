@@ -86,6 +86,22 @@ export function setAside(expense, month) {
   return (since % (12 / c.perYear)) * perMonth(expense.amount, expense.cadence);
 }
 
+/**
+ * The next month it is charged, from its start and its rhythm. The month itself
+ * if that is the one, so "when does this go out" and "does it go out now" agree.
+ */
+export function nextCharge(expense, month) {
+  const c = cadenceOf(expense.cadence);
+  if (c.id === 'once' || c.perYear >= 12 || !expense.from) return null;
+  const step = 12 / c.perYear;
+  let candidate = month;
+  for (let i = 0; i <= step; i += 1) {
+    if (chargedIn(expense, candidate)) return candidate;
+    candidate = shiftMonth(candidate, 1);
+  }
+  return null;
+}
+
 const MONTH_NAMES = ['januari', 'februari', 'maart', 'april', 'mei', 'juni',
   'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 

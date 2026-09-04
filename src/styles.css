@@ -279,6 +279,9 @@ button.item:active { background: var(--sunk); }
 .hero .side .figure { font-size: 22px; }
 .hero .strip {
   display: flex;
+  /* A button shrinks to its content even when it is block-level, and this one
+     is the full width of the card. */
+  width: 100%;
   gap: 12px;
   margin-top: 18px;
   padding-top: 14px;
@@ -332,6 +335,22 @@ button.item:active { background: var(--sunk); }
 }
 .line.tappable:active { background: var(--sunk); }
 
+/* A figure you can open, with no chrome of its own: the hero carries its own
+   look, and a button around it should not add a second one. */
+.bare {
+  display: block;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.bare:active { opacity: 0.7; }
+
 /* An amount you can tap to type your own. It has to read as an amount first
    and a control second, so it keeps the type and only hints underneath. */
 .as-amount {
@@ -381,6 +400,16 @@ button.item:active { background: var(--sunk); }
   padding: 14px 17px;
   background: var(--sunk);
 }
+.total.tappable {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.total.tappable:active { background: var(--line); }
 .total .k {
   flex: 1;
   font-size: 11px;
@@ -647,6 +676,18 @@ button.item:active { background: var(--sunk); }
    the avatar so it reads as belonging to the line above, and allowed to wrap —
    this is the one place where cutting the text off would lose the argument. */
 .transfer-row .transfer { padding-bottom: 0; }
+.transfer-row.tappable {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.transfer-row.tappable:active { background: var(--sunk); }
 .origin {
   padding: 5px 17px 13px 45px;
   font-size: 11.5px;

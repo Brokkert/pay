@@ -23,25 +23,14 @@ import {
   cadenceOf,
   isActive,
   formatMonth,
-  shiftMonth,
   chargedIn,
   setAside,
+  nextCharge,
 } from '../lib/cadence.js';
 import { split, possibleBearers, bearerName } from '../lib/split.js';
 import { categoryOf } from '../data/categories.js';
 import { formatMoney } from '../lib/money.js';
 import { count } from '../lib/words.js';
-
-/** The next month this expense is charged, from its start and its rhythm. */
-function nextCharge(expense, month) {
-  const step = 12 / cadenceOf(expense.cadence).perYear;
-  let candidate = month;
-  for (let i = 0; i < step; i += 1) {
-    candidate = shiftMonth(candidate, 1);
-    if (chargedIn(expense, candidate)) return candidate;
-  }
-  return candidate;
-}
 
 export default function ExpenseView({
   expense,

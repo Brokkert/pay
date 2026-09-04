@@ -545,7 +545,7 @@ describe('saving up for a yearly expense', () => {
     expect(within(pot).getByText('Maandlast').closest('.line').textContent).toContain('171,00');
     expect(within(pot).getByText(/echt af/).closest('.line').textContent).toContain('141,00');
     // Two instalments in since July: 60,00.
-    expect(within(pot).getByText(/opzij voor later/).closest('.line').textContent)
+    expect(within(pot).getByText(/Hoort er nu op te staan/).closest('.line').textContent)
       .toContain('60,00');
 
     // And the expense itself says when it goes out and what is put by.
@@ -600,6 +600,66 @@ describe('why this app exists', () => {
     expect(screen.getByText(/Een rekening is een partij/)).toBeTruthy();
     expect(screen.getByText(/Versleuteld voordat het je apparaat verlaat/)).toBeTruthy();
     expect(screen.getByText(/uit één spreadsheet met echte vaste lasten/)).toBeTruthy();
+  }, 30000);
+});
+
+describe('taking the overview apart', () => {
+  it('opens every kind of figure and shows the posts behind it', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await screen.findByText('Loopt deze maand');
+
+    // The two figures in the hero.
+    await user.click(screen.getByText('Loopt deze maand'));
+    let sheet = screen.getByRole('heading', { name: 'Loopt deze maand' }).closest('.sheet');
+    expect(within(sheet).getByText('Streamingdienst')).toBeTruthy();
+    await user.click(within(sheet).getByRole('button', { name: 'Sluiten' }));
+
+    await user.click(screen.getByText('Jouw deel'));
+    sheet = screen.getByRole('heading', { name: 'Jouw deel' }).closest('.sheet');
+    expect(within(sheet).getByText('Streamingdienst')).toBeTruthy();
+    await user.click(within(sheet).getByRole('button', { name: 'Sluiten' }));
+
+    // A category.
+    await user.click(screen.getByText('Verzekeringen'));
+    sheet = screen.getByRole('heading', { name: 'Verzekeringen' }).closest('.sheet');
+    expect(within(sheet).getByText('Inboedel')).toBeTruthy();
+    await user.click(within(sheet).getByRole('button', { name: 'Sluiten' }));
+  }, 30000);
+
+  it('adds a breakdown up to exactly the figure it came from', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+
+    await user.click(await screen.findByText('Loopt deze maand'));
+    const sheet = screen.getByRole('heading', { name: 'Loopt deze maand' }).closest('.sheet');
+    const amounts = [...sheet.querySelectorAll('.line .amount')].map((el) =>
+      Math.round(Number(el.textContent.replace(/[^\d,-]/g, '').replace(',', '.')) * 100)
+    );
+    const total = sheet.querySelector('.total .amount').textContent;
+    const sum = amounts.reduce((a, b) => a + b, 0);
+    expect((sum / 100).toFixed(2).replace('.', ',')).toBe(total.replace(/[^\d,]/g, ''));
+  }, 30000);
+
+  it('says what has to be on an account for a bill that comes once a year', async () => {
+    const set = exampleHousehold();
+    // Give the yearly one a start, so Pay knows which month it goes out.
+    set.expenses = set.expenses.map((e) =>
+      e.name === 'Aansprakelijkheid' ? { ...e, cadence: 'year', amount: 12000, from: '2025-03-01' } : e
+    );
+    await withData(set);
+    const user = await start();
+
+    await screen.findByText(/Elke maand overmaken/);
+    const pot = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Vaste lasten').nextElementSibling;
+    await user.click(within(pot).getByText('Hoort er nu op te staan'));
+    const sheet = screen
+      .getByRole('heading', { name: 'Hoort er nu op te staan' })
+      .closest('.sheet');
+    // The yearly one, with the month it goes out next.
+    expect(within(sheet).getByText('Aansprakelijkheid')).toBeTruthy();
+    expect(within(sheet).getByText(/volgende keer/)).toBeTruthy();
   }, 30000);
 });
 

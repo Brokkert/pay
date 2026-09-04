@@ -111,12 +111,19 @@ export const Line = ({ what, sub, cents, tone, left = null, right = null, onClic
   );
 };
 
-export const Total = ({ label, cents, tone }) => (
-  <div className="total">
-    <span className="k">{label}</span>
-    <Money cents={cents} size="mid" tone={tone} />
-  </div>
-);
+export const Total = ({ label, cents, tone, onClick = null }) => {
+  const body = (
+    <>
+      <span className="k">{label}</span>
+      <Money cents={cents} size="mid" tone={tone} />
+    </>
+  );
+  return onClick ? (
+    <button type="button" className="total tappable" onClick={onClick}>{body}</button>
+  ) : (
+    <div className="total">{body}</div>
+  );
+};
 
 /** A person's initials, in their own colour. */
 export function Avatar({ person, size = '' }) {
