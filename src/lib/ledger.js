@@ -301,14 +301,21 @@ function potOverview(transfers, accounts, perAccount, saving) {
       const contributions = account.contributions || {};
       const paidIn = Object.values(contributions).reduce((sum, c) => sum + (Number(c) || 0), 0);
       const out = perAccount[account.id] || 0;
+      // What has to come in is not the same as what goes out on expenses: an
+      // account that settles for people also pays back what someone fronted
+      // elsewhere, and that money has to be on it first. Holding a standing
+      // order against the expenses alone reports a surplus that is already
+      // spoken for.
+      const needed = Object.values(incoming).reduce((sum, c) => sum + c, 0);
       return {
         account,
         out,
+        needed,
         incoming,
         outgoing,
         contributions,
         paidIn,
-        difference: paidIn - out,
+        difference: paidIn - needed,
         // What really leaves this month, what is being saved for later, and
         // whether some expense could not say which month it goes out.
         charged: saving.realPerAccount[account.id] || 0,

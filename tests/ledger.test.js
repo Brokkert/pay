@@ -146,7 +146,46 @@ describe('forMonth', () => {
     expect(pot.out).toBe(100000);
     expect(pot.incoming[PARTNER]).toBe(40000);
     expect(pot.paidIn).toBe(160000);
+    expect(pot.needed).toBe(100000);
     expect(pot.difference).toBe(60000);
+  });
+
+  it('counts what an account pays back as money that has to be on it', () => {
+    // The partner fronts something big from their own pocket, so the account
+    // owes them: it pays out more than its own expenses cost.
+    const result = forMonth({
+      people,
+      accounts: withHub,
+      expenses: [
+        expense({ id: '11a', name: 'Woonlasten', amount: 100000,
+          payer: { kind: 'account', id: 'a-bills' },
+          split: { kind: 'equal', participants: [ME, PARTNER] } }),
+        expense({ id: '11b', name: 'Vakantiehuis', amount: 200000,
+          payer: { kind: 'person', id: PARTNER },
+          split: { kind: 'equal', participants: [ME, PARTNER] } }),
+      ],
+    }, '2026-09');
+
+    const pot = result.pots.find((p) => p.account.id === 'a-bills');
+    // 1.000,00 of expenses, and 500,00 back to the partner who fronted the rest.
+    expect(pot.out).toBe(100000);
+    expect(pot.outgoing[PARTNER]).toBe(50000);
+    expect(pot.incoming[ME]).toBe(150000);
+    expect(pot.needed).toBe(150000);
+    // Standing orders of exactly that leave the account square, not 500,00 up.
+    const square = forMonth({
+      people,
+      accounts: [{ ...withHub[0], contributions: { [ME]: 150000, [PARTNER]: 0 } }, ...withHub.slice(1)],
+      expenses: [
+        expense({ id: '11a', name: 'Woonlasten', amount: 100000,
+          payer: { kind: 'account', id: 'a-bills' },
+          split: { kind: 'equal', participants: [ME, PARTNER] } }),
+        expense({ id: '11b', name: 'Vakantiehuis', amount: 200000,
+          payer: { kind: 'person', id: PARTNER },
+          split: { kind: 'equal', participants: [ME, PARTNER] } }),
+      ],
+    }, '2026-09');
+    expect(square.pots.find((p) => p.account.id === 'a-bills').difference).toBe(0);
   });
 
   it('adds up per charge, so you can hold it against your statement', () => {

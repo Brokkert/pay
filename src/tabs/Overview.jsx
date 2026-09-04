@@ -355,6 +355,13 @@ function Pot({ pot, people, hub, month }) {
         ))}
         {hasContributions && (
           <>
+            {pot.needed !== pot.out && (
+              <Line
+                what="Moet er samen op komen"
+                sub="de maandlast plus wat er weer uit gaat naar wie iets voorschoot"
+                cents={pot.needed}
+              />
+            )}
             <Line what="Staat als vaste inleg ingesteld" cents={pot.paidIn} />
             <Total
               label={pot.difference >= 0 ? 'Blijft over' : 'Komt tekort'}
