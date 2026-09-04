@@ -745,3 +745,33 @@ describe('the order you read transfers in', () => {
     expect(mineFirst(transfers, null)).toBe(transfers);
   });
 });
+
+describe('a pot that adds up', () => {
+  it('shows what another account puts in, apart from what people do', () => {
+    // The bills account pays the bank charges; a quarter of them is a business
+    // cost, so the business owes that quarter to the account.
+    const result = forMonth({
+      people,
+      accounts: withHub,
+      expenses: [
+        expense({ id: 'p1', name: 'Bankkosten', amount: 2000,
+          payer: { kind: 'account', id: 'a-bills' },
+          split: { kind: 'percent', weights: { [ME]: 50, [PARTNER]: 25, 'account:a-business': 25 } } }),
+      ],
+    }, '2026-09');
+
+    const pot = result.pots.find((p) => p.account.id === 'a-bills');
+    expect(pot.incoming[ME]).toBe(1000);
+    expect(pot.incoming[PARTNER]).toBe(500);
+    // The business is not a person, so it is not in what people have to pay in.
+    expect(pot.incoming['a-business']).toBe(undefined);
+    expect(pot.fromAccounts['a-business']).toBe(500);
+    expect(pot.needed).toBe(1500);
+
+    // Everything coming in, minus everything going out, is what the account
+    // spends — with no cent unaccounted for.
+    const sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+    expect(sum(pot.incoming) + sum(pot.fromAccounts) - sum(pot.outgoing) - sum(pot.toAccounts))
+      .toBe(pot.out);
+  });
+});

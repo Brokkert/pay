@@ -494,6 +494,13 @@ function Transfer({ transfer, context, me, explain = false, onOpen = null }) {
   );
 }
 
+/** The mark that stands for an account where a person would have initials. */
+const AccountMark = () => (
+  <span className="avatar sm" style={{ background: 'var(--accent)' }}>
+    <Icon name="overview" size={12} />
+  </span>
+);
+
 function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
   const hasContributions = Object.values(pot.contributions || {}).some((c) => Number(c) > 0);
   const isHub = hub?.id === pot.account.id;
@@ -506,6 +513,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
   const saving = mine.filter((l) => cadenceOf(l.expense.cadence).perYear < 12);
   const transferBetween = (from, to) =>
     transfers.find((t) => t.from === from && t.to === to) || null;
+  const accountName = (id) => context.accounts.find((a) => a.id === id)?.name || 'rekening';
 
   return (
     <>
@@ -589,6 +597,28 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
             />
           );
         })}
+        {Object.entries(pot.fromAccounts).map(([id, cents]) => {
+          const transfer = transferBetween(`account:${id}`, `account:${pot.account.id}`);
+          return (
+            <Line
+              key={`acc-in-${id}`}
+              left={<AccountMark />}
+              what={`${accountName(id)} stort`}
+              sub="het deel dat die rekening zelf draagt"
+              cents={cents}
+              onClick={transfer ? () => onDetail(transferDetail(transfer, context)) : null}
+            />
+          );
+        })}
+        {Object.entries(pot.toAccounts).map(([id, cents]) => (
+          <Line
+            key={`acc-out-${id}`}
+            left={<AccountMark />}
+            what={`Terug naar ${accountName(id)}`}
+            sub="voorgeschoten van die rekening"
+            cents={-cents}
+          />
+        ))}
         {Object.entries(pot.outgoing).map(([id, cents]) => {
           const transfer = transferBetween(`account:${pot.account.id}`, `person:${id}`);
           return (
@@ -606,12 +636,12 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
           <>
             {pot.needed !== pot.out && (
               <Line
-                what="Moet er samen op komen"
+                what="Moeten jullie samen storten"
                 sub="de maandlast plus wat er weer uit gaat naar wie iets voorschoot"
                 cents={pot.needed}
                 onClick={() =>
                   onDetail({
-                    title: 'Moet er samen op komen',
+                    title: 'Moeten jullie samen storten',
                     label: 'Per maand',
                     cents: pot.needed,
                     rows: Object.entries(pot.incoming).map(([id, cents]) => ({
@@ -620,7 +650,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                       what: nameOf(id),
                       cents,
                     })),
-                    note: 'Wat er volgens de posten op deze rekening moet komen. Dat is de maandlast plus wat er weer uit gaat naar wie iets voorschoot: dat geld gaat er alleen doorheen.',
+                    note: 'Wat er volgens de posten door personen op deze rekening moet worden gestort. Dat is de maandlast plus wat er weer uit gaat naar wie iets voorschoot — dat geld gaat er alleen doorheen. Wat een andere rekening zelf bijdraagt staat hier niet in; dat komt daarvandaan, niet van jullie.',
                   })
                 }
               />

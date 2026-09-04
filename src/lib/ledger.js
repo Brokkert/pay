@@ -294,9 +294,21 @@ function potOverview(transfers, accounts, perAccount, saving) {
       const party = accountParty(account.id);
       const incoming = {};
       const outgoing = {};
+      // Money moving between two accounts — a business settling its own share
+      // of something this account paid — is kept apart from what people put in,
+      // because that is what a standing order is held against. It still has to
+      // be shown, or the panel does not add up.
+      const fromAccounts = {};
+      const toAccounts = {};
       for (const t of transfers) {
-        if (t.to === party && !isAccountParty(t.from)) incoming[partyId(t.from)] = t.cents;
-        if (t.from === party && !isAccountParty(t.to)) outgoing[partyId(t.to)] = t.cents;
+        if (t.to === party) {
+          if (isAccountParty(t.from)) fromAccounts[partyId(t.from)] = t.cents;
+          else incoming[partyId(t.from)] = t.cents;
+        }
+        if (t.from === party) {
+          if (isAccountParty(t.to)) toAccounts[partyId(t.to)] = t.cents;
+          else outgoing[partyId(t.to)] = t.cents;
+        }
       }
       const contributions = account.contributions || {};
       const paidIn = Object.values(contributions).reduce((sum, c) => sum + (Number(c) || 0), 0);
@@ -313,6 +325,8 @@ function potOverview(transfers, accounts, perAccount, saving) {
         needed,
         incoming,
         outgoing,
+        fromAccounts,
+        toAccounts,
         contributions,
         paidIn,
         difference: paidIn - needed,
