@@ -77,18 +77,20 @@ export default function ExpenseView({
         transfer,
         rows: explainTransfer(transfer, { lines: result.lines, accounts }),
       }))
-      // Your own deposit into the settlement account is not a settlement, it is
-      // a contribution: everything you owe that account gathered into one
-      // amount. Calling it "verrekend met" and naming three of the thirty
-      // expenses in it dresses up a total as a netting. A settlement has
-      // someone on the other side.
+      // Your own deposit into a pot you fill is not a settlement, it is a
+      // contribution: what you owe that account, gathered into one amount.
+      // Calling it "verrekend met" and naming three of the thirty expenses in
+      // it dresses a total up as a netting. A settlement has someone on the
+      // other side — and that holds for every shared account, not only the one
+      // settlements are routed through.
       .filter(({ transfer }) => {
-        const mine = me ? personParty(me.id) : null;
-        const hub = result.hub ? accountParty(result.hub.id) : null;
-        return !(hub && mine && (
-          (transfer.from === mine && transfer.to === hub) ||
-          (transfer.from === hub && transfer.to === mine)
-        ));
+        if (!me) return true;
+        const mine = personParty(me.id);
+        const pots = accounts.filter((a) => a.kind === 'shared').map((a) => accountParty(a.id));
+        return !(
+          (transfer.from === mine && pots.includes(transfer.to)) ||
+          (pots.includes(transfer.from) && transfer.to === mine)
+        );
       })
       .filter(({ rows }) => rows.length > 1 && rows.some((r) => r.expense.id === expense.id))
       // A transfer can gather a dozen expenses, and listing all of them here

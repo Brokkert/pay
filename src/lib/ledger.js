@@ -331,9 +331,10 @@ export function openSettlements(expenses, accounts) {
  * exactly the amount they end up transferring, which is the point — a netted
  * figure that you cannot take apart is one nobody believes.
  */
-export function positionOf(lines, personId, accounts) {
+export function positionOf(lines, personId, accounts, keep = () => true) {
   const rows = [];
   for (const line of lines) {
+    if (!keep(line)) continue;
     const party = line.party ?? payerParty(line.expense, accounts);
     let cents = 0;
 
@@ -380,8 +381,22 @@ export function explainTransfer(transfer, { lines, accounts }) {
   if (isAccountParty(from) && isAccountParty(to)) return [];
 
   if (isAccountParty(from) || isAccountParty(to)) {
+    const account = partyId(isAccountParty(from) ? from : to);
     const person = partyId(isAccountParty(from) ? to : from);
-    const rows = positionOf(lines, person, accounts);
+    const hub = settlementAccount(accounts);
+    const isHub = hub?.id === account;
+
+    // Only what this account is owed, or owes. A debt from an expense the
+    // account paid belongs to that account; a debt between two people belongs
+    // wherever settlements are routed. Taking the person's whole position
+    // instead was right only while there was one account to pay into — with a
+    // second one, both explanations claimed all of it.
+    const keep = (line) => {
+      const party = line.party ?? payerParty(line.expense, accounts);
+      return isAccountParty(party) ? partyId(party) === account : isHub;
+    };
+
+    const rows = positionOf(lines, person, accounts, keep);
     // Seen from the payer: money leaving the account is money owed to them.
     return isAccountParty(from) ? rows : rows.map((r) => ({ ...r, cents: -r.cents }));
   }

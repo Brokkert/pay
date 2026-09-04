@@ -609,3 +609,45 @@ describe('what counts as business', () => {
     expect(result.perAccount['a-biz']).toBe(6739);
   });
 });
+
+describe('explaining a transfer when there are two shared accounts', () => {
+  // The moment a second pot exists, a person pays into both. An explanation
+  // that hands back their whole position then claims all of it twice.
+  const me = 'me', partner = 'partner';
+  const people = [{ id: me, name: 'Ik', isMe: true }, { id: partner, name: 'Mau' }];
+  const accounts = [
+    { id: 'bills', name: 'BUNQ', kind: 'shared', members: [me, partner], settlement: true },
+    { id: 'mortgage', name: 'Rabo', kind: 'shared', members: [me, partner] },
+    { id: 'biz', name: 'Brokkr', kind: 'business', ownerId: me },
+  ];
+  const both = { kind: 'equal', participants: [me, partner], weights: {} };
+  const base = { cadence: 'month', category: 'Overig', charge: '', note: '', paused: false };
+  const result = forMonth({
+    people, accounts,
+    expenses: [
+      { ...base, id: 'gas', name: 'Gas', amount: 11700, payer: { kind: 'account', id: 'bills' }, split: both },
+      { ...base, id: 'hyp', name: 'Hypotheek', amount: 120000, payer: { kind: 'account', id: 'mortgage' }, split: both },
+      { ...base, id: 'tv', name: 'TV', amount: 6739, payer: { kind: 'account', id: 'biz' }, split: both },
+    ],
+  }, '2026-09');
+  const context = { lines: result.lines, accounts };
+
+  it('still adds up to the amount, for every transfer', () => {
+    for (const transfer of result.transfers) {
+      const sum = explainTransfer(transfer, context).reduce((s, r) => s + r.cents, 0);
+      expect(sum).toBe(transfer.cents);
+    }
+  });
+
+  it('gives each account only what it is owed', () => {
+    const named = (from, to) => {
+      const t = result.transfers.find((x) => x.from === from && x.to === to);
+      return explainTransfer(t, context).map((r) => r.expense.name).sort();
+    };
+    // The mortgage account knows about the mortgage and nothing else.
+    expect(named(`person:${me}`, 'account:mortgage')).toEqual(['Hypotheek']);
+    // The bills account carries what it pays, plus what the business fronted:
+    // that debt is between two people, and those route through it.
+    expect(named(`person:${me}`, 'account:bills')).toEqual(['Gas', 'TV']);
+  });
+});
