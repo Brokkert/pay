@@ -544,6 +544,11 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
             }
           />
         )}
+        {/* Only where something is actually being saved up for. On an account
+            with nothing but monthly posts there is nothing to hold, and on a
+            savings account — where the money is meant to stay — a nought here
+            reads as a claim about the balance, which it is not. */}
+        {saving.length > 0 && (
         <Line
           what="Hoort er nu op te staan"
           sub="gespaard voor posten die niet elke maand worden afgeschreven"
@@ -570,6 +575,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
             })
           }
         />
+        )}
         {Object.entries(pot.incoming).map(([id, cents]) => {
           const transfer = transferBetween(`person:${id}`, `account:${pot.account.id}`);
           return (

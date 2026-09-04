@@ -685,6 +685,34 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
+describe('an account with nothing to save up for', () => {
+  it('says nothing about a balance it cannot know', async () => {
+    const set = exampleHousehold();
+    const me = set.people.find((p) => p.isMe).id;
+    const partner = set.people.find((p) => !p.isMe && p.name === 'Partner').id;
+    set.accounts = [
+      ...set.accounts,
+      { id: 'a-save', name: 'Samen sparen', kind: 'shared', members: [me, partner] },
+    ];
+    set.expenses = [
+      ...set.expenses,
+      { id: 'e-save', name: 'Sparen', amount: 20000, cadence: 'month', category: 'Sparen',
+        payer: { kind: 'account', id: 'a-save' },
+        split: { kind: 'equal', participants: [me, partner], weights: {} } },
+    ];
+    await withData(set);
+    await start();
+
+    await screen.findByText('Jouw deel');
+    const pot = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Samen sparen').nextElementSibling;
+    // Everything on it is monthly, so there is nothing being put by — and a
+    // nought here would read as a claim about what is on the account.
+    expect(within(pot).queryByText('Hoort er nu op te staan')).toBe(null);
+    expect(within(pot).getByText('Maandlast').closest('.line').textContent).toContain('200,00');
+  }, 30000);
+});
+
 describe('an account people pay into but nothing runs off', () => {
   it('shows the standing orders without calling them a surplus', async () => {
     const set = exampleHousehold();
