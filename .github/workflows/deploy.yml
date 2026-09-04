@@ -2,12 +2,16 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    # The github-pages environment only accepts deployments from the
-    # repository's default branch. That is currently the working branch, not
-    # main, so both are listed here — a run on any other ref is rejected before
-    # its first step, with a two-second failure and no log to explain it.
-    # Once the default branch is main, the second entry can go.
-    branches: [main, claude/shared-expenses-settlement-6hc5wo]
+    # Only the branch the github-pages environment allows. Every other ref is
+    # turned away at the deploy job with no log to explain it, and because the
+    # runs share a concurrency group a run that cannot deploy would cancel the
+    # one that can — which is how a push once landed nowhere at all.
+    #
+    # main is the repository's default branch, but the environment still holds
+    # the branch list from when this one was: Settings -> Environments ->
+    # github-pages -> Deployment branches. Add main there and it can come back
+    # here.
+    branches: [claude/shared-expenses-settlement-6hc5wo]
   workflow_dispatch:
 
 permissions:
@@ -15,9 +19,11 @@ permissions:
   pages: write
   id-token: write
 
+# One deployment at a time, but never at the cost of another: a queued run
+# waits its turn instead of killing the one in front of it.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
