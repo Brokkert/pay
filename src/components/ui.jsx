@@ -177,7 +177,11 @@ export function AmountInput({
   // option there — and a euro sign you can tap is one control instead of two.
   const asText = (c) => (c ? toInput(Math.abs(c)) : '');
   const [text, setText] = useState(() => asText(cents));
-  const negative = cents < 0;
+  // The sign is its own piece of state, not something read back out of the
+  // amount. Minus nothing is still nothing, so on an empty field a sign read
+  // from the amount would never stick and the tap would vanish. This way you
+  // can set the minus first and then type.
+  const [below, setBelow] = useState(() => cents < 0);
 
   // Changed from the outside (another form opened): follow along. Not while
   // typing, or you could never enter a comma.
@@ -185,11 +189,13 @@ export function AmountInput({
     setText((current) =>
       Math.abs(parseMoney(current) ?? 0) === Math.abs(cents) ? current : asText(cents)
     );
+    // Zero says nothing about the sign, so leave it alone there.
+    if (cents !== 0) setBelow(cents < 0);
   }, [cents]);
 
-  const emit = (value, below) => {
+  const emit = (value, sign) => {
     const amount = Math.abs(parseMoney(value) ?? 0);
-    onChange(below ? -amount : amount);
+    onChange(sign ? -amount : amount);
   };
 
   return (
@@ -197,11 +203,15 @@ export function AmountInput({
       {signed ? (
         <button
           type="button"
-          className={`sign toggle${negative ? ' on' : ''}`}
-          aria-label={negative ? 'Bedrag positief maken' : 'Bedrag negatief maken'}
-          onClick={() => emit(text, !negative)}
+          className={`sign toggle${below ? ' on' : ''}`}
+          aria-label={below ? 'Bedrag positief maken' : 'Bedrag negatief maken'}
+          onClick={() => {
+            const next = !below;
+            setBelow(next);
+            emit(text, next);
+          }}
         >
-          {negative ? '−€' : '€'}
+          {below ? '−€' : '€'}
         </button>
       ) : (
         <span className="sign">€</span>
@@ -218,8 +228,12 @@ export function AmountInput({
           setText(typed);
           const parsed = parseMoney(typed);
           // A minus typed by hand still counts, where the keyboard has one.
-          if (signed && parsed != null && parsed < 0) onChange(parsed);
-          else emit(typed, signed && negative);
+          if (signed && parsed != null && parsed < 0) {
+            setBelow(true);
+            onChange(parsed);
+          } else {
+            emit(typed, signed && below);
+          }
         }}
         onBlur={() => setText(asText(parseMoney(text) ?? 0))}
       />
