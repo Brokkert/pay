@@ -498,6 +498,18 @@ button.item:active { background: var(--sunk); }
   font-family: var(--display);
   font-size: 18px;
 }
+/* The € doubles as the sign: tapping it makes the amount negative, for money
+   that comes back. A phone's number pad has no minus key at all, so typing one
+   is not an option there. Everything but the pointer comes from .sign above. */
+.money-input .sign.toggle {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.money-input .sign.toggle.on {
+  color: var(--debt);
+  background: var(--sunk);
+}
+
 .money-input .input {
   border-radius: 0 var(--r-md) var(--r-md) 0;
   text-align: right;

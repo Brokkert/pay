@@ -106,7 +106,11 @@ export default function ExpenseForm({
       <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
         <div className="grow">
           <Field label="Bedrag">
-            <AmountInput cents={draft.amount} onChange={(c) => set({ amount: c })} />
+            <AmountInput signed cents={draft.amount} onChange={(c) => set({ amount: c })} />
+            <div className="hint" style={{ marginTop: 6 }}>
+              Tik op de <strong>€</strong> voor een min — voor geld dat juist terugkomt, zoals een
+              btw-teruggaaf of hypotheekrenteaftrek.
+            </div>
           </Field>
         </div>
         <div style={{ width: 148 }}>
@@ -229,8 +233,7 @@ export default function ExpenseForm({
       </div>
       {!canSave && (
         <div className="hint">
-          Een naam, een bedrag en een rekening waar het vanaf gaat zijn het minimum. Een bedrag mag
-          negatief zijn: dat is geld dat terugkomt op iets wat jullie samen dragen.
+          Een naam, een bedrag en een rekening waar het vanaf gaat zijn het minimum.
         </div>
       )}
 

@@ -675,3 +675,42 @@ describe('money that comes back', () => {
     expect(within(sheet).getByRole('button', { name: 'Bewaren' }).disabled).toBe(true);
   }, 30000);
 });
+
+describe('entering a negative amount on a phone', () => {
+  it('turns the euro sign into a minus, since a number pad has none', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(screen.getByRole('button', { name: 'Nieuwe post' }));
+
+    const sheet = screen.getByRole('heading', { name: 'Nieuwe post' }).closest('.sheet');
+    await user.type(within(sheet).getByPlaceholderText(/Energie, internet/), 'Btw terug');
+    await user.type(within(sheet).getByPlaceholderText('0,00'), '2,59');
+
+    // Typed as a plain number, then made negative by tapping the sign.
+    await user.click(within(sheet).getByRole('button', { name: /negatief maken/i }));
+    const flipped = within(sheet).getByRole('button', { name: /positief maken/i });
+    expect(flipped.textContent).toBe('−€');
+    // The field keeps the amount; the sign sits in front of it.
+    expect(within(sheet).getByPlaceholderText('0,00').value).toBe('2,59');
+
+    const from = within(sheet).getByText(/Waar gaat het vanaf/).closest('.field');
+    await user.click(within(from).getByRole('button', { name: /Zaak/ }));
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    // 278,00 a month, minus the 2,59 that comes back.
+    await user.click(screen.getByRole('button', { name: /Overzicht/ }));
+    expect((await screen.findAllByText('€ 275,41')).length).toBeGreaterThan(0);
+  }, 30000);
+
+  it('takes a typed minus too, where the keyboard has one', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(screen.getByRole('button', { name: 'Nieuwe post' }));
+
+    const sheet = screen.getByRole('heading', { name: 'Nieuwe post' }).closest('.sheet');
+    await user.type(within(sheet).getByPlaceholderText('0,00'), '-2,59');
+    expect(within(sheet).getByRole('button', { name: /positief maken/i })).toBeTruthy();
+  }, 30000);
+});

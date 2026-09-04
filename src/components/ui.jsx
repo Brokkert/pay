@@ -161,21 +161,51 @@ export const NamedAvatar = ({ person, size = 'sm' }) => (
 );
 
 /** Input for an amount. Cents on the outside, text on the inside. */
-export function AmountInput({ cents, onChange, autoFocus = false, placeholder = '0,00', id = null }) {
+export function AmountInput({
+  cents,
+  onChange,
+  autoFocus = false,
+  placeholder = '0,00',
+  id = null,
+  signed = false,
+}) {
   // Zero is an empty field, not "0,00". Otherwise a new form already has
   // something in it that you have to clear, and in practice you type behind it.
-  const asText = (c) => (c ? toInput(c) : '');
+  //
+  // The field itself only ever holds the amount; the sign lives in the € in
+  // front of it. A phone's number pad has no minus key, so typing one is not an
+  // option there — and a euro sign you can tap is one control instead of two.
+  const asText = (c) => (c ? toInput(Math.abs(c)) : '');
   const [text, setText] = useState(() => asText(cents));
+  const negative = cents < 0;
 
   // Changed from the outside (another form opened): follow along. Not while
   // typing, or you could never enter a comma.
   useEffect(() => {
-    setText((current) => ((parseMoney(current) ?? 0) === cents ? current : asText(cents)));
+    setText((current) =>
+      Math.abs(parseMoney(current) ?? 0) === Math.abs(cents) ? current : asText(cents)
+    );
   }, [cents]);
+
+  const emit = (value, below) => {
+    const amount = Math.abs(parseMoney(value) ?? 0);
+    onChange(below ? -amount : amount);
+  };
 
   return (
     <div className="money-input">
-      <span className="sign">€</span>
+      {signed ? (
+        <button
+          type="button"
+          className={`sign toggle${negative ? ' on' : ''}`}
+          aria-label={negative ? 'Bedrag positief maken' : 'Bedrag negatief maken'}
+          onClick={() => emit(text, !negative)}
+        >
+          {negative ? '−€' : '€'}
+        </button>
+      ) : (
+        <span className="sign">€</span>
+      )}
       <input
         id={id || undefined}
         className="input"
@@ -184,8 +214,12 @@ export function AmountInput({ cents, onChange, autoFocus = false, placeholder = 
         placeholder={placeholder}
         value={text}
         onChange={(e) => {
-          setText(e.target.value);
-          onChange(parseMoney(e.target.value) ?? 0);
+          const typed = e.target.value;
+          setText(typed);
+          const parsed = parseMoney(typed);
+          // A minus typed by hand still counts, where the keyboard has one.
+          if (signed && parsed != null && parsed < 0) onChange(parsed);
+          else emit(typed, signed && negative);
         }}
         onBlur={() => setText(asText(parseMoney(text) ?? 0))}
       />
