@@ -639,6 +639,11 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                 })
               }
             />
+            {/* Nothing is booked on this account, so there is nothing to hold
+                the standing orders against. Calling the whole deposit a
+                surplus would be a claim about money Pay knows nothing about —
+                a groceries pot is emptied by groceries it has never seen. */}
+            {mine.length === 0 ? null : (
             <Total
               label={pot.difference >= 0 ? 'Blijft over' : 'Komt tekort'}
               cents={Math.abs(pot.difference)}
@@ -662,6 +667,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                 })
               }
             />
+            )}
           </>
         )}
       </div>
@@ -676,6 +682,13 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
           Alle onderlinge verrekeningen lopen hierlangs. Wat iemand voorschoot van een eigen of
           zakelijke rekening, komt hier binnen en gaat er weer uit — dat is de reden dat je zelf
           minder hoeft te storten.
+        </div>
+      )}
+      {hasContributions && mine.length === 0 && (
+        <div className="hint" style={{ marginTop: -4 }}>
+          Er staan geen posten op deze rekening, dus Pay weet niet waar dit geld heen gaat en kan
+          niet zeggen of de inleg klopt. Voor een pot waar je variabele uitgaven van doet — de
+          boodschappen — is dat ook zo bedoeld: de inleg staat er als afspraak, niet als som.
         </div>
       )}
       {!hasContributions && !isHub && (

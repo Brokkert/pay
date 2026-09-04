@@ -685,6 +685,31 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
+describe('an account people pay into but nothing runs off', () => {
+  it('shows the standing orders without calling them a surplus', async () => {
+    const set = exampleHousehold();
+    const me = set.people.find((p) => p.isMe).id;
+    const partner = set.people.find((p) => !p.isMe && p.name === 'Partner').id;
+    set.accounts = [
+      ...set.accounts,
+      { id: 'a-food', name: 'Boodschappen', kind: 'shared',
+        members: [me, partner], contributions: { [me]: 25000, [partner]: 25000 } },
+    ];
+    await withData(set);
+    await start();
+
+    await screen.findByText('Jouw deel');
+    const pot = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Boodschappen').nextElementSibling;
+    // The deposit is there...
+    expect(within(pot).getByText('Staat als vaste inleg ingesteld').closest('.line').textContent)
+      .toContain('500,00');
+    // ...but nothing claims that 500,00 is left over every month.
+    expect(within(pot).queryByText('Blijft over')).toBe(null);
+    expect(pot.nextElementSibling.textContent).toContain('geen posten op deze rekening');
+  }, 30000);
+});
+
 describe('what one charge is made of', () => {
   it('opens on a tap and names the expenses behind the amount', async () => {
     await withData(exampleHousehold());
