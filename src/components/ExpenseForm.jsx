@@ -227,16 +227,19 @@ export default function ExpenseForm({
         <div style={{ marginTop: 16 }}>
           {/* Stacked, not side by side: a date field is as wide as the date in
               it, so two of them in one row on a phone leaves neither room. */}
+          {/* Months, not dates. Pay reckons per month and never looked at the
+              day in these — asking for one and then throwing it away is a
+              question you can only answer wrong. */}
           <Field
             label="Loopt vanaf"
-            hint="Vanaf wanneer deze post meetelt. Leeg = loopt al."
+            hint="De eerste maand waarin deze post meetelt. Leeg = loopt al."
           >
-            <input className="input" type="date" value={draft.from || ''}
+            <input className="input" type="month" value={(draft.from || '').slice(0, 7)}
               onChange={(e) => set({ from: e.target.value })} />
           </Field>
 
-          <Field label="Loopt tot" hint="Tot wanneer. Leeg = doorlopend.">
-            <input className="input" type="date" value={draft.until || ''}
+          <Field label="Loopt tot" hint="De laatste maand. Leeg = doorlopend.">
+            <input className="input" type="month" value={(draft.until || '').slice(0, 7)}
               onChange={(e) => set({ until: e.target.value })} />
           </Field>
 

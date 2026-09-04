@@ -126,3 +126,22 @@ describe('which month the money leaves', () => {
     expect(setAside(e, '2026-03')).toBe(6000);
   });
 });
+
+describe('a month is enough for running from and to', () => {
+  it('reads a month the same as a full date', () => {
+    const byMonth = { cadence: 'month', from: '2026-03', until: '2026-08' };
+    const byDate = { cadence: 'month', from: '2026-03-01', until: '2026-08-31' };
+    for (const month of ['2026-02', '2026-03', '2026-06', '2026-08', '2026-09']) {
+      expect(isActive(byMonth, month)).toBe(isActive(byDate, month));
+    }
+    expect(isActive(byMonth, '2026-02')).toBe(false);
+    expect(isActive(byMonth, '2026-03')).toBe(true);
+    expect(isActive(byMonth, '2026-08')).toBe(true);
+    expect(isActive(byMonth, '2026-09')).toBe(false);
+  });
+
+  it('still finds the charge month in one', () => {
+    expect(chargedIn({ cadence: 'year', from: '2026-03' }, '2027-03')).toBe(true);
+    expect(chargedIn({ cadence: 'year', from: '2026-03' }, '2027-04')).toBe(false);
+  });
+});

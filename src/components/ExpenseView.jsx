@@ -223,8 +223,8 @@ export default function ExpenseView({
 
       {(expense.note || expense.from || expense.until) && (
         <div className="panel" style={{ marginTop: 14 }}>
-          {expense.from && <Line what={expense.from} sub="loopt vanaf" />}
-          {expense.until && <Line what={expense.until} sub="loopt tot" />}
+          {expense.from && <Line what={formatMonth(expense.from)} sub="loopt vanaf" />}
+          {expense.until && <Line what={formatMonth(expense.until)} sub="loopt tot" />}
           {expense.note && (
             <div className="box">
               <div className="small" style={{ whiteSpace: 'pre-wrap' }}>{expense.note}</div>

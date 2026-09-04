@@ -49,8 +49,8 @@ export function toCsv({ expenses, people, accounts }) {
       payer || '',
       isBusiness(expense, accounts) ? 'ja' : '',
       chargeAnchor(expense) === null ? '' : MONTH_NAMES[chargeAnchor(expense)],
-      expense.from || '',
-      expense.until || '',
+      (expense.from || '').slice(0, 7),
+      (expense.until || '').slice(0, 7),
       expense.note || '',
       ...bearers.map((b) => amount(parts[b.key] || 0)),
     ];
