@@ -326,6 +326,23 @@ function potOverview(transfers, accounts, perAccount, saving) {
 }
 
 /**
+ * Transfers in the order you read them: yours first, then the largest.
+ *
+ * The list is a to-do list, and the rows that are yours to act on should not
+ * have to be found among the others. Within each group the biggest first,
+ * because that is the one worth checking.
+ */
+export function mineFirst(transfers, personId) {
+  if (!personId) return transfers;
+  const me = personParty(personId);
+  const mine = (t) => t.from === me || t.to === me;
+  return [...transfers].sort((a, b) => {
+    if (mine(a) !== mine(b)) return mine(a) ? -1 : 1;
+    return b.cents - a.cents;
+  });
+}
+
+/**
  * The loose ones: one-off expenses that have not been settled yet.
  *
  * These deliberately do *not* go through the bills account. You settle a one-off

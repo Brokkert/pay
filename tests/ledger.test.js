@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { forMonth, openSettlements, net, payerParty, explainTransfer, isBusiness } from '../src/lib/ledger.js';
+import { forMonth, openSettlements, net, payerParty, explainTransfer, isBusiness, mineFirst } from '../src/lib/ledger.js';
 
 // A household with everything in it that makes this hard: two people with a
 // household bills account, a business account that also pays for shared things,
@@ -725,5 +725,23 @@ describe('explaining a transfer when there are two shared accounts', () => {
     // The bills account carries what it pays, plus what the business fronted:
     // that debt is between two people, and those route through it.
     expect(named(`person:${me}`, 'account:bills')).toEqual(['Gas', 'TV']);
+  });
+});
+
+describe('the order you read transfers in', () => {
+  it('puts yours first, then the largest', () => {
+    const transfers = [
+      { from: `person:${FRIEND}`, to: 'account:a-bills', cents: 9000 },
+      { from: `person:${ME}`, to: 'account:a-bills', cents: 5000 },
+      { from: 'account:a-bills', to: `person:${ME}`, cents: 1000 },
+      { from: `person:${PARTNER}`, to: 'account:a-bills', cents: 8000 },
+      { from: `person:${NEIGHBOUR}`, to: 'account:a-bills', cents: 100 },
+    ];
+    expect(mineFirst(transfers, ME).map((t) => t.cents)).toEqual([5000, 1000, 9000, 8000, 100]);
+  });
+
+  it('leaves the order alone when nobody is you', () => {
+    const transfers = [{ from: `person:${FRIEND}`, to: 'account:a-bills', cents: 100 }];
+    expect(mineFirst(transfers, null)).toBe(transfers);
   });
 });

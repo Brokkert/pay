@@ -8,6 +8,7 @@ import {
   forMonth,
   openSettlements,
   explainTransfer,
+  mineFirst,
   isAccountParty,
   isBusiness,
   partyId,
@@ -182,7 +183,7 @@ export default function Overview({ store, month, onMonth }) {
         <>
           <div className="section">Elke maand overmaken</div>
           <div className="panel">
-            {result.transfers.map((t) => (
+            {mineFirst(result.transfers, me?.id).map((t) => (
               <Transfer
                 key={`${t.from}-${t.to}`}
                 transfer={t}
@@ -262,7 +263,7 @@ export default function Overview({ store, month, onMonth }) {
         <>
           <div className="section">Nog los af te rekenen</div>
           <div className="panel">
-            {loose.transfers.map((t) => (
+            {mineFirst(loose.transfers, me?.id).map((t) => (
               <Transfer
                 key={`loose-${t.from}-${t.to}`}
                 transfer={t}

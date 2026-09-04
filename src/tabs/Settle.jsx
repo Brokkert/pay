@@ -8,6 +8,7 @@ import { Line, Total, Money, Avatar, Empty, Sheet, Notice } from '../components/
 import {
   forMonth,
   openSettlements,
+  mineFirst,
   payerParty,
   isAccountParty,
   partyId,
@@ -59,7 +60,10 @@ export default function Settle({ store, month }) {
       );
   }, [result.transfers, loose.transfers, people, me]);
 
-  const withAccounts = result.transfers.filter((t) => isAccountParty(t.from) !== isAccountParty(t.to));
+  const withAccounts = mineFirst(
+    result.transfers.filter((t) => isAccountParty(t.from) !== isAccountParty(t.to)),
+    me?.id
+  );
 
   if (!me) {
     return (
