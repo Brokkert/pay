@@ -68,7 +68,9 @@ export default function ChargeView({ charge, accounts, month, onClose }) {
                 expense.cadence === 'once'
                   ? 'eenmalig'
                   : cadence.perYear >= 12
-                    ? 'elke maand'
+                    ? cadence.id === 'month'
+                      ? 'elke maand'
+                      : `${formatMoney(expense.amount)} ${cadence.label}`
                     : due === null
                       ? `${formatMoney(expense.amount)} ${cadence.short} · afschrijfmaand onbekend`
                       : due

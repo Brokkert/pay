@@ -8,6 +8,11 @@
 // half-yearly line would come in as yearly.
 export const CADENCES = [
   { id: 'month', label: 'per maand', short: '/mnd', perYear: 12, keywords: ['maand'] },
+  // Thirteen charges a year, not twelve: a four-weekly bill entered as monthly
+  // is understated by a whole month's worth. It stays above twelve a year, so
+  // there is nothing to save up for and no charge month to ask about — some
+  // month simply carries two of them.
+  { id: 'fourweek', label: 'per 4 weken', short: '/4wk', perYear: 13, keywords: ['4 weken', 'vier weken', '4-weken', '4wk'] },
   { id: 'quarter', label: 'per kwartaal', short: '/kwt', perYear: 4, keywords: ['kwartaal'] },
   { id: 'halfyear', label: 'per half jaar', short: '/hj', perYear: 2, keywords: ['half jaar', 'halfjaar'] },
   { id: 'year', label: 'per jaar', short: '/jr', perYear: 1, keywords: ['jaar', 'jaarlijks'] },

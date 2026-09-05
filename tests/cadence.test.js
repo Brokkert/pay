@@ -145,3 +145,20 @@ describe('a month is enough for running from and to', () => {
     expect(chargedIn({ cadence: 'year', from: '2026-03' }, '2027-04')).toBe(false);
   });
 });
+
+describe('four-weekly, which is not monthly', () => {
+  const bill = { name: 'Abonnement', amount: 1000, cadence: 'fourweek' };
+
+  it('counts thirteen a year, not twelve', () => {
+    expect(perYear(1000, 'fourweek')).toBe(13000);
+    expect(perMonth(1000, 'fourweek')).toBe(1083);
+    // Calling it monthly would lose a whole charge a year.
+    expect(perYear(1000, 'month')).toBe(12000);
+  });
+
+  it('has nothing to save up for and no charge month to ask about', () => {
+    expect(chargedIn(bill, '2026-09')).toBe(true);
+    expect(setAside(bill, '2026-09')).toBe(0);
+    expect(nextCharge(bill, '2026-09')).toBe(null);
+  });
+});
