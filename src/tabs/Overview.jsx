@@ -580,7 +580,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                 };
               }),
               empty: 'Alles op deze rekening wordt maandelijks afgeschreven, dus er hoeft niets op te blijven staan.',
-              note: 'Zet dit bedrag erop en stort daarna elke maand de maandlast, dan staat er precies genoeg op het moment dat een jaarpost wordt afgeschreven — en is de rekening daarna weer leeg. Staat bij een post geen afschrijfmaand, dan weet Pay niet wanneer hij eraf gaat; die telt hier voor niets mee.',
+              note: 'Zet dit bedrag erop en stort daarna elke maand de maandlast, dan staat er genoeg op het moment dat een jaarpost wordt afgeschreven — en is de rekening daarna weer leeg. Op een paar cent na: een jaarbedrag dat niet door twaalf deelt, past nu eenmaal niet in twaalf gelijke maandbedragen. Staat bij een post geen afschrijfmaand, dan weet Pay niet wanneer hij eraf gaat; die telt hier voor niets mee.',
             })
           }
         />
