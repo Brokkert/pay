@@ -532,6 +532,50 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
   const transferBetween = (from, to) =>
     transfers.find((t) => t.from === from && t.to === to) || null;
   const accountName = (id) => context.accounts.find((a) => a.id === id)?.name || 'rekening';
+  const opens = (from, to) => {
+    const transfer = transferBetween(from, to);
+    return transfer ? () => onDetail(transferDetail(transfer, context)) : null;
+  };
+  const here = `account:${pot.account.id}`;
+  const flows = [
+    ...Object.entries(pot.incoming).map(([id, cents]) => ({
+      key: `in-${id}`,
+      left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
+      what: `${nameOf(id)} stort`,
+      cents,
+      onClick: opens(`person:${id}`, here),
+    })),
+    ...Object.entries(pot.fromAccounts).map(([id, cents]) => ({
+      key: `acc-in-${id}`,
+      left: <AccountMark />,
+      what: `${accountName(id)} stort`,
+      sub: 'het deel dat die rekening zelf draagt',
+      cents,
+      onClick: opens(`account:${id}`, here),
+    })),
+  ].sort((a, b) => b.cents - a.cents);
+  flows.push(
+    ...Object.entries(pot.outgoing)
+      .map(([id, cents]) => ({
+        key: `out-${id}`,
+        left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
+        what: `Terug naar ${nameOf(id)}`,
+        sub: 'voorgeschoten van een eigen rekening',
+        cents: -cents,
+        onClick: opens(here, `person:${id}`),
+      }))
+      .concat(
+        Object.entries(pot.toAccounts).map(([id, cents]) => ({
+          key: `acc-out-${id}`,
+          left: <AccountMark />,
+          what: `Terug naar ${accountName(id)}`,
+          sub: 'voorgeschoten van die rekening',
+          cents: -cents,
+          onClick: opens(here, `account:${id}`),
+        }))
+      )
+      .sort((a, b) => a.cents - b.cents)
+  );
 
   return (
     <>
@@ -539,7 +583,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
       <div className="panel">
         <Line
           what="Maandlast"
-          sub="wat jaarposten kosten is hierin uitgesmeerd over twaalf maanden"
+          sub="jaarposten staan hierin op een twaalfde van hun bedrag"
           cents={pot.out}
           onClick={() =>
             onDetail({
@@ -646,53 +690,20 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
             }
           />
         )}
-        {Object.entries(pot.incoming).map(([id, cents]) => {
-          const transfer = transferBetween(`person:${id}`, `account:${pot.account.id}`);
-          return (
-            <Line
-              key={`in-${id}`}
-              left={<Avatar person={people.find((p) => p.id === id)} size="sm" />}
-              what={`${nameOf(id)} stort`}
-              cents={cents}
-              onClick={transfer ? () => onDetail(transferDetail(transfer, context)) : null}
-            />
-          );
-        })}
-        {Object.entries(pot.fromAccounts).map(([id, cents]) => {
-          const transfer = transferBetween(`account:${id}`, `account:${pot.account.id}`);
-          return (
-            <Line
-              key={`acc-in-${id}`}
-              left={<AccountMark />}
-              what={`${accountName(id)} stort`}
-              sub="het deel dat die rekening zelf draagt"
-              cents={cents}
-              onClick={transfer ? () => onDetail(transferDetail(transfer, context)) : null}
-            />
-          );
-        })}
-        {Object.entries(pot.toAccounts).map(([id, cents]) => (
+        {/* In and out, each biggest first, whether the money comes from a
+            person or from another account. Two lists sorted apart put a
+            business paying 7,25 underneath a friend paying 4,13, which reads
+            as a sorting fault rather than as two kinds of row. */}
+        {flows.map((row) => (
           <Line
-            key={`acc-out-${id}`}
-            left={<AccountMark />}
-            what={`Terug naar ${accountName(id)}`}
-            sub="voorgeschoten van die rekening"
-            cents={-cents}
+            key={row.key}
+            left={row.left}
+            what={row.what}
+            sub={row.sub}
+            cents={row.cents}
+            onClick={row.onClick}
           />
         ))}
-        {Object.entries(pot.outgoing).map(([id, cents]) => {
-          const transfer = transferBetween(`account:${pot.account.id}`, `person:${id}`);
-          return (
-            <Line
-              key={`out-${id}`}
-              left={<Avatar person={people.find((p) => p.id === id)} size="sm" />}
-              what={`Terug naar ${nameOf(id)}`}
-              sub="voorgeschoten van een andere rekening"
-              cents={-cents}
-              onClick={transfer ? () => onDetail(transferDetail(transfer, context)) : null}
-            />
-          );
-        })}
         {hasContributions && (
           <>
             {pot.needed !== pot.out && (

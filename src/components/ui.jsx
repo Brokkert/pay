@@ -96,7 +96,10 @@ export const Line = ({ what, sub, cents, tone, left = null, right = null, onClic
       {left}
       <div className="what">
         <div className="n truncate">{what}</div>
-        {sub && <div className="s truncate">{sub}</div>}
+        {/* The name is cut where it does not fit; what explains it is not. A
+            line of explanation ending in "…" is the one that was worth
+            reading. */}
+        {sub && <div className="s">{sub}</div>}
       </div>
       {cents != null && <Money cents={cents} tone={tone} />}
       {right}

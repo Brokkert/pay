@@ -368,7 +368,7 @@ button.item:active { background: var(--sunk); }
 
 .line .what { flex: 1; min-width: 0; }
 .line .what .n { font-size: 14px; font-weight: 450; }
-.line .what .s { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
+.line .what .s { font-size: 11.5px; color: var(--text-3); margin-top: 2px; line-height: 1.4; }
 
 /* The number a sheet is about. Same shape as the hero on the overview, but
    without the colour: that card is the one loud thing in the app and it should
