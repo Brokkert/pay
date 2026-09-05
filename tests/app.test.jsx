@@ -685,6 +685,33 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
+describe('a bill charged every four weeks', () => {
+  it('names the cushion for the month that carries two of them', async () => {
+    const set = exampleHousehold();
+    const me = set.people.find((p) => p.isMe).id;
+    set.accounts = [
+      ...set.accounts,
+      { id: 'a-cycle', name: 'Doorlopend', kind: 'shared', members: [me] },
+    ];
+    set.expenses = [
+      ...set.expenses,
+      { id: 'e-cycle', name: 'Mobiel', amount: 2500, cadence: 'fourweek', category: 'Overig',
+        payer: { kind: 'account', id: 'a-cycle' },
+        split: { kind: 'equal', participants: [me], weights: {} } },
+    ];
+    await withData(set);
+    await start();
+
+    await screen.findByText('Jouw deel');
+    const pot = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Doorlopend').nextElementSibling;
+    // 25,00 every four weeks is 27,08 a month...
+    expect(within(pot).getByText('Maandlast').closest('.line').textContent).toContain('27,08');
+    // ...and one charge is what has to be able to sit on the account.
+    expect(pot.nextElementSibling.textContent).toContain('€ 25,00');
+  }, 30000);
+});
+
 describe('twelve instalments against a year', () => {
   it('says the rounding difference out loud where it is not nought', async () => {
     const set = exampleHousehold();

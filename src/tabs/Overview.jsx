@@ -513,6 +513,12 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
   // The posts this account has to save up for: the ones it is not charged for
   // every month.
   const saving = mine.filter((l) => cadenceOf(l.expense.cadence).perYear < 12);
+  // Charged more often than monthly: four-weekly, weekly. Over a year it comes
+  // out even, but one month a year carries an extra charge, and the account has
+  // to be able to take it. Which month cannot be known from a month alone — the
+  // cycle walks through the calendar — so the cushion is named instead.
+  const cycling = mine.filter((l) => cadenceOf(l.expense.cadence).perYear > 12);
+  const cushion = cycling.reduce((sum, l) => sum + l.expense.amount, 0);
   // Twelve monthly instalments do not always add up to the year: 100,00 a year
   // is 8,33 a month, and twelve of those is 99,96. Kept as one number per
   // account so it can be said out loud rather than turning up on a statement.
@@ -763,6 +769,15 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
           </>
         )}
       </div>
+      {cycling.length > 0 && (
+        <div className="hint" style={{ marginTop: -4 }}>
+          Hier staat {count(cycling.length, 'post', 'posten')} die vaker dan maandelijks wordt
+          afgeschreven. Over een jaar komt dat precies uit, maar één maand per jaar valt er een
+          extra afschrijving in. Houd daarvoor ongeveer <strong>{formatMoney(cushion)}</strong> als
+          bodem aan. Welke maand dat is kan Pay niet zeggen: zo'n cyclus loopt niet met de
+          kalender mee.
+        </div>
+      )}
       {pot.chargeUnknown && (
         <div className="hint warn" style={{ marginTop: -4 }}>
           Van een post op deze rekening is niet bekend in welke maand hij wordt afgeschreven.
