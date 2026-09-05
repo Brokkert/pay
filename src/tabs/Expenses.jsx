@@ -149,27 +149,30 @@ function ExpenseRow({ row, month, people, accounts, onOpen, onSave }) {
       <span className="cat-dot" style={{ background: cat.colour, alignSelf: 'flex-start', marginTop: 7 }} />
 
       <span className="mid">
+        {/* The name gets the line to itself. It used to share it with a badge
+            for the charge and one for "zakelijk", and on a phone that left
+            "Autov…" beside a charge that ran off the edge anyway: three things
+            competing, none of them readable. */}
         <span className="row" style={{ gap: 7 }}>
           <span className="title truncate">{expense.name}</span>
-          {isBusiness(expense, accounts) && <span className="chip static tiny">zakelijk</span>}
-          {/* The charge sits next to the name as a badge, and the category in
-              the grey line below: one says which debit this rides on, the other
-              what the expense is, and they should not read as one list. */}
-          {expense.charge && (
-            <span className="tag truncate">
-              <Icon name="receipt" size={11} /> {expense.charge}
-            </span>
-          )}
           {expense.paused && <span className="chip static tiny">gepauzeerd</span>}
           {expense.cadence === 'once' && expense.settled && (
             <span className="chip static tiny">afgerekend</span>
           )}
         </span>
-        {/* Two facts, not four. Who bears it is the row of faces underneath,
-            which says it better than "gelijk over 2" ever did, and how it is
-            divided belongs on the expense itself. */}
+        {/* Underneath, in one grey line: what it is, where it goes off, and —
+            if it rides along on a debit with others — which one. Zakelijk is
+            not repeated here: the account it comes off is the business itself. */}
         <span className="sub truncate" style={{ display: 'block' }}>
           {cat.label} · {payer ? `van ${payer}` : 'geen rekening'}
+          {expense.charge && (
+            <>
+              {' · '}
+              <Icon name="receipt" size={10} style={{ display: 'inline', verticalAlign: -1 }} />
+              {' '}
+              {expense.charge}
+            </>
+          )}
         </span>
         <span className="stack" style={{ marginTop: 6 }}>
           {taking.slice(0, 5).map((key) => (

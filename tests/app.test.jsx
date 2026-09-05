@@ -453,17 +453,19 @@ describe('renaming a label', () => {
 });
 
 describe('reading an expense row', () => {
-  it('separates what it is from which debit it rides on', async () => {
+  it('says what it is, where it goes off and which debit it rides on', async () => {
     const set = exampleHousehold();
     await withData(set);
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Lasten/ }));
 
     const row = (await screen.findByText('Inboedel')).closest('.item');
-    // The charge is a badge next to the name; the category is in the line below.
-    expect(within(row).getByText('Verzekeraar', { selector: '.tag' })).toBeTruthy();
-    expect(row.querySelector('.sub').textContent).toContain('Verzekeringen ·');
-    expect(row.querySelector('.sub').textContent).toContain('van Vaste lasten');
+    // All three under the name, in that order, so the name keeps its own line.
+    const sub = row.querySelector('.sub').textContent;
+    expect(sub).toContain('Verzekeringen ·');
+    expect(sub).toContain('van Vaste lasten');
+    expect(sub).toContain('Verzekeraar');
+    expect(row.querySelector('.title').textContent).toBe('Inboedel');
   }, 30000);
 });
 
