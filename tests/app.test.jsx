@@ -712,6 +712,14 @@ describe('twelve instalments against a year', () => {
     expect(sheet.textContent).toContain('€ 99,96');
     expect(sheet.textContent).toContain('€ 100,00');
     expect(sheet.textContent).toContain('€ 0,04 per jaar tekort');
+    await user.click(within(sheet).getByRole('button', { name: 'Sluiten' }));
+
+    // And it is an amount you can act on: one transfer a year.
+    const row = within(pot).getByText('Eén keer per jaar bijstorten').closest('.line');
+    expect(row.textContent).toContain('0,04');
+    await user.click(row);
+    const why = screen.getByRole('heading', { name: 'Rondingsverschil per jaar' }).closest('.sheet');
+    expect(within(why).getByText('Domeinnaam')).toBeTruthy();
   }, 30000);
 });
 

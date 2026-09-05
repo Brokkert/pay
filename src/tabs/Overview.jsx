@@ -605,6 +605,41 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
           }
         />
         )}
+        {/* One transfer a year settles what twelve equal instalments cannot.
+            Naming the amount is what makes it doable — "a few cents" is not
+            something you can put in a banking app. */}
+        {drift !== 0 && (
+          <Line
+            what={drift < 0 ? 'Eén keer per jaar bijstorten' : 'Houd je per jaar over'}
+            sub="twaalf maandlasten dekken het jaar net niet precies"
+            cents={Math.abs(drift)}
+            tone={drift < 0 ? 'debt' : 'credit'}
+            onClick={() =>
+              onDetail({
+                title: 'Rondingsverschil per jaar',
+                label: drift < 0 ? 'Bijstorten' : 'Over',
+                cents: Math.abs(drift),
+                rows: mine
+                  .map((l) => ({
+                    key: l.expense.id,
+                    what: l.expense.name,
+                    sub: postSub(l.expense),
+                    cents:
+                      12 * perMonth(l.expense.amount, l.expense.cadence) -
+                      perYear(l.expense.amount, l.expense.cadence),
+                  }))
+                  .filter((r) => r.cents !== 0)
+                  .map((r) => ({ ...r, cents: drift < 0 ? -r.cents : r.cents }))
+                  .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents)),
+                note:
+                  (drift < 0
+                    ? 'Maak dit bedrag één keer per jaar extra over en de rekening komt exact op nul uit, zonder dat je maandbedrag hoeft te wiebelen. '
+                    : 'Dit blijft er per jaar op staan. Haal het er één keer per jaar af en de rekening komt exact op nul uit, zonder dat je maandbedrag hoeft te wiebelen. ') +
+                  'Het komt van posten waarvan het jaarbedrag niet in twaalf gelijke maandbedragen past: € 100,00 per jaar is € 8,33 per maand, en twaalf daarvan is € 99,96.',
+              })
+            }
+          />
+        )}
         {Object.entries(pot.incoming).map(([id, cents]) => {
           const transfer = transferBetween(`person:${id}`, `account:${pot.account.id}`);
           return (
