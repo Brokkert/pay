@@ -685,6 +685,36 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
+describe('twelve instalments against a year', () => {
+  it('says the rounding difference out loud where it is not nought', async () => {
+    const set = exampleHousehold();
+    const me = set.people.find((p) => p.isMe).id;
+    set.accounts = [
+      ...set.accounts,
+      { id: 'a-odd', name: 'Losse pot', kind: 'shared', members: [me] },
+    ];
+    // 100,00 a year is 8,33 a month, and twelve of those is 99,96.
+    set.expenses = [
+      ...set.expenses,
+      { id: 'e-odd', name: 'Domeinnaam', amount: 10000, cadence: 'year', chargeMonth: 5,
+        category: 'Overig', payer: { kind: 'account', id: 'a-odd' },
+        split: { kind: 'equal', participants: [me], weights: {} } },
+    ];
+    await withData(set);
+    const user = await start();
+
+    await screen.findByText('Jouw deel');
+    const pot = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Losse pot').nextElementSibling;
+    await user.click(within(pot).getByText('Maandlast'));
+
+    const sheet = screen.getByRole('heading', { name: 'Losse pot' }).closest('.sheet');
+    expect(sheet.textContent).toContain('€ 99,96');
+    expect(sheet.textContent).toContain('€ 100,00');
+    expect(sheet.textContent).toContain('€ 0,04 per jaar tekort');
+  }, 30000);
+});
+
 describe('an account with nothing to save up for', () => {
   it('says nothing about a balance it cannot know', async () => {
     const set = exampleHousehold();

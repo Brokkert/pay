@@ -19,6 +19,8 @@ import {
   shiftMonth,
   thisMonth,
   cadenceOf,
+  perMonth,
+  perYear,
   chargedIn,
   setAside,
   nextCharge,
@@ -511,6 +513,16 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
   // The posts this account has to save up for: the ones it is not charged for
   // every month.
   const saving = mine.filter((l) => cadenceOf(l.expense.cadence).perYear < 12);
+  // Twelve monthly instalments do not always add up to the year: 100,00 a year
+  // is 8,33 a month, and twelve of those is 99,96. Kept as one number per
+  // account so it can be said out loud rather than turning up on a statement.
+  const drift = mine.reduce(
+    (sum, l) =>
+      sum +
+      12 * perMonth(l.expense.amount, l.expense.cadence) -
+      perYear(l.expense.amount, l.expense.cadence),
+    0
+  );
   const transferBetween = (from, to) =>
     transfers.find((t) => t.from === from && t.to === to) || null;
   const accountName = (id) => context.accounts.find((a) => a.id === id)?.name || 'rekening';
@@ -530,7 +542,15 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
               cents: pot.out,
               rows: postRows(mine),
               empty: 'Er gaat deze maand niets van deze rekening af.',
-              note: 'Alles wat van deze rekening afgaat, op het maandbedrag.',
+              note: drift
+                ? `Alles wat van deze rekening afgaat, op het maandbedrag. Twaalf van deze maandlasten is ${formatMoney(
+                    pot.out * 12
+                  )}, terwijl deze posten samen ${formatMoney(
+                    pot.out * 12 - drift
+                  )} per jaar kosten. Er blijft dus ${formatMoney(Math.abs(drift))} per jaar ${
+                    drift > 0 ? 'over' : 'tekort'
+                  } op deze rekening — een jaarbedrag dat niet door twaalf deelt, past niet in twaalf gelijke maandbedragen.`
+                : 'Alles wat van deze rekening afgaat, op het maandbedrag. Twaalf maandlasten is precies wat deze posten samen per jaar kosten, dus de rekening komt elk jaar op nul uit.',
             })
           }
         />
