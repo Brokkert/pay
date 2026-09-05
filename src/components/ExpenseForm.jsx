@@ -117,8 +117,8 @@ export default function ExpenseForm({
           <Field label="Bedrag">
             <AmountInput signed cents={draft.amount} onChange={(c) => set({ amount: c })} />
             <div className="hint" style={{ marginTop: 6 }}>
-              Tik op de <strong>€</strong> voor een min — voor geld dat juist terugkomt, zoals een
-              btw-teruggaaf of hypotheekrenteaftrek.
+              Tik op de <strong>€</strong> voor een min. Voor geld dat terugkomt: hypotheekrente-
+              aftrek, een btw-teruggaaf.
             </div>
           </Field>
         </div>
@@ -137,8 +137,8 @@ export default function ExpenseForm({
           warn={!draft.chargeMonth}
           hint={
             draft.chargeMonth
-              ? 'De maand waarin de bank het afschrijft. Elk jaar dezelfde — Pay rekent de rest zelf uit.'
-              : 'Vul dit in, anders weet Pay niet in welke maand het geld eraf gaat en kan hij niet zeggen hoeveel er voor deze post opzij hoort te staan.'
+              ? 'De maand waarin de bank het weghaalt. Elk jaar dezelfde.'
+              : 'Vul in welke maand het eraf gaat. Zonder dat weet Pay niet hoeveel je ervoor opzij moet hebben staan.'
           }
         >
           <select
@@ -156,7 +156,7 @@ export default function ExpenseForm({
 
       <Field
         label="Waar gaat het vanaf"
-        hint="De rekening waar het daadwerkelijk van afgeschreven wordt. Dat hoeft niet dezelfde te zijn als wie het uiteindelijk draagt — daar is de verdeling hieronder voor."
+        hint="De rekening waar de bank het weghaalt. Wie het uiteindelijk draagt regel je hieronder."
       >
         <div className="chips">
           {accounts.map((a) => (
@@ -202,7 +202,7 @@ export default function ExpenseForm({
 
       <LabelPicker
         label="Categorie"
-        hint="Wát deze post is. Pay telt je posten per categorie op, zodat je ziet waar je geld heen gaat."
+        hint="Wát het is. Op het overzicht opgeteld per categorie, zodat je ziet waar je geld heen gaat."
         icon="overview"
         known={knownCategories}
         suggestions={suggestions}
@@ -214,7 +214,7 @@ export default function ExpenseForm({
 
       <LabelPicker
         label="Incasso"
-        hint="Alleen als deze post samen met andere als één regel van je rekening gaat — je verzekeringspakket bijvoorbeeld. Pay telt die op zodat je het bedrag op je afschrift herkent. Wát de post is, is de categorie hierboven."
+        hint="Gaat deze post samen met andere als één afschrijving van je rekening? Geef die afschrijving dan een naam, dan vind je het bedrag terug op je afschrift."
         icon="receipt"
         known={knownCharges}
         value={draft.charge || ''}
@@ -232,13 +232,13 @@ export default function ExpenseForm({
               question you can only answer wrong. */}
           <Field
             label="Loopt vanaf"
-            hint="De eerste maand waarin deze post meetelt. Leeg = loopt al."
+            hint="Vanaf welke maand hij meetelt. Leeg = loopt al."
           >
             <input className="input" type="month" value={(draft.from || '').slice(0, 7)}
               onChange={(e) => set({ from: e.target.value })} />
           </Field>
 
-          <Field label="Loopt tot" hint="De laatste maand. Leeg = doorlopend.">
+          <Field label="Loopt tot" hint="De laatste maand dat hij meetelt. Leeg = doorlopend.">
             <input className="input" type="month" value={(draft.until || '').slice(0, 7)}
               onChange={(e) => set({ until: e.target.value })} />
           </Field>

@@ -611,17 +611,42 @@ describe('counting things', () => {
 });
 
 describe('why this app exists', () => {
-  it('says so at the bottom of the settings, in its own words', async () => {
+  it('says so at the bottom of the settings, out of your own ledger', async () => {
     await withData(exampleHousehold());
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Meer/ }));
 
     expect(await screen.findByText('Waarom deze app')).toBeTruthy();
-    // The things that are actually different, not a feature list.
-    expect(screen.getByText(/Vaste lasten, geen tikkies/)).toBeTruthy();
-    expect(screen.getByText(/Een rekening is een partij/)).toBeTruthy();
-    expect(screen.getByText(/Versleuteld voordat het je apparaat verlaat/)).toBeTruthy();
-    expect(screen.getByText(/uit één spreadsheet met echte vaste lasten/)).toBeTruthy();
+    // Written from what is in there: the settlement account by name, the
+    // business account by name, and the standing orders on the bills account.
+    expect(screen.getByText(/Alles loopt langs Vaste lasten/)).toBeTruthy();
+    expect(screen.getByText(/Zaak schiet voor/)).toBeTruthy();
+    expect(screen.getByText(/Klopt de vaste inleg nog/)).toBeTruthy();
+    expect(screen.getByText(/Niemand kan meelezen/)).toBeTruthy();
+    expect(screen.getByText(/uit wat er nu in je eigen overzicht staat/)).toBeTruthy();
+  }, 30000);
+
+  it('leaves out what does not happen in this household', async () => {
+    const set = exampleHousehold();
+    // No business account, so nothing fronts anything.
+    set.accounts = set.accounts.filter((a) => a.kind !== 'business');
+    set.expenses = set.expenses.filter((e) => e.payer?.kind !== 'account' || set.accounts.some((a) => a.id === e.payer.id));
+    set.expenses = set.expenses.map((e) => ({
+      ...e,
+      split: {
+        ...e.split,
+        weights: Object.fromEntries(
+          Object.entries(e.split.weights || {}).filter(([k]) => !k.startsWith('account:'))
+        ),
+      },
+    }));
+    await withData(set);
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+
+    await screen.findByText('Waarom deze app');
+    expect(screen.queryByText(/schiet voor/)).toBe(null);
+    expect(screen.getByText(/Niemand kan meelezen/)).toBeTruthy();
   }, 30000);
 });
 

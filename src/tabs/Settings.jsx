@@ -237,7 +237,7 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
       )}
 
       <div className="section">Waarom deze app</div>
-      <Why />
+      <Why store={store} />
 
       <div className="tiny dim center" style={{ marginTop: 32 }}>
         Pay · gebouwd {typeof __BUILD__ === 'string' ? __BUILD__ : 'lokaal'}
@@ -639,29 +639,98 @@ function RenameSheet({ field, name, others, onSave, onClose }) {
  * the way it is. Every line below is a decision that came out of one real
  * spreadsheet, and knowing which they are is what keeps the thing usable.
  */
-function Why() {
+/**
+ * What this does for *this* household, written from what is actually in it.
+ *
+ * A list of features is a brochure, and a brochure ages badly: half of it does
+ * not apply to you and you cannot tell which half. So every point here has to
+ * earn its place from the ledger — the names are your accounts and your people,
+ * and a point that does not apply is simply not there.
+ *
+ * It also keeps the promise the rest of the app keeps: no name of yours is in
+ * this file. They come out of the vault on your own device.
+ */
+function Why({ store }) {
+  const { people = [], accounts = [], expenses = [] } = store || {};
+  const me = people.find((p) => p.isMe);
+  const others = people.filter((p) => !p.isMe);
+  const hub = accounts.find((a) => a.kind === 'shared' && a.settlement);
+  const shared = accounts.filter((a) => a.kind === 'shared');
+  const business = accounts.filter((a) => a.kind === 'business');
+  const live = expenses.filter((e) => e.cadence !== 'once');
+
+  // Someone who takes part in a couple of things is a friend on a
+  // subscription; someone in nearly everything is who you live with.
+  const shareOf = (person) =>
+    live.filter((e) => Object.keys(e.split?.weights || {}).concat(e.split?.participants || []).includes(person.id));
+  const housemates = others.filter((p) => shareOf(p).length > live.length / 3);
+  const friends = others.filter((p) => shareOf(p).length > 0 && shareOf(p).length <= live.length / 3);
+
+  const fronting = live.filter(
+    (e) => e.payer?.kind === 'account' && business.some((a) => a.id === e.payer.id)
+  );
+  const negative = live.filter((e) => e.amount < 0);
+  const yearly = live.filter((e) => ['year', 'halfyear', 'quarter'].includes(e.cadence));
+  const cycling = live.filter((e) => e.cadence === 'fourweek' || e.cadence === 'week');
+  const grouped = Object.entries(
+    live.reduce((all, e) => {
+      if (e.charge) all[e.charge] = (all[e.charge] || 0) + 1;
+      return all;
+    }, {})
+  )
+    .filter(([, n]) => n > 1)
+    .sort((a, b) => b[1] - a[1]);
+  const potsWithDeposit = shared.filter((a) =>
+    Object.values(a.contributions || {}).some((c) => Number(c) > 0)
+  );
+
+  const names = (list) =>
+    list.length === 1
+      ? list[0].name
+      : `${list.slice(0, -1).map((p) => p.name).join(', ')} en ${list[list.length - 1].name}`;
+
   const points = [
-    ['Vaste lasten, geen tikkies',
-     'Splitwise en Tricount rekenen losse uitgaven af. Dit rekent met wat elke maand doorloopt, en zegt welk bedrag je als vaste overboeking klaarzet.'],
-    ['Een rekening is een partij',
-     'De gezamenlijke rekening telt mee als deelnemer, niet als etiket. Daardoor is "wat moet zij overmaken" dezelfde som als al het andere, en geen apart lijstje.'],
-    ['Eén bedrag per persoon',
-     'Alle onderlinge verrekeningen lopen langs die rekening. Wat iemand jou schuldig is komt daar binnen en gaat er weer uit, dus jij stort minder in plaats van dat er tientjes heen en weer gaan.'],
-    ['De zaak schiet voor, en draagt soms zelf',
-     'Iets dat zakelijk wordt afgeschreven maar privé gebruikt, komt terug bij jou. En een deel van een post kan bij de zaak liggen in plaats van bij een persoon — dat kwart bankkosten dat nergens thuishoorde.'],
-    ['Kruislingse abonnementen strepen zichzelf weg',
-     'Jouw YouTube waar hij op zit, tegen zijn Tidal waar jij op zit: één regel met het verschil, en eronder waar dat vandaan komt.'],
-    ['Jaarposten worden opgespaard',
-     'Wat één keer per jaar wordt afgeschreven telt elke maand voor een twaalfde mee. Je ziet wat er die maand werkelijk af gaat en wat er opzij staat voor later.'],
-    ['Incasso naast categorie',
-     'Een categorie zegt wat iets is; een incasso zegt welke posten samen als één regel van je rekening gaan. Zo houd je het naast je bankafschrift zonder te rekenen.'],
-    ['Tot op de cent',
-     'Alles in hele centen, verdeeld met de methode van de grootste rest. De delen tellen exact op tot het bedrag en de uitkomst wisselt niet per keer.'],
-    ['Versleuteld voordat het je apparaat verlaat',
-     'Namen, bedragen en notities gaan als versleutelde blob de database in. Er bestaat geen leesbare kolom, dus ook Supabase ziet niets — alleen hoeveel rijen er zijn.'],
-    ['Van jou',
-     'Eén HTML-bestand op je eigen adres, je eigen database erachter. Geen bedrijf ertussen dat de prijs kan veranderen of ermee kan stoppen.'],
-  ];
+    live.length > 1 && [
+      'Eén bedrag per maand, en dat verandert niet',
+      `${hub ? `Alles loopt langs ${hub.name}, dus ` : ''}iedereen maakt één bedrag over in plaats van los af te rekenen. Elke maand hetzelfde bedrag, ook met jaarposten erin: die tellen elke maand voor een twaalfde mee. Zet het als automatische overboeking klaar en kijk er niet meer naar om.`,
+    ],
+    fronting.length > 0 && business.length > 0 && [
+      `${business[0].name} schiet voor, jij verrekent privé`,
+      `${fronting.length === 1 ? `"${fronting[0].name}" gaat` : `${count(fronting.length, 'post gaat', 'posten gaan')}`} van ${business[0].name} af, terwijl ${housemates.length ? names(housemates) : 'iemand anders'} een deel draagt. Dat komt bij jou terug${hub ? `: je stort minder op ${hub.name}` : ''}. Niemand hoeft geld naar een zakelijke rekening over te maken.`,
+    ],
+    friends.length > 0 && hub && [
+      `${names(friends)} storten op ${hub.name}`,
+      `Zij doen aan een paar posten mee, verder niets. Hun deel komt binnen op ${hub.name} en gaat op in het geheel, dus je hoeft ze nergens apart bij te houden.`,
+    ],
+    negative.length > 0 && [
+      'Geld dat terugkomt is een post met een min',
+      `${negative.map((e) => `"${e.name}"`).slice(0, 2).join(' en ')} ${negative.length === 1 ? 'staat' : 'staan'} negatief onder de post waar ${negative.length === 1 ? 'hij' : 'ze'} bij hoort. Je ziet dus wat je netto kwijt bent, niet alleen wat de bank incasseert — en het wordt net zo verdeeld als de rest.`,
+    ],
+    yearly.length > 0 && [
+      'Je weet wat er op de rekening hoort te staan',
+      `Voor ${count(yearly.length, 'post', 'posten')} die niet elke maand wordt afgeschreven gaat er maandelijks een deel opzij. Je ziet per rekening wat er nu op hoort te staan, zodat er in de maand van de afschrijving precies genoeg is en daarna weer niets.`,
+    ],
+    cycling.length > 0 && [
+      'Vier weken is geen maand',
+      `${count(cycling.length, 'post loopt', 'posten lopen')} per vier weken, dus dertien keer per jaar. Dat rekent Pay als dertien, niet als twaalf — een verschil van 8% dat je anders elk jaar mist.`,
+    ],
+    grouped.length > 0 && [
+      'Je afschrift naast je posten',
+      `${grouped[0][1]} posten gaan samen als "${grouped[0][0]}" van je rekening. Op het overzicht staan ze ook als één regel, met het bedrag dat je op je afschrift terugvindt.`,
+    ],
+    potsWithDeposit.length > 0 && [
+      'Klopt de vaste inleg nog?',
+      `Bij ${names(potsWithDeposit.map((a) => ({ name: a.name })))} staat wat er bij de bank is ingesteld naast wat er volgens de posten op moet komen. Loopt dat uit elkaar, dan loopt die rekening vol of leeg — en zie je dat vóórdat het gebeurt.`,
+    ],
+    [
+      'Niemand kan meelezen',
+      'Namen, bedragen en notities worden op je eigen apparaat versleuteld voordat ze weggaan. In de database staat één onleesbaar blok per regel. Geen leesbare kolom, dus ook de partij die de database draait ziet niets.',
+    ],
+    [
+      'Van jou, en het blijft bestaan',
+      'Eén bestand op je eigen adres, je eigen database erachter. Er is geen bedrijf dat de prijs kan verhogen, functies kan weghalen of ermee kan stoppen.',
+    ],
+  ].filter(Boolean);
 
   return (
     <>
@@ -674,8 +743,8 @@ function Why() {
         ))}
       </div>
       <div className="hint">
-        Alles hierboven komt uit één spreadsheet met echte vaste lasten. Het is geen lijstje
-        functies dat leuk leek — het is wat er nodig bleek om dat blad overbodig te maken.
+        Dit is geschreven uit wat er nu in je eigen overzicht staat. Wat je hier niet ziet, gebeurt
+        bij jou ook niet.
       </div>
     </>
   );

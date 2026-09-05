@@ -143,7 +143,7 @@ function PersonForm({ person, people, cloud, onClaim, onSave, onRemove, onClose 
         </div>
       </div>
 
-      <Field label="Kleur" hint="Waar je deze persoon aan herkent in de lijsten en balkjes.">
+      <Field label="Kleur" hint="Waaraan je deze persoon herkent in de lijsten.">
         <div className="chips">
           {COLOURS.map((c) => (
             <button
@@ -353,7 +353,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
           {members.length > 0 && (
             <Field
               label="Vaste inleg per maand"
-              hint="Wat er nu daadwerkelijk maandelijks op gestort wordt. Pay zet dat naast het werkelijke aandeel, zodat je ziet of de pot uitkomt. Laat leeg als jullie precies het aandeel overmaken."
+              hint="Wat er bij de bank als vaste overboeking staat. Alleen om naast het aandeel te leggen — het verandert de verdeling niet. Leeg laten mag."
             >
               <div className="panel" style={{ marginBottom: 0 }}>
                 {members.map((id) => {
@@ -379,7 +379,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
       ) : (
         <Field
           label="Van wie is deze rekening"
-          hint="Wat anderen meegebruiken van deze rekening, staat bij deze persoon in het krijt."
+          hint="Betaalt deze rekening iets voor een ander, dan staat dat bij deze persoon in het krijt."
         >
           <div className="chips">
             {people.map((p) => (
@@ -399,7 +399,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
       <details className="disclose" style={{ marginBottom: 18 }}>
         <summary>Rekeningnummer</summary>
         <div style={{ marginTop: 16 }}>
-          <Field label="IBAN" hint="Alleen om over te tikken bij het overmaken. Blijft in je eigen huishouden.">
+          <Field label="IBAN" hint="Om over te tikken bij het overmaken.">
             <input
               className="input"
               placeholder="NL00 BANK 0000 0000 00"

@@ -43,15 +43,16 @@ export default function ChargeView({ charge, accounts, month, onClose }) {
 
       {charge.chargeUnknown && (
         <div className="hint warn" style={{ marginBottom: 14 }}>
-          Van een post hieronder is niet bekend wanneer hij begon, dus kan Pay niet zeggen of hij
-          deze maand meegaat. Vul bij die post <strong>Wordt afgeschreven in</strong> in.
+          Bij een post hieronder is niet ingevuld in welke maand hij wordt afgeschreven, dus telt
+          hij hier niet mee. Vul bij die post <strong>Wordt afgeschreven in</strong> in.
         </div>
       )}
 
       {named.length > 1 && (
         <div className="hint warn" style={{ marginBottom: 14 }}>
-          Deze posten gaan van verschillende rekeningen af ({named.join(', ')}), en dan is het geen
-          één afschrijving. Waarschijnlijk staat er bij een post de verkeerde rekening.
+          Deze posten gaan van verschillende rekeningen af ({named.join(', ')}). Dan is het geen
+          één afschrijving en klopt het bedrag hierboven niet met je afschrift. Waarschijnlijk staat
+          bij een post de verkeerde rekening.
         </div>
       )}
 
@@ -94,15 +95,15 @@ export default function ChargeView({ charge, accounts, month, onClose }) {
             />
           </div>
           <div className="hint">
-            De maandlast hierboven is uitgesmeerd; wat er echt af gaat komt in één keer. Dit is wat
-            daar inmiddels voor gespaard is.
+            De maandlast hierboven is uitgesmeerd over het jaar; het echte bedrag gaat in één keer
+            af. Dit is wat daar tot nu toe voor opzij staat.
           </div>
         </>
       )}
 
       <div className="hint" style={{ marginTop: 14 }}>
-        <Icon name="receipt" size={13} /> Zoek dit bedrag op je afschrift terug. Klopt het niet met
-        wat de bank afschreef, dan mist er een post of staat er een te veel op deze incasso.
+        <Icon name="receipt" size={13} /> Dit bedrag hoort op je afschrift te staan. Wijkt het af,
+        dan mist er hier een post of staat er een te veel op deze incasso.
       </div>
     </Sheet>
   );

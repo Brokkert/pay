@@ -152,8 +152,8 @@ export default function ExpenseView({
             <div className="box">
               <div className="small muted">
                 Vul bij <strong>Wordt afgeschreven in</strong> de maand in waarin de bank dit
-                afschrijft, dan weet Pay wanneer het eraf gaat — en hoeveel er inmiddels voor
-                opzij staat.
+                weghaalt. Dan weet Pay wanneer het eraf gaat en hoeveel er nu voor opzij hoort te
+                staan.
               </div>
             </div>
           )}
@@ -162,7 +162,7 @@ export default function ExpenseView({
 
       {!running && (
         <div className="hint warn" style={{ marginBottom: 14 }}>
-          Loopt niet in {formatMonth(month)}, dus telt deze maand nergens in mee.
+          Loopt niet in {formatMonth(month)}. Deze post telt deze maand dus nergens in mee.
         </div>
       )}
 
@@ -215,8 +215,8 @@ export default function ExpenseView({
             </div>
           ))}
           <div className="hint">
-            Je maakt niet per post iets over, maar één bedrag per persoon. Dit is waar deze post in
-            terechtkomt en waar hij tegen wegvalt.
+            Je maakt niet per post iets over, maar één bedrag per persoon. Hier zie je in welk
+            bedrag deze post terechtkomt en waar hij tegen wegvalt.
           </div>
         </>
       )}

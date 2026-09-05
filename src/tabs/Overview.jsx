@@ -67,7 +67,7 @@ const transferDetail = (transfer, context) => ({
       tone: cents < 0 ? 'credit' : '',
     }))
     .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents)),
-  note: 'Alles wat in dit ene bedrag is weggestreept. Wat groen staat trekt de andere kant op en maakt het bedrag dus kleiner.',
+  note: 'De posten die in dit ene bedrag zijn weggestreept. Groen trekt de andere kant op en maakt het bedrag dus kleiner.',
 });
 
 export default function Overview({ store, month, onMonth }) {
@@ -100,7 +100,7 @@ export default function Overview({ store, month, onMonth }) {
     label: 'Per maand',
     cents: result.monthlyTotal,
     rows: postRows(result.lines),
-    note: 'Alles wat er loopt, op het maandbedrag — ook de delen die anderen dragen. Wat een jaarpost kost is uitgesmeerd over twaalf maanden.',
+    note: 'Alles wat er loopt, ook de delen die anderen dragen. Jaarposten staan op een twaalfde van hun bedrag.',
   };
 
   // What ran on the business this month: exactly what came off the business
@@ -138,7 +138,7 @@ export default function Overview({ store, month, onMonth }) {
                       label: 'Draagt per maand',
                       cents: mine,
                       rows: postRows(result.lines, (l) => l.shares[me.id] || 0),
-                      note: 'Wat jij uiteindelijk draagt, ongeacht van welke rekening het wordt afgeschreven.',
+                      note: 'Jouw deel van elke post, van welke rekening het ook af gaat.',
                     }
                   : totalDetail
               )
@@ -170,7 +170,7 @@ export default function Overview({ store, month, onMonth }) {
                 label: 'Per maand',
                 cents: business,
                 rows: postRows(result.lines.filter((l) => isBusiness(l.expense, accounts))),
-                note: 'Posten die van een zakelijke rekening afgaan. Dat zegt nog niets over wie het draagt — dat staat onderaan.',
+                note: 'Wat er van een zakelijke rekening af gaat. Wie het draagt staat verderop, bij "Wat ieder uiteindelijk draagt".',
               })
             }
           >
@@ -199,14 +199,14 @@ export default function Overview({ store, month, onMonth }) {
           <div className="hint" style={{ marginTop: -4 }}>
             {result.hub ? (
               <>
-                Alles is weggestreept en langs <strong>{result.hub.name}</strong> geleid: ook wat er
-                van een andere rekening af ging, wordt daar verrekend. Ieder maakt dus één bedrag
-                over.
+                Iedereen maakt één bedrag over, langs <strong>{result.hub.name}</strong>. Ook wat
+                van een andere rekening af ging is daarin weggestreept. Tik op een regel om te zien
+                uit welke posten het bestaat.
               </>
             ) : (
               <>
-                Dit zijn de bedragen ná wegstrepen. Zet ze als vaste overboeking klaar en je hoeft
-                er geen maand meer naar om te kijken.
+                Deze bedragen zijn al tegen elkaar weggestreept. Zet ze als vaste overboeking klaar
+                en je hoeft er geen maand meer naar om te kijken.
               </>
             )}
           </div>
@@ -255,8 +255,8 @@ export default function Overview({ store, month, onMonth }) {
             ))}
           </div>
           <div className="hint" style={{ marginTop: -4 }}>
-            Posten die samen als één regel van je rekening gaan. Tik erop om te zien wat erin zit en
-            wat de bank deze maand echt afschrijft.
+            Posten die samen als één afschrijving van je rekening gaan. Tik erop voor wat erin zit
+            en wat de bank deze maand echt weghaalt.
           </div>
         </>
       )}
@@ -278,8 +278,8 @@ export default function Overview({ store, month, onMonth }) {
             ))}
           </div>
           <div className="hint" style={{ marginTop: -4 }}>
-            Eenmalige uitgaven, rechtstreeks af te rekenen. Vink ze bij <strong>Lasten</strong> af
-            zodra dat gebeurd is.
+            Eenmalige uitgaven. Die reken je rechtstreeks af, niet via je maandbedrag. Vink ze bij
+            <strong> Lasten</strong> af zodra dat gebeurd is.
           </div>
         </>
       )}
@@ -303,7 +303,7 @@ export default function Overview({ store, month, onMonth }) {
                   rows: postRows(
                     result.lines.filter((l) => categoryName(l.expense.category) === id)
                   ),
-                  note: 'Alle posten in deze categorie, op hun maandbedrag.',
+                  note: 'De posten in deze categorie, op hun maandbedrag.',
                 })
               }
             />
@@ -331,7 +331,7 @@ export default function Overview({ store, month, onMonth }) {
                   )
                 ),
                 empty: 'Er gaat deze maand niets van deze rekening af.',
-                note: 'Wat er van deze rekening wordt afgeschreven, op het maandbedrag. Wie het draagt kan iemand anders zijn.',
+                note: 'Wat er van deze rekening af gaat. Wie het draagt kan iemand anders zijn.',
               })
             }
           />
@@ -355,7 +355,7 @@ export default function Overview({ store, month, onMonth }) {
                   label: 'Draagt per maand',
                   cents: result.borne[b.key] || 0,
                   rows: postRows(result.lines, (l) => l.shares[b.key] || 0),
-                  note: 'De posten waarin dit aandeel zit, met het deel dat hier landt.',
+                  note: 'De posten waarin dit aandeel zit, met het deel dat hier terechtkomt.',
                 })
               }
             />
@@ -376,7 +376,7 @@ export default function Overview({ store, month, onMonth }) {
                   result.lines.filter((l) => l.remainder !== 0 && isAccountParty(l.party)),
                   (l) => l.remainder
                 ),
-                note: 'Bij deze posten tellen de vaste bedragen niet op tot het postbedrag, en het verschil ligt bij niemand. Open de post en vul in wie dat deel draagt.',
+                note: 'Hier tellen de vaste bedragen niet op tot het postbedrag. Open de post en vul in wie dat laatste stuk draagt.',
               })
             }
           />
@@ -384,8 +384,8 @@ export default function Overview({ store, month, onMonth }) {
         <Total label="Samen" cents={result.monthlyTotal} />
       </div>
       <div className="hint">
-        Dit is de last ná verdeling, ongeacht van wiens rekening het afgeschreven wordt. De som is
-        precies de maandlast: er raakt geen cent zoek en er komt er geen bij.
+        Wat ieder draagt na verdeling, van wiens rekening het ook af ging. Samen precies de
+        maandlast: er raakt geen cent zoek en er komt er geen bij.
         {result.unassigned !== 0 && (
           <>
             {' '}Staat er iets bij <strong>nog niet verdeeld</strong>, dan heeft een post met vaste
@@ -574,7 +574,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                   (l) => l.expense.amount
                 ),
                 empty: 'Deze maand wordt er niets van deze rekening afgeschreven.',
-                note: 'Wat de bank deze maand echt afschrijft — het volle bedrag, niet het maandgemiddelde.',
+                note: 'Wat de bank deze maand echt weghaalt: het volle bedrag, niet het maandgemiddelde.',
               })
             }
           />
@@ -606,7 +606,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                 };
               }),
               empty: 'Alles op deze rekening wordt maandelijks afgeschreven, dus er hoeft niets op te blijven staan.',
-              note: 'Zet dit bedrag erop en stort daarna elke maand de maandlast, dan staat er genoeg op het moment dat een jaarpost wordt afgeschreven — en is de rekening daarna weer leeg. Op een paar cent na: een jaarbedrag dat niet door twaalf deelt, past nu eenmaal niet in twaalf gelijke maandbedragen. Staat bij een post geen afschrijfmaand, dan weet Pay niet wanneer hij eraf gaat; die telt hier voor niets mee.',
+              note: 'Zet dit bedrag op de rekening en stort daarna elke maand de maandlast. Dan is er genoeg als een jaarpost wordt afgeschreven, en is de rekening daarna weer leeg. Mist bij een post de afschrijfmaand, dan telt die hier voor niets mee.',
             })
           }
         />
@@ -711,7 +711,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                       what: nameOf(id),
                       cents,
                     })),
-                    note: 'Wat er volgens de posten door personen op deze rekening moet worden gestort. Dat is de maandlast plus wat er weer uit gaat naar wie iets voorschoot — dat geld gaat er alleen doorheen. Wat een andere rekening zelf bijdraagt staat hier niet in; dat komt daarvandaan, niet van jullie.',
+                    note: 'Wat jullie samen op deze rekening moeten storten: de maandlast plus wat er weer uit gaat naar wie iets voorschoot. Dat laatste geld gaat er alleen doorheen. Wat een andere rekening zelf bijdraagt staat hier niet in — dat komt daarvandaan.',
                   })
                 }
               />
@@ -733,7 +733,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                       sub: `hoort ${formatMoney(pot.incoming[id] || 0)} te zijn`,
                       cents: Number(cents),
                     })),
-                  note: 'Wat er bij de bank als vaste overboeking staat ingesteld. Dit telt nergens in mee bij het verdelen — het staat er alleen naast, zodat je ziet of de rekening uitkomt.',
+                  note: 'Wat er bij de bank als vaste overboeking staat. Dit verandert niets aan de verdeling; het staat ernaast zodat je ziet of de rekening uitkomt.',
                 })
               }
             />
@@ -761,7 +761,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                       cents: (Number(cents) || 0) - (pot.incoming[id] || 0),
                       tone: (Number(cents) || 0) - (pot.incoming[id] || 0) < 0 ? 'debt' : 'credit',
                     })),
-                  note: 'Per persoon het verschil tussen de vaste overboeking en wat er volgens de posten op moet komen. Staat er iets bij, dan loopt de rekening op den duur vol of leeg.',
+                  note: 'Per persoon het verschil tussen de vaste overboeking en wat er op moet komen. Staat hier iets, dan loopt de rekening op den duur vol of leeg.',
                 })
               }
             />
@@ -771,37 +771,38 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
       </div>
       {cycling.length > 0 && (
         <div className="hint" style={{ marginTop: -4 }}>
-          Hier staat {count(cycling.length, 'post', 'posten')} die vaker dan maandelijks wordt
-          afgeschreven. Over een jaar komt dat precies uit, maar één maand per jaar valt er een
-          extra afschrijving in. Houd daarvoor ongeveer <strong>{formatMoney(cushion)}</strong> als
-          bodem aan. Welke maand dat is kan Pay niet zeggen: zo'n cyclus loopt niet met de
+          {count(cycling.length, 'post gaat', 'posten gaan')} hier vaker dan maandelijks af. Over
+          een jaar klopt dat precies, maar één maand per jaar vallen er twee afschrijvingen in
+          dezelfde maand. Houd daarvoor <strong>{formatMoney(cushion)}</strong> als bodem aan.
+          Welke maand dat is valt niet te zeggen: zo'n cyclus van 28 dagen loopt niet met de
           kalender mee.
         </div>
       )}
       {pot.chargeUnknown && (
         <div className="hint warn" style={{ marginTop: -4 }}>
-          Van een post op deze rekening is niet bekend in welke maand hij wordt afgeschreven.
-          Vul bij die post <strong>Wordt afgeschreven in</strong> in.
+          Bij een post hier is niet ingevuld in welke maand hij wordt afgeschreven, dus klopt
+          hierboven niet wat er op de rekening hoort te staan. Vul bij die post
+          <strong> Wordt afgeschreven in</strong> in.
         </div>
       )}
       {isHub && (
         <div className="hint" style={{ marginTop: -4 }}>
-          Alle onderlinge verrekeningen lopen hierlangs. Wat iemand voorschoot van een eigen of
-          zakelijke rekening, komt hier binnen en gaat er weer uit — dat is de reden dat je zelf
-          minder hoeft te storten.
+          Alle onderlinge schulden lopen hierlangs. Schoot je iets voor van een eigen of zakelijke
+          rekening, dan komt dat hier binnen en gaat het er weer uit. Daarom hoef jij zelf minder
+          te storten.
         </div>
       )}
       {hasContributions && mine.length === 0 && (
         <div className="hint" style={{ marginTop: -4 }}>
-          Er staan geen posten op deze rekening, dus Pay weet niet waar dit geld heen gaat en kan
-          niet zeggen of de inleg klopt. Voor een pot waar je variabele uitgaven van doet — de
-          boodschappen — is dat ook zo bedoeld: de inleg staat er als afspraak, niet als som.
+          Er staan geen posten op deze rekening, dus valt er niets te controleren: Pay weet niet
+          waar dit geld heen gaat. Voor een pot waar je wisselende uitgaven van doet, zoals
+          boodschappen, is dat ook goed — de inleg is daar een afspraak, geen som.
         </div>
       )}
       {!hasContributions && !isHub && (
         <div className="hint" style={{ marginTop: -4 }}>
-          Vul bij <strong>Mensen</strong> in wat ieder maandelijks stort, dan zie je hier meteen of
-          de rekening uitkomt.
+          Vul bij <strong>Mensen</strong> in wat ieder maandelijks stort, dan zie je hier of deze
+          rekening uitkomt.
         </div>
       )}
     </>

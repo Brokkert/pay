@@ -81,8 +81,7 @@ export default function SplitPicker({ amount, cadence, spec, people, accounts = 
         </div>
         {taking.some((key) => key.startsWith(ACCOUNT_PREFIX)) && (
           <div className="hint">
-            Een zakelijke rekening draagt dit deel zelf, dus het staat niet bij jou privé — en je
-            ziet meteen wat je bij de zaak kunt terughalen.
+            Dit deel ligt bij de zaak, niet bij jou privé. Zo zie je wat je kunt terughalen.
           </div>
         )}
       </Field>
