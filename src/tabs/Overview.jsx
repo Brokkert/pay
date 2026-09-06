@@ -648,6 +648,20 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
   };
   const here = `account:${pot.account.id}`;
   const flows = [
+    // Money arriving from outside the ledger — turnover on a holding. Not a
+    // settlement and not a cost; without it an account at the top of the chain
+    // cannot say what stays on it.
+    ...(pot.income
+      ? [
+          {
+            key: 'income',
+            left: <AccountMark />,
+            what: 'Komt erop',
+            sub: 'geld dat van buiten Pay binnenkomt',
+            cents: pot.income,
+          },
+        ]
+      : []),
     ...Object.entries(pot.incoming).map(([id, cents]) => ({
       key: `in-${id}`,
       left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
@@ -665,6 +679,20 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
     })),
   ].sort((a, b) => b.cents - a.cents);
   flows.push(
+    ...pot.salaries.map((row) => ({
+      key: `salary-${row.person.id}`,
+      left: <Avatar person={row.person} size="sm" />,
+      what: `Salaris naar ${row.person.name}`,
+      sub: 'gaat hiervandaan naar een persoon',
+      cents: -row.cents,
+    })),
+    ...pot.feeds.map((row) => ({
+      key: `feed-${row.account.id}`,
+      left: <AccountMark />,
+      what: `Vaste inleg naar ${row.account.name}`,
+      sub: 'wordt hiervandaan overgemaakt',
+      cents: -row.cents,
+    })),
     ...Object.entries(pot.outgoing)
       .map(([id, cents]) => ({
         key: `out-${id}`,
@@ -814,7 +842,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
             onClick={row.onClick}
           />
         ))}
-        {hasContributions && (
+        {(hasContributions || pot.income > 0 || pot.drawn > 0) && (
           <>
             {shared && pot.needed !== pot.out && (
               <Line
@@ -837,6 +865,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                 }
               />
             )}
+            {hasContributions && (
             <Line
               what="Staat als vaste inleg ingesteld"
               cents={pot.paidIn}
@@ -858,11 +887,12 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                 })
               }
             />
+            )}
             {/* Nothing is booked on this account, so there is nothing to hold
                 the standing orders against. Calling the whole deposit a
                 surplus would be a claim about money Pay knows nothing about —
                 a groceries pot is emptied by groceries it has never seen. */}
-            {mine.length === 0 ? null : (
+            {mine.length === 0 && !pot.income && !pot.drawn ? null : (
             <Total
               label={pot.difference >= 0 ? 'Blijft over' : 'Komt tekort'}
               cents={Math.abs(pot.difference)}

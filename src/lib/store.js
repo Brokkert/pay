@@ -335,6 +335,10 @@ function retarget(record, map) {
   const to = (id) => map.get(id) ?? id;
   const out = { ...record };
   if (out.ownerId) out.ownerId = to(out.ownerId);
+  // Where an income or a standing order comes from is a reference too, and one
+  // that points at an account rather than a person.
+  if (out.incomeFrom) out.incomeFrom = to(out.incomeFrom);
+  if (out.fundedBy) out.fundedBy = to(out.fundedBy);
   if (Array.isArray(out.members)) out.members = out.members.map(to);
   if (out.contributions) {
     out.contributions = Object.fromEntries(

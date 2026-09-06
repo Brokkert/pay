@@ -775,3 +775,34 @@ describe('a pot that adds up', () => {
       .toBe(pot.out);
   });
 });
+
+describe('a holding at the top of the chain', () => {
+  it('says what is left after the salary and the standing order', () => {
+    const holding = { id: 'a-holding', name: 'Holding', kind: 'business', ownerId: ME,
+      income: 800000 };
+    const costs = { id: 'a-costs', name: 'Zakelijke vaste lasten', kind: 'business', ownerId: ME,
+      contributions: { [ME]: 40000 }, fundedBy: 'a-holding' };
+    const result = forMonth({
+      people: [{ ...people[0], income: 500000, incomeFrom: 'a-holding' }, ...people.slice(1)],
+      accounts: [holding, costs],
+      expenses: [
+        expense({ id: 'h1', name: 'Autoverzekering', amount: 12596,
+          payer: { kind: 'account', id: 'a-costs' },
+          split: { kind: 'equal', participants: [ME] } }),
+      ],
+    }, '2026-09');
+
+    const top = result.pots.find((p) => p.account.id === 'a-holding');
+    // 8.000,00 in, 5.000,00 salary out, 400,00 to the expenses account.
+    expect(top.income).toBe(800000);
+    expect(top.salaries.map((r) => r.cents)).toEqual([500000]);
+    expect(top.feeds.map((r) => r.cents)).toEqual([40000]);
+    expect(top.difference).toBe(800000 - 500000 - 40000);
+
+    // And the account it feeds is judged on its own terms: 400,00 in against
+    // 125,96 of insurance.
+    const below = result.pots.find((p) => p.account.id === 'a-costs');
+    expect(below.needed).toBe(12596);
+    expect(below.difference).toBe(40000 - 12596);
+  });
+});

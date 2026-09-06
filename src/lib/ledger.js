@@ -191,7 +191,8 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
       accounts,
       perAccount,
       { realPerAccount, asidePerAccount, unknownCharge },
-      lines
+      lines,
+      people
     ),
     hub,
     warnings: [...new Set(warnings)],
@@ -301,9 +302,12 @@ export function net(matrix) {
  * be sitting on it" is the same question there; it was simply never asked,
  * because the panel started life as a view of a shared pot.
  */
-function potOverview(transfers, accounts, perAccount, saving, lines) {
+function potOverview(transfers, accounts, perAccount, saving, lines, people) {
   const carries = (id) =>
-    lines.some((l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === id);
+    lines.some((l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === id) ||
+    Number(accounts.find((a) => a.id === id)?.income) > 0 ||
+    people.some((p) => p.incomeFrom === id) ||
+    accounts.some((a) => a.fundedBy === id);
   return accounts
     .filter((a) => a.kind === 'shared' || carries(a.id))
     .map((account) => {
@@ -329,6 +333,25 @@ function potOverview(transfers, accounts, perAccount, saving, lines) {
       const contributions = account.contributions || {};
       const paidIn = Object.values(contributions).reduce((sum, c) => sum + (Number(c) || 0), 0);
       const out = perAccount[account.id] || 0;
+
+      // What comes in from outside the ledger, and what is drawn out of it the
+      // same way. Neither is a cost and neither is a debt — a holding paying
+      // out salary is moving its own money — but without them an account at
+      // the top of the chain cannot say what is left on it, which is the whole
+      // reason to look.
+      const income = Number(account.income) || 0;
+      const salaries = people
+        .filter((p) => p.incomeFrom === account.id && Number(p.income) > 0)
+        .map((p) => ({ person: p, cents: Number(p.income) }));
+      const feeds = accounts
+        .filter((a) => a.fundedBy === account.id && a.id !== account.id)
+        .map((a) => ({
+          account: a,
+          cents: Object.values(a.contributions || {}).reduce((sum, c) => sum + (Number(c) || 0), 0),
+        }))
+        .filter((f) => f.cents !== 0);
+      const drawn =
+        salaries.reduce((sum, r) => sum + r.cents, 0) + feeds.reduce((sum, r) => sum + r.cents, 0);
       // What has to come in. On an account people pay into that is their
       // deposits: the expenses plus whatever it pays back to someone who
       // fronted, which has to be on it first — holding a standing order
@@ -351,7 +374,12 @@ function potOverview(transfers, accounts, perAccount, saving, lines) {
         toAccounts,
         contributions,
         paidIn,
-        difference: paidIn - needed,
+        income,
+        salaries,
+        feeds,
+        drawn,
+        // What is left on it: everything arriving, less everything leaving.
+        difference: income + paidIn - needed - drawn,
         // What really leaves this month, what is being saved for later, and
         // whether some expense could not say which month it goes out.
         charged: saving.realPerAccount[account.id] || 0,

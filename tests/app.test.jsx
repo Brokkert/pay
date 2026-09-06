@@ -815,6 +815,44 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
+describe('a holding, top of the chain', () => {
+  it('takes turnover in, salary out, and says what stays', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+
+    // Turnover on the business account.
+    await user.click(await screen.findByRole('button', { name: /Mensen/ }));
+    await user.click(await screen.findByText('Zaak'));
+    let sheet = screen.getByRole('heading', { name: 'Rekening wijzigen' }).closest('.sheet');
+    let field = within(sheet).getByText('Komt er maandelijks op').closest('.field');
+    await user.type(within(field).getByRole('textbox'), '8000,00');
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    // And a salary paid out of it.
+    await user.click(await screen.findByText('Ik'));
+    sheet = screen.getByRole('heading', { name: 'Persoon wijzigen' }).closest('.sheet');
+    field = within(sheet).getByText('Inkomen per maand').closest('.field');
+    await user.type(within(field).getByRole('textbox'), '5000,00');
+    await user.click(within(field).getByRole('button', { name: 'Zaak' }));
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    await user.click(await screen.findByRole('button', { name: /Overzicht/ }));
+    const panel = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Zaak').nextElementSibling;
+
+    expect(within(panel).getByText('Komt erop').closest('.line').textContent)
+      .toContain('8.000,00');
+    expect(within(panel).getByText('Salaris naar Ik').closest('.line').textContent)
+      .toContain('5.000,00');
+    // 8.000 in, 5.000 salary, 50,00 of internet and 4,00 of bank charges.
+    expect(within(panel).getByText('Blijft over').closest('.total').textContent)
+      .toContain('2.946,00');
+
+    // And it lands on the person as income, so what is left there follows too.
+    expect(screen.getByText('Wat er overblijft')).toBeTruthy();
+  }, 30000);
+});
+
 describe('what is left after the fixed costs', () => {
   it('shows it per person who filled in an income, and nobody else', async () => {
     const set = exampleHousehold();

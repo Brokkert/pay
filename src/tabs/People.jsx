@@ -83,6 +83,7 @@ export default function People({ store }) {
         <PersonForm
           person={person}
           people={people}
+          accounts={accounts}
           cloud={cloud}
           onClaim={claim}
           onSave={(record) => save('people', record)}
@@ -104,7 +105,7 @@ export default function People({ store }) {
   );
 }
 
-function PersonForm({ person, people, cloud, onClaim, onSave, onRemove, onClose }) {
+function PersonForm({ person, people, accounts = [], cloud, onClaim, onSave, onRemove, onClose }) {
   const [draft, setDraft] = useState(() => ({
     name: '',
     colour: COLOURS[people.length % COLOURS.length],
@@ -152,6 +153,32 @@ function PersonForm({ person, people, cloud, onClaim, onSave, onRemove, onClose 
         hint="Wat er netto binnenkomt. Alleen om te zien wat er na de vaste lasten overblijft — aan de verdeling verandert het niets. Leeg laten mag."
       >
         <AmountInput cents={draft.income || 0} onChange={(c) => set({ income: c })} />
+        {draft.income > 0 && accounts.length > 0 && (
+          <>
+            <div className="tiny dim" style={{ margin: '12px 0 7px' }}>
+              Wordt dit vanaf een rekening in Pay betaald? Dan telt het daar als uitgave.
+            </div>
+            <div className="chips">
+              <button
+                type="button"
+                className={`chip${!draft.incomeFrom ? ' on' : ''}`}
+                onClick={() => set({ incomeFrom: '' })}
+              >
+                Van buiten Pay
+              </button>
+              {accounts.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`chip${draft.incomeFrom === a.id ? ' on' : ''}`}
+                  onClick={() => set({ incomeFrom: a.id })}
+                >
+                  {a.name}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </Field>
 
       <Field label="Kleur" hint="Waaraan je deze persoon herkent in de lijsten.">
@@ -278,7 +305,14 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
         ...draft,
         name: draft.name.trim(),
         members: shared ? members : [],
-        contributions: shared ? contributions : {},
+        // On an account of your own the standing order is the owner's, and
+        // there are no members to filter it against — the members filter above
+        // would throw it away every time you saved.
+        contributions: shared
+          ? contributions
+          : draft.ownerId && Number(draft.contributions?.[draft.ownerId])
+            ? { [draft.ownerId]: Number(draft.contributions[draft.ownerId]) }
+            : {},
         ownerId: shared ? null : draft.ownerId,
         settlement: shared ? Boolean(draft.settlement) : false,
       });
@@ -411,6 +445,15 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
           put on a business expenses account every month in exactly the same
           way, and the same question follows: does what I set at the bank still
           match what comes off? One amount here, because there is one person. */}
+      {!shared && (
+        <Field
+          label="Komt er maandelijks op"
+          hint="Alleen voor een rekening waar geld binnenkomt dat verder niet in Pay staat — omzet op je holding bijvoorbeeld. Daarmee kan Pay zeggen wat er na de vaste lasten en het salaris op blijft staan."
+        >
+          <AmountInput cents={draft.income || 0} onChange={(c) => set({ income: c })} />
+        </Field>
+      )}
+
       {!shared && draft.ownerId && (
         <Field
           label="Vaste inleg per maand"
@@ -431,6 +474,34 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
               </span>
             </div>
           </div>
+          {Number(draft.contributions?.[draft.ownerId]) > 0 && (
+            <>
+              <div className="tiny dim" style={{ margin: '12px 0 7px' }}>
+                Komt dat van een andere rekening in Pay? Dan telt het daar als uitgave.
+              </div>
+              <div className="chips">
+                <button
+                  type="button"
+                  className={`chip${!draft.fundedBy ? ' on' : ''}`}
+                  onClick={() => set({ fundedBy: '' })}
+                >
+                  Van buiten Pay
+                </button>
+                {accounts
+                  .filter((a) => a.id !== draft.id)
+                  .map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      className={`chip${draft.fundedBy === a.id ? ' on' : ''}`}
+                      onClick={() => set({ fundedBy: a.id })}
+                    >
+                      {a.name}
+                    </button>
+                  ))}
+              </div>
+            </>
+          )}
         </Field>
       )}
 
