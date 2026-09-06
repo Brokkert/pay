@@ -157,6 +157,36 @@ export function useKeyring(user) {
     [cloud, user?.id, openWith]
   );
 
+  /**
+   * A new passphrase for the key you already have open.
+   *
+   * The passphrase is not the key; it is the lock around it. So while the key
+   * is in memory a forgotten passphrase is not a lost household — it just
+   * needs a new lock. Without this the only way back was a plain backup file
+   * and starting over, which is a lot of risk for a word you can forget on any
+   * ordinary Tuesday.
+   *
+   * The old package is replaced, so the old passphrase stops working straight
+   * away. Housemates keep their own: theirs wraps the same key with a
+   * passphrase of their own, and this does not touch it.
+   */
+  const rewrap = useCallback(
+    async (passphrase) => {
+      if (!key) throw new Error('De kluis staat niet open.');
+      const raw = await keyToRaw(key);
+      const pkg = await wrapWithPassphrase(raw, passphrase);
+      if (cloud) {
+        const { error: err } = await getClient()
+          .from('pay_secrets')
+          .upsert({ user_id: user.id, wrapped_key: pkg });
+        if (err) throw err;
+      } else {
+        write(WRAPPED, pkg);
+      }
+    },
+    [cloud, key, user?.id]
+  );
+
   /** Every time after that: type your passphrase. */
   const unlock = useCallback(
     async (passphrase) => {
@@ -252,6 +282,7 @@ export function useKeyring(user) {
     cloud,
     waiting,
     create,
+    rewrap,
     unlock,
     requestAccess,
     grantAccess,

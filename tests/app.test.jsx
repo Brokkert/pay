@@ -154,6 +154,43 @@ describe('signing out', () => {
   });
 });
 
+describe('a passphrase you have forgotten while still unlocked', () => {
+  it('lets you put a new lock on the key that is already open', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+
+    await user.click(screen.getByRole('button', { name: /Nieuwe wachtwoordzin instellen/ }));
+    const sheet = screen.getByRole('heading', { name: 'Nieuwe wachtwoordzin' }).closest('.sheet');
+    const set = within(sheet).getByRole('button', { name: 'Instellen' });
+    expect(set.disabled).toBe(true);
+
+    await user.type(within(sheet).getByLabelText('Nieuwe wachtwoordzin'), 'acht wilde ganzen boven de dijk');
+    await user.type(within(sheet).getByLabelText('Nog een keer'), 'acht wilde ganzen boven de dijk');
+    expect(set.disabled).toBe(false);
+    await user.click(set);
+
+    expect(await within(sheet).findByText(/de oude werkt niet meer/)).toBeTruthy();
+    // The new package is stored, and it is not the phrase itself.
+    const wrapped = localStorage.getItem('pay:key');
+    expect(wrapped).toBeTruthy();
+    expect(wrapped).not.toContain('ganzen');
+  }, 30000);
+
+  it('refuses two phrases that do not match', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+    await user.click(screen.getByRole('button', { name: /Nieuwe wachtwoordzin instellen/ }));
+
+    const sheet = screen.getByRole('heading', { name: 'Nieuwe wachtwoordzin' }).closest('.sheet');
+    await user.type(within(sheet).getByLabelText('Nieuwe wachtwoordzin'), 'acht wilde ganzen boven de dijk');
+    await user.type(within(sheet).getByLabelText('Nog een keer'), 'iets heel anders maar lang');
+    expect(within(sheet).getByRole('button', { name: 'Instellen' }).disabled).toBe(true);
+    expect(within(sheet).getByText(/niet gelijk/)).toBeTruthy();
+  }, 30000);
+});
+
 describe('getting out of local mode', () => {
   it('offers a way back to signing in once a project is connected', async () => {
     await withData(exampleHousehold());

@@ -99,7 +99,15 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
           </div>
         ))}
       </div>
-      <button className="btn wide" onClick={() => keyring?.lock()}>
+      <button className="btn wide" onClick={() => setPanel('phrase')}>
+        <Icon name="key" size={17} /> Nieuwe wachtwoordzin instellen
+      </button>
+      <div className="hint">
+        Kan zolang de kluis openstaat, ook als je de oude kwijt bent: de wachtwoordzin is het slot,
+        niet de sleutel zelf. De oude werkt daarna niet meer. Huisgenoten houden hun eigen zin.
+      </div>
+
+      <button className="btn wide" style={{ marginTop: 10 }} onClick={() => keyring?.lock()}>
         <Icon name="key" size={17} /> Vergrendelen
       </button>
       <div className="hint">
@@ -249,6 +257,9 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
           onDone={(n) => { setMessage(`${count(n, 'post', 'posten')} toegevoegd.`); setPanel(null); }}
           onClose={() => setPanel(null)}
         />
+      )}
+      {panel === 'phrase' && (
+        <PassphrasePanel keyring={keyring} onClose={() => setPanel(null)} />
       )}
       {panel === 'connection' && <ConnectionPanel onClose={() => setPanel(null)} />}
       {panel === 'invite' && <InvitePanel onClose={() => setPanel(null)} />}
@@ -650,6 +661,88 @@ function RenameSheet({ field, name, others, onSave, onClose }) {
  * It also keeps the promise the rest of the app keeps: no name of yours is in
  * this file. They come out of the vault on your own device.
  */
+/**
+ * A new passphrase for a vault that is already open.
+ *
+ * The one thing that used to have no way back: your browser still holds the
+ * key, everything is on screen, and the word that wraps it is gone. Locking or
+ * clearing the browser would then have cost the lot.
+ */
+function PassphrasePanel({ keyring, onClose }) {
+  const [phrase, setPhrase] = useState('');
+  const [again, setAgain] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
+  const short = phrase.trim().length < 12;
+  const same = phrase === again;
+  const ready = !short && same && !busy;
+
+  const save = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      await keyring.rewrap(phrase);
+      setMessage('Gelukt. Vanaf nu open je met deze zin; de oude werkt niet meer.');
+      setPhrase('');
+      setAgain('');
+    } catch (err) {
+      setMessage(err.message || String(err));
+    }
+    setBusy(false);
+  };
+
+  return (
+    <Sheet title="Nieuwe wachtwoordzin" onClose={onClose}>
+      <p className="small muted" style={{ marginTop: 0, lineHeight: 1.6 }}>
+        Je kluis staat open, dus de sleutel is er nog. Zet er een nieuw slot omheen. Je hoeft de
+        oude zin niet te weten en je gegevens blijven staan.
+      </p>
+
+      <Field
+        label="Nieuwe wachtwoordzin"
+        htmlFor="new-phrase"
+        hint="Minstens twaalf tekens. Een zin onthoudt beter dan een wachtwoord."
+      >
+        <input
+          id="new-phrase"
+          className="input"
+          type="password"
+          autoComplete="new-password"
+          value={phrase}
+          onChange={(e) => setPhrase(e.target.value)}
+        />
+      </Field>
+
+      <Field
+        label="Nog een keer"
+        htmlFor="new-phrase-again"
+        warn={Boolean(again) && !same}
+        hint={again && !same ? 'Deze twee zijn niet gelijk.' : null}
+      >
+        <input
+          id="new-phrase-again"
+          className="input"
+          type="password"
+          autoComplete="new-password"
+          value={again}
+          onChange={(e) => setAgain(e.target.value)}
+        />
+      </Field>
+
+      <Notice tone="warn">
+        Schrijf hem op. Er is niemand die hem voor je kan terughalen: zonder de zin is er geen weg
+        terug naar je gegevens.
+      </Notice>
+
+      {message && <div className="hint" style={{ marginTop: 10 }}>{message}</div>}
+
+      <button className="btn primary wide" style={{ marginTop: 14 }} disabled={!ready} onClick={save}>
+        {busy ? 'Bezig…' : 'Instellen'}
+      </button>
+    </Sheet>
+  );
+}
+
 function Why({ store }) {
   const { people = [], accounts = [], expenses = [] } = store || {};
   const me = people.find((p) => p.isMe);
