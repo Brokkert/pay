@@ -78,8 +78,24 @@ describe('the vault', () => {
   it('leaves nothing readable behind in the browser', async () => {
     await withData(exampleHousehold());
     const stored = localStorage.getItem('pay:store');
-    for (const word of ['Energie', 'Internet', 'Partner', 'Vaste lasten', '9000', '5000']) {
+
+    // Names and descriptions, which cannot turn up in a base64 blob by chance.
+    for (const word of ['Energie', 'Internet', 'Partner', 'Vaste lasten']) {
       expect(stored).not.toContain(word);
+    }
+
+    // Amounts are not searched for as text: an id is hex and a ciphertext is
+    // base64, so a run of four digits turns up in one now and again by pure
+    // chance — about once in a hundred runs, which is a red build for nothing
+    // and no proof of anything when it passes. What can be checked is the
+    // shape: a record carries an id and a sealed blob, and no field besides.
+    const parsed = JSON.parse(stored);
+    for (const kind of ['people', 'accounts', 'expenses']) {
+      expect(parsed[kind].length).toBeGreaterThan(0);
+      for (const record of parsed[kind]) {
+        expect(Object.keys(record).sort()).toEqual(['id', 'secret']);
+        expect(Object.keys(record.secret).sort()).toEqual(['ct', 'iv', 'v']);
+      }
     }
   });
 });
