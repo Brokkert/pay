@@ -226,25 +226,27 @@ export default function Overview({ store, month, onMonth }) {
       )}
 
       {/* Your own accounts do not appear above: nobody owes anything to them, so
-          the ledger has nothing to settle there. But the money still has to be
-          on them on the day the bank comes, and moving it there is a transfer
-          you make in the same sitting. Same list, its own heading, because it
-          is your own money moving rather than a debt. */}
+          the ledger has nothing to settle there. But money does leave them
+          every month, and how much has to be there is a figure you need in the
+          same sitting. What it does not say is where that money comes from —
+          a business account is usually the source of the whole chain, not
+          somewhere you transfer to. So it states the requirement, not an
+          instruction to move anything. */}
       {funding.length > 0 && (
         <>
-          <div className="section">Zelf klaarzetten</div>
+          <div className="section">Je eigen rekeningen</div>
           <div className="panel">
             {funding.map((row) => (
               <Line
                 key={row.account.id}
                 left={<AccountMark />}
-                what={`Naar ${row.account.name}`}
-                sub={accountKindOf(row.account.kind).label.toLowerCase()}
+                what={row.account.name}
+                sub="gaat er elke maand af"
                 cents={row.cents}
                 onClick={() =>
                   setDetail({
                     title: row.account.name,
-                    label: 'Per maand erop',
+                    label: 'Gaat er elke maand af',
                     cents: row.cents,
                     rows: postRows(
                       result.lines.filter(
@@ -260,16 +262,16 @@ export default function Overview({ store, month, onMonth }) {
                         cents,
                       }))
                     ),
-                    note: 'Wat er elke maand van deze rekening af gaat. Er stort niemand op, dus dit zet je er zelf op. Dat is geen verrekening met iemand anders — het is je eigen geld dat naar de rekening moet waar de incasso vandaan komt.',
+                    note: 'Wat er elke maand van deze rekening af gaat. Er stort niemand op, dus dit bedrag moet er maandelijks staan — of dat nu geld is dat je er laat staan of dat je het er zelf op zet. Wat anderen ervan dragen komt langs de verrekening bij je terug.',
                   })
                 }
               />
             ))}
           </div>
           <div className="hint" style={{ marginTop: -4 }}>
-            Deze rekeningen zijn van jou alleen, dus er stort niemand op. Zet dit er zelf op, dan
-            staat er genoeg op het moment dat de bank komt. Wat anderen ervan dragen krijg je terug
-            via de verrekening hierboven.
+            Deze rekeningen zijn van jou alleen, dus er stort niemand op. Zorg dat er elke maand
+            zoveel op staat — geld dat je er laat staan telt net zo goed als geld dat je overmaakt.
+            Wat anderen ervan dragen krijg je terug via de verrekening hierboven.
           </div>
         </>
       )}
