@@ -90,6 +90,7 @@ export function readBackup(source) {
       name,
       colour: text(p.colour) || '#8a9099',
       isMe: p.isMe === true,
+      ...(Number.isInteger(p.income) && p.income !== 0 ? { income: p.income } : {}),
     };
   });
 

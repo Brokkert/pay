@@ -95,9 +95,28 @@ export default function Overview({ store, month, onMonth }) {
   }
 
   const mine = me ? result.borne[me.id] || 0 : 0;
+  // Income is optional and changes nothing; where it is filled in, it turns
+  // "what does this cost me" into "so what is left".
+  const left = people
+    .filter((p) => Number(p.income) > 0)
+    .map((person) => ({
+      person,
+      income: Number(person.income),
+      borne: result.borne[person.id] || 0,
+      cents: Number(person.income) - (result.borne[person.id] || 0),
+    }))
+    .sort((a, b) => Number(b.person.isMe) - Number(a.person.isMe) || b.cents - a.cents);
+
   // Accounts of your own: what has to be on them each month.
   const funding = result.pots
-    .filter((pot) => pot.account.kind !== 'shared' && pot.needed !== 0)
+    .filter(
+      (pot) =>
+        pot.account.kind !== 'shared' &&
+        pot.needed !== 0 &&
+        // Somebody else's own account is their business, not a line on your
+        // list of things to see to.
+        (!pot.account.ownerId || pot.account.ownerId === me?.id)
+    )
     .map((pot) => ({ account: pot.account, pot, cents: pot.needed }))
     .sort((a, b) => b.cents - a.cents);
   const totalDetail = {
@@ -393,6 +412,40 @@ export default function Overview({ store, month, onMonth }) {
           />
         ))}
       </div>
+
+      {left.length > 0 && (
+        <>
+          <div className="section">Wat er overblijft</div>
+          <div className="panel">
+            {left.map((row) => (
+              <Line
+                key={row.person.id}
+                left={<Avatar person={row.person} size="sm" />}
+                what={row.person.name}
+                sub={`${formatMoney(row.income)} min ${formatMoney(row.borne)} vaste lasten`}
+                cents={row.cents}
+                tone={row.cents < 0 ? 'debt' : ''}
+                onClick={() =>
+                  setDetail({
+                    title: row.person.name,
+                    label: 'Blijft over per maand',
+                    cents: row.cents,
+                    rows: [
+                      { key: 'in', what: 'Inkomen', cents: row.income },
+                      ...postRows(result.lines, (l) => -(l.shares[row.person.id] || 0)),
+                    ],
+                    note: 'Je inkomen min alles wat je van de vaste lasten draagt. Wat je verder uitgeeft staat niet in Pay, dus dit is wat er vóór boodschappen en de rest overblijft.',
+                  })
+                }
+              />
+            ))}
+          </div>
+          <div className="hint" style={{ marginTop: -4 }}>
+            Inkomen vul je per persoon in bij <strong>Mensen</strong>. Het verandert niets aan de
+            verdeling — het staat er alleen naast.
+          </div>
+        </>
+      )}
 
       <div className="section">Wat ieder uiteindelijk draagt</div>
       <div className="panel">

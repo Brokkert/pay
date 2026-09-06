@@ -143,6 +143,17 @@ function PersonForm({ person, people, cloud, onClaim, onSave, onRemove, onClose 
         </div>
       </div>
 
+      {/* Optional, and it changes nothing in the ledger: the whole app answers
+          "what does this cost and who carries it", and this is the one number
+          that turns that into "so what is left". Without it nothing is shown;
+          with it, one line per person. */}
+      <Field
+        label="Inkomen per maand"
+        hint="Wat er netto binnenkomt. Alleen om te zien wat er na de vaste lasten overblijft — aan de verdeling verandert het niets. Leeg laten mag."
+      >
+        <AmountInput cents={draft.income || 0} onChange={(c) => set({ income: c })} />
+      </Field>
+
       <Field label="Kleur" hint="Waaraan je deze persoon herkent in de lijsten.">
         <div className="chips">
           {COLOURS.map((c) => (

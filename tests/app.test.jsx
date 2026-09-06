@@ -815,6 +815,44 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
+describe('what is left after the fixed costs', () => {
+  it('shows it per person who filled in an income, and nobody else', async () => {
+    const set = exampleHousehold();
+    set.people = set.people.map((p) =>
+      p.isMe ? { ...p, income: 300000 } : p.name === 'Partner' ? { ...p, income: 250000 } : p
+    );
+    await withData(set);
+    const user = await start();
+
+    await screen.findByText('Jouw deel');
+    const panel = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Wat er overblijft').nextElementSibling;
+
+    // 3.000,00 in, 146,50 of fixed costs carried.
+    const rows = [...panel.querySelectorAll('.line')];
+    expect(rows).toHaveLength(2);
+    expect(rows[0].textContent).toContain('Ik');
+    expect(rows[0].textContent).toContain('2.853,50');
+    // The friend and the neighbour gave no income, so they are not in it.
+    expect(panel.textContent).not.toContain('Vriend');
+
+    // And it opens on where it went.
+    await user.click(rows[0]);
+    const sheet = screen.getByRole('heading', { name: 'Ik' }).closest('.sheet');
+    expect(within(sheet).getByText('Inkomen')).toBeTruthy();
+    expect(within(sheet).getByText('Streamingdienst')).toBeTruthy();
+  }, 30000);
+
+  it('stays away entirely when no income is filled in', async () => {
+    await withData(exampleHousehold());
+    await start();
+    await screen.findByText('Jouw deel');
+    expect(
+      [...document.querySelectorAll('.section')].some((el) => el.textContent === 'Wat er overblijft')
+    ).toBe(false);
+  }, 30000);
+});
+
 describe('a standing order on an account of your own', () => {
   it('is held against what leaves it, the same as on a shared pot', async () => {
     const set = exampleHousehold();
