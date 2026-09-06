@@ -815,6 +815,30 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
+describe('putting money on an account of your own', () => {
+  it('stands in the monthly list, apart from what people owe each other', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await screen.findByText('Jouw deel');
+
+    const heading = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Zelf klaarzetten');
+    expect(heading).toBeTruthy();
+    const panel = heading.nextElementSibling;
+
+    // The business account pays 50,00 of internet and owes 4,00 of the bank
+    // charges to the bills account: 54,00 has to be on it every month.
+    const row = within(panel).getByText('Naar Zaak').closest('.line');
+    expect(row.textContent).toContain('54,00');
+
+    // And it opens on what it is made of.
+    await user.click(row);
+    const sheet = screen.getByRole('heading', { name: 'Zaak' }).closest('.sheet');
+    expect(within(sheet).getByText('Internet')).toBeTruthy();
+    expect(within(sheet).getByText(/Naar Vaste lasten/)).toBeTruthy();
+  }, 30000);
+});
+
 describe('an account of your own with bills on it', () => {
   it('says what leaves it and what has to be on it, like any other', async () => {
     const set = exampleHousehold();

@@ -95,6 +95,18 @@ export default function Overview({ store, month, onMonth }) {
   }
 
   const mine = me ? result.borne[me.id] || 0 : 0;
+  // Accounts of your own that money has to be put on: what goes off them, plus
+  // what they owe another account, less what another account owes them.
+  const sum = (o) => Object.values(o || {}).reduce((total, c) => total + c, 0);
+  const funding = result.pots
+    .filter((pot) => pot.account.kind !== 'shared')
+    .map((pot) => ({
+      account: pot.account,
+      pot,
+      cents: pot.out + sum(pot.toAccounts) - sum(pot.fromAccounts),
+    }))
+    .filter((row) => row.cents !== 0)
+    .sort((a, b) => b.cents - a.cents);
   const totalDetail = {
     title: 'Loopt in totaal',
     label: 'Per maand',
@@ -209,6 +221,55 @@ export default function Overview({ store, month, onMonth }) {
                 en je hoeft er geen maand meer naar om te kijken.
               </>
             )}
+          </div>
+        </>
+      )}
+
+      {/* Your own accounts do not appear above: nobody owes anything to them, so
+          the ledger has nothing to settle there. But the money still has to be
+          on them on the day the bank comes, and moving it there is a transfer
+          you make in the same sitting. Same list, its own heading, because it
+          is your own money moving rather than a debt. */}
+      {funding.length > 0 && (
+        <>
+          <div className="section">Zelf klaarzetten</div>
+          <div className="panel">
+            {funding.map((row) => (
+              <Line
+                key={row.account.id}
+                left={<AccountMark />}
+                what={`Naar ${row.account.name}`}
+                sub={accountKindOf(row.account.kind).label.toLowerCase()}
+                cents={row.cents}
+                onClick={() =>
+                  setDetail({
+                    title: row.account.name,
+                    label: 'Per maand erop',
+                    cents: row.cents,
+                    rows: postRows(
+                      result.lines.filter(
+                        (l) =>
+                          l.expense.payer?.kind === 'account' &&
+                          l.expense.payer.id === row.account.id
+                      )
+                    ).concat(
+                      Object.entries(row.pot.toAccounts).map(([id, cents]) => ({
+                        key: `to-${id}`,
+                        what: `Naar ${accounts.find((a) => a.id === id)?.name || 'rekening'}`,
+                        sub: 'het deel dat deze rekening zelf draagt',
+                        cents,
+                      }))
+                    ),
+                    note: 'Wat er elke maand van deze rekening af gaat. Er stort niemand op, dus dit zet je er zelf op. Dat is geen verrekening met iemand anders — het is je eigen geld dat naar de rekening moet waar de incasso vandaan komt.',
+                  })
+                }
+              />
+            ))}
+          </div>
+          <div className="hint" style={{ marginTop: -4 }}>
+            Deze rekeningen zijn van jou alleen, dus er stort niemand op. Zet dit er zelf op, dan
+            staat er genoeg op het moment dat de bank komt. Wat anderen ervan dragen krijg je terug
+            via de verrekening hierboven.
           </div>
         </>
       )}
