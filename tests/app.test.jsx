@@ -170,6 +170,56 @@ describe('signing out', () => {
   });
 });
 
+describe('a recovery key', () => {
+  it('hands out the key as text and opens a locked vault with it', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+
+    await user.click(screen.getByRole('button', { name: /Herstelsleutel tonen/ }));
+    const sheet = screen.getByRole('heading', { name: 'Herstelsleutel' }).closest('.sheet');
+    // Not shown until you ask for it.
+    expect(sheet.querySelector('.box')).toBe(null);
+    await user.click(within(sheet).getByRole('button', { name: /Laat zien/ }));
+
+    const shown = (await within(sheet).findByText(/^[A-Za-z0-9+/=]{40,}$/)).textContent;
+    // It is the household key: 32 bytes in base64.
+    expect(atob(shown).length).toBe(32);
+    expect(shown).toBe(JSON.parse(localStorage.getItem('pay:key:open')));
+
+    // Lock the vault, then get back in with nothing but that string.
+    cleanup();
+    localStorage.removeItem('pay:key:open');
+    localStorage.setItem('pay:key', JSON.stringify({ salt: 'x', iv: 'y', ct: 'z' }));
+    const again = userEvent.setup();
+    render(<App />);
+    // Still in local mode, so it goes straight to the door of the vault.
+    await again.click(await screen.findByRole('button', { name: /Wachtwoordzin kwijt/ }));
+    await again.type(screen.getByLabelText('Herstelsleutel'), shown);
+    await again.click(screen.getByRole('button', { name: 'Ontgrendelen' }));
+
+    // Open, with the household intact.
+    expect(await screen.findByText('Jouw deel')).toBeTruthy();
+    expect(screen.getAllByText('€ 278,00').length).toBeGreaterThan(0);
+  }, 30000);
+
+  it('refuses something that is not a key', async () => {
+    await withData(exampleHousehold());
+    cleanup();
+    localStorage.removeItem('pay:key:open');
+    localStorage.setItem('pay:key', JSON.stringify({ salt: 'x', iv: 'y', ct: 'z' }));
+
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: /zonder account/i }));
+    await user.click(await screen.findByRole('button', { name: /Wachtwoordzin kwijt/ }));
+    await user.type(screen.getByLabelText('Herstelsleutel'), 'dit is geen sleutel');
+    await user.click(screen.getByRole('button', { name: 'Ontgrendelen' }));
+
+    expect(await screen.findByText(/geen herstelsleutel/)).toBeTruthy();
+  }, 30000);
+});
+
 describe('a passphrase you have forgotten while still unlocked', () => {
   it('lets you put a new lock on the key that is already open', async () => {
     await withData(exampleHousehold());

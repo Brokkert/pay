@@ -99,6 +99,14 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
           </div>
         ))}
       </div>
+      <button className="btn wide" style={{ marginBottom: 10 }} onClick={() => setPanel('recovery')}>
+        <Icon name="download" size={17} /> Herstelsleutel tonen
+      </button>
+      <div className="hint" style={{ marginBottom: 10 }}>
+        De sleutel zelf, als tekst om te bewaren. Daarmee kom je er altijd weer in, ook als je je
+        wachtwoordzin kwijt bent én je browser leeg is.
+      </div>
+
       <button className="btn wide" onClick={() => setPanel('phrase')}>
         <Icon name="key" size={17} /> Nieuwe wachtwoordzin instellen
       </button>
@@ -257,6 +265,9 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
           onDone={(n) => { setMessage(`${count(n, 'post', 'posten')} toegevoegd.`); setPanel(null); }}
           onClose={() => setPanel(null)}
         />
+      )}
+      {panel === 'recovery' && (
+        <RecoveryPanel keyring={keyring} onClose={() => setPanel(null)} />
       )}
       {panel === 'phrase' && (
         <PassphrasePanel keyring={keyring} onClose={() => setPanel(null)} />
@@ -661,6 +672,72 @@ function RenameSheet({ field, name, others, onSave, onClose }) {
  * It also keeps the promise the rest of the app keeps: no name of yours is in
  * this file. They come out of the vault on your own device.
  */
+/**
+ * The household key as text, to keep somewhere safe.
+ *
+ * Shown only on purpose and never by accident: it is not a hint at the key, it
+ * is the key. Anyone holding this string reads everything without a passphrase
+ * and without logging in — which is exactly why it also gets you back in when
+ * everything else is gone.
+ */
+function RecoveryPanel({ keyring, onClose }) {
+  const [shown, setShown] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState(null);
+
+  const reveal = async () => {
+    try {
+      setShown(await keyring.recoveryKey());
+    } catch (err) {
+      setError(err.message || String(err));
+    }
+  };
+
+  return (
+    <Sheet title="Herstelsleutel" onClose={onClose}>
+      <p className="small muted" style={{ marginTop: 0, lineHeight: 1.6 }}>
+        Dit is de sleutel waarmee je gegevens versleuteld zijn. Bewaar hem in je wachtwoordmanager
+        of op papier. Ben je je wachtwoordzin kwijt en is je browser leeg, dan is dit het enige wat
+        je er nog in krijgt.
+      </p>
+
+      <Notice tone="warn">
+        Wie deze tekst heeft, kan alles lezen — zonder wachtwoordzin en zonder in te loggen. Zet hem
+        niet in een gedeelde map, een chat of een mail aan jezelf.
+      </Notice>
+
+      {error && <div className="hint warn" style={{ marginTop: 12 }}>{error}</div>}
+
+      {shown ? (
+        <>
+          <div className="panel" style={{ marginTop: 14 }}>
+            <div className="box">
+              <div
+                className="tiny"
+                style={{ wordBreak: 'break-all', fontFamily: 'var(--mono, monospace)', lineHeight: 1.7 }}
+              >
+                {shown}
+              </div>
+            </div>
+          </div>
+          <button
+            className="btn primary wide"
+            onClick={async () => {
+              setCopied(await copyText(shown));
+            }}
+          >
+            <Icon name="paste" size={17} /> {copied ? 'Gekopieerd' : 'Kopiëren'}
+          </button>
+        </>
+      ) : (
+        <button className="btn wide" style={{ marginTop: 14 }} onClick={reveal}>
+          <Icon name="key" size={17} /> Laat zien
+        </button>
+      )}
+    </Sheet>
+  );
+}
+
 /**
  * A new passphrase for a vault that is already open.
  *

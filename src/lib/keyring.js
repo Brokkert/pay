@@ -158,6 +158,38 @@ export function useKeyring(user) {
   );
 
   /**
+   * The household key itself, as text you can write down.
+   *
+   * A passphrase can be forgotten and a browser can be cleared; this is the
+   * thing underneath both. Keep it somewhere only you can reach and there is
+   * no state you can end up in that costs you your data.
+   *
+   * It is the key, not a hint at it: whoever has this string can read
+   * everything, without a passphrase and without logging in.
+   */
+  const recoveryKey = useCallback(async () => {
+    if (!key) throw new Error('De kluis staat niet open.');
+    return toB64(await keyToRaw(key));
+  }, [key]);
+
+  /** Open with that string instead of a passphrase. */
+  const unlockWithRecovery = useCallback(
+    async (text) => {
+      const clean = String(text || '').trim().replace(/\s+/g, '');
+      if (!clean) throw new Error('Vul je herstelsleutel in.');
+      let raw;
+      try {
+        raw = fromB64(clean);
+      } catch {
+        throw new Error('Dat is geen herstelsleutel.');
+      }
+      if (raw.byteLength !== 32) throw new Error('Dat is geen herstelsleutel.');
+      await openWith(raw);
+    },
+    [openWith]
+  );
+
+  /**
    * A new passphrase for the key you already have open.
    *
    * The passphrase is not the key; it is the lock around it. So while the key
@@ -283,6 +315,8 @@ export function useKeyring(user) {
     waiting,
     create,
     rewrap,
+    recoveryKey,
+    unlockWithRecovery,
     unlock,
     requestAccess,
     grantAccess,

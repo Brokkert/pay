@@ -13,22 +13,31 @@ export default function Unlock({ keyring, email, onSignOut }) {
   const [repeat, setRepeat] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // The way back for the one thing a passphrase cannot do: be remembered.
+  const [recovery, setRecovery] = useState(null);
 
   const fresh = keyring.state === 'fresh';
   const joining = keyring.state === 'joining';
   const choosing = fresh || joining;
 
-  const can = choosing ? phrase.length >= MINIMUM && phrase === repeat : phrase.length > 0;
+  const can =
+    recovery !== null
+      ? recovery.trim().length > 0
+      : choosing
+        ? phrase.length >= MINIMUM && phrase === repeat
+        : phrase.length > 0;
 
   const go = async () => {
     setBusy(true);
     setError(null);
     try {
-      if (fresh) await keyring.create(phrase);
+      if (recovery !== null) await keyring.unlockWithRecovery(recovery);
+      else if (fresh) await keyring.create(phrase);
       else if (joining) await keyring.requestAccess(phrase);
       else await keyring.unlock(phrase);
       setPhrase('');
       setRepeat('');
+      setRecovery(null);
     } catch (err) {
       setError(err.message || String(err));
     }
@@ -83,6 +92,41 @@ export default function Unlock({ keyring, email, onSignOut }) {
         </Notice>
       )}
 
+      {recovery !== null ? (
+        <>
+          <Field
+            label="Herstelsleutel"
+            htmlFor="pay-recovery"
+            hint="De tekst die je bij Sleutel hebt bewaard toen de kluis nog openstond."
+          >
+            <textarea
+              id="pay-recovery"
+              className="textarea"
+              autoFocus
+              spellCheck="false"
+              autoCapitalize="off"
+              autoCorrect="off"
+              style={{ minHeight: 84, wordBreak: 'break-all' }}
+              value={recovery}
+              onChange={(e) => setRecovery(e.target.value)}
+            />
+          </Field>
+          <button className="btn primary wide" disabled={!can || busy} onClick={go}>
+            {busy ? <span className="spinner" /> : 'Ontgrendelen'}
+          </button>
+          <button
+            className="btn quiet wide"
+            style={{ marginTop: 14 }}
+            onClick={() => {
+              setRecovery(null);
+              setError(null);
+            }}
+          >
+            Toch mijn wachtwoordzin
+          </button>
+        </>
+      ) : (
+      <>
       <Field
         label="Wachtwoordzin"
         htmlFor="pay-phrase"
@@ -117,6 +161,23 @@ export default function Unlock({ keyring, email, onSignOut }) {
       <button className="btn primary wide" disabled={!can || busy} onClick={go}>
         {busy ? <span className="spinner" /> : choosing ? 'Instellen' : 'Ontgrendelen'}
       </button>
+
+      {/* Only where there is something to unlock: on a fresh vault there is no
+          key yet, so there is nothing a recovery key could open. */}
+      {!choosing && (
+        <button
+          className="btn quiet wide"
+          style={{ marginTop: 14 }}
+          onClick={() => {
+            setRecovery('');
+            setError(null);
+          }}
+        >
+          Wachtwoordzin kwijt? Gebruik je herstelsleutel
+        </button>
+      )}
+      </>
+      )}
 
       {choosing && phrase.length > 0 && phrase.length < MINIMUM && (
         <div className="hint warn">Nog {MINIMUM - phrase.length} tekens te gaan.</div>
