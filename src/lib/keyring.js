@@ -80,18 +80,23 @@ export function useKeyring(user) {
   const inspect = useCallback(async () => {
     setError(null);
     const unlocked = read(UNLOCKED);
+    // Already open on this device. That used to end the story right here — and
+    // with it the only chance to notice that a housemate is standing outside,
+    // because the list of people waiting comes from the same query. The one
+    // person who can let her in is the one whose vault is open.
+    let open = false;
     if (unlocked) {
       try {
         setKey(await keyFromRaw(fromB64(unlocked)));
         setState('open');
-        return;
+        open = true;
       } catch {
         write(UNLOCKED, null);
       }
     }
 
     if (!cloud) {
-      setState(read(WRAPPED) ? 'locked' : 'fresh');
+      if (!open) setState(read(WRAPPED) ? 'locked' : 'fresh');
       return;
     }
 
@@ -106,6 +111,7 @@ export function useKeyring(user) {
       if (failed) throw failed;
 
       setWaiting((keys.data || []).filter((r) => r.user_id !== user.id && r.public_key && !r.for_me));
+      if (open) return;
 
       if (secrets.data?.wrapped_key) {
         setState('locked');
@@ -128,7 +134,10 @@ export function useKeyring(user) {
       setState((members.data || []).length <= 1 ? 'fresh' : 'joining');
     } catch (err) {
       setError(err.message || String(err));
-      setState('fresh');
+      // An open vault stays open: a failed lookup says nothing about the key
+      // in hand, and throwing someone back to "pick a passphrase" over a
+      // dropped connection would be the worst possible answer.
+      if (!open) setState('fresh');
     }
   }, [cloud, user?.id]);
 

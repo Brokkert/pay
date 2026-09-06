@@ -19,6 +19,13 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
   const [message, setMessage] = useState(null);
   const config = readConfig();
 
+  // Someone can knock while you are looking at another screen. Opening the
+  // settings is when you would come to let them in, so that is when to look.
+  const recheck = keyring?.recheck;
+  useEffect(() => {
+    recheck?.();
+  }, [recheck]);
+
   const stamp = () => new Date().toISOString().slice(0, 10);
 
   // Restoring is deliberately additive: it never wipes what is already there,
@@ -73,6 +80,23 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
             komt uit je wachtwoordzin en staat nergens anders — ook niet bij Supabase.
           </div>
         </div>
+        {keyring?.cloud && (keyring?.waiting || []).length === 0 && (
+          <div className="box">
+            <div className="small">Er staat niemand te wachten</div>
+            <div className="tiny dim" style={{ marginTop: 3, lineHeight: 1.55 }}>
+              Nodig iemand uit via <strong>Uitnodigen</strong> hieronder. Zodra zij die link opent,
+              inlogt en een eigen wachtwoordzin kiest, staat zij hier — en laat je haar met één tik
+              binnen.
+            </div>
+            <button
+              className="btn sm"
+              style={{ marginTop: 10 }}
+              onClick={() => keyring.recheck()}
+            >
+              Opnieuw kijken
+            </button>
+          </div>
+        )}
         {(keyring?.waiting || []).map((row) => (
           <div key={row.user_id} className="box">
             <div className="small bold">Iemand wacht op toegang</div>
