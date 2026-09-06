@@ -329,12 +329,18 @@ function potOverview(transfers, accounts, perAccount, saving, lines) {
       const contributions = account.contributions || {};
       const paidIn = Object.values(contributions).reduce((sum, c) => sum + (Number(c) || 0), 0);
       const out = perAccount[account.id] || 0;
-      // What has to come in is not the same as what goes out on expenses: an
-      // account that settles for people also pays back what someone fronted
-      // elsewhere, and that money has to be on it first. Holding a standing
-      // order against the expenses alone reports a surplus that is already
-      // spoken for.
-      const needed = Object.values(incoming).reduce((sum, c) => sum + c, 0);
+      // What has to come in. On an account people pay into that is their
+      // deposits: the expenses plus whatever it pays back to someone who
+      // fronted, which has to be on it first — holding a standing order
+      // against the expenses alone reports a surplus that is already spoken
+      // for. On an account of your own nobody deposits, so it is simply what
+      // leaves it: the expenses plus what it owes another account, less what
+      // another account owes it.
+      const total = (o) => Object.values(o).reduce((sum, c) => sum + c, 0);
+      const needed =
+        account.kind === 'shared'
+          ? total(incoming)
+          : out + total(toAccounts) - total(fromAccounts);
       return {
         account,
         out,

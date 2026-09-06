@@ -396,6 +396,33 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
         </Field>
       )}
 
+      {/* A standing order is not only for a pot other people pay into. Money is
+          put on a business expenses account every month in exactly the same
+          way, and the same question follows: does what I set at the bank still
+          match what comes off? One amount here, because there is one person. */}
+      {!shared && draft.ownerId && (
+        <Field
+          label="Vaste inleg per maand"
+          hint="Zet je hier maandelijks zelf een vast bedrag op? Vul dat in, dan zet Pay het naast wat er af gaat. Laat leeg als je dat niet doet."
+        >
+          <div className="panel" style={{ marginBottom: 0 }}>
+            <div className="line">
+              <Avatar person={people.find((p) => p.id === draft.ownerId)} size="sm" />
+              <div className="what">
+                <div className="n">{people.find((p) => p.id === draft.ownerId)?.name}</div>
+                <div className="s">zet hier maandelijks op</div>
+              </div>
+              <span style={{ width: 132 }}>
+                <AmountInput
+                  cents={draft.contributions?.[draft.ownerId] || 0}
+                  onChange={(c) => set({ contributions: { [draft.ownerId]: c } })}
+                />
+              </span>
+            </div>
+          </div>
+        </Field>
+      )}
+
       <details className="disclose" style={{ marginBottom: 18 }}>
         <summary>Rekeningnummer</summary>
         <div style={{ marginTop: 16 }}>

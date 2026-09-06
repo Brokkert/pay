@@ -95,17 +95,10 @@ export default function Overview({ store, month, onMonth }) {
   }
 
   const mine = me ? result.borne[me.id] || 0 : 0;
-  // Accounts of your own that money has to be put on: what goes off them, plus
-  // what they owe another account, less what another account owes them.
-  const sum = (o) => Object.values(o || {}).reduce((total, c) => total + c, 0);
+  // Accounts of your own: what has to be on them each month.
   const funding = result.pots
-    .filter((pot) => pot.account.kind !== 'shared')
-    .map((pot) => ({
-      account: pot.account,
-      pot,
-      cents: pot.out + sum(pot.toAccounts) - sum(pot.fromAccounts),
-    }))
-    .filter((row) => row.cents !== 0)
+    .filter((pot) => pot.account.kind !== 'shared' && pot.needed !== 0)
+    .map((pot) => ({ account: pot.account, pot, cents: pot.needed }))
     .sort((a, b) => b.cents - a.cents);
   const totalDetail = {
     title: 'Loopt in totaal',
@@ -568,8 +561,7 @@ const AccountMark = () => (
 
 function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
   const shared = pot.account.kind === 'shared';
-  const hasContributions =
-    shared && Object.values(pot.contributions || {}).some((c) => Number(c) > 0);
+  const hasContributions = Object.values(pot.contributions || {}).some((c) => Number(c) > 0);
   const isHub = hub?.id === pot.account.id;
   const nameOf = (id) => people.find((p) => p.id === id)?.name || '?';
   const mine = lines.filter(
@@ -771,7 +763,7 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
         ))}
         {hasContributions && (
           <>
-            {pot.needed !== pot.out && (
+            {shared && pot.needed !== pot.out && (
               <Line
                 what="Moeten jullie samen storten"
                 sub="de maandlast plus wat er weer uit gaat naar wie iets voorschoot"
@@ -881,11 +873,10 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
           rekening uitkomt.
         </div>
       )}
-      {!shared && (
+      {!shared && !hasContributions && (
         <div className="hint" style={{ marginTop: -4 }}>
-          Deze rekening is van één persoon, dus er wordt niet op gestort — wat hierboven staat is
-          wat er af gaat en wat er dus op moet staan. Wie de kosten uiteindelijk draagt staat
-          onderaan bij <strong>Wat ieder uiteindelijk draagt</strong>.
+          Zet je hier zelf maandelijks een vast bedrag op? Vul dat bij <strong>Mensen</strong> in
+          als vaste inleg, dan zegt Pay of het nog klopt met wat eraf gaat.
         </div>
       )}
     </>

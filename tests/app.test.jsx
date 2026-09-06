@@ -815,6 +815,28 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
+describe('a standing order on an account of your own', () => {
+  it('is held against what leaves it, the same as on a shared pot', async () => {
+    const set = exampleHousehold();
+    const me = set.people.find((p) => p.isMe).id;
+    set.accounts = set.accounts.map((a) =>
+      a.kind === 'business' ? { ...a, ownerId: me, contributions: { [me]: 5000 } } : a
+    );
+    await withData(set);
+    await start();
+
+    await screen.findByText('Jouw deel');
+    const panel = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Zaak').nextElementSibling;
+
+    // 54,00 leaves it a month and 50,00 is set: 4,00 short.
+    expect(within(panel).getByText('Staat als vaste inleg ingesteld').closest('.line').textContent)
+      .toContain('50,00');
+    const total = within(panel).getByText('Komt tekort').closest('.total');
+    expect(total.textContent).toContain('4,00');
+  }, 30000);
+});
+
 describe('an account of your own in the monthly list', () => {
   it('says how much has to be on it, without saying where that comes from', async () => {
     await withData(exampleHousehold());
