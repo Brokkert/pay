@@ -186,7 +186,13 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
       .map((c) => ({ ...c, accounts: [...c.accounts] }))
       .sort((a, b) => b.month - a.month),
     transfers,
-    pots: potOverview(transfers, accounts, perAccount, { realPerAccount, asidePerAccount, unknownCharge }),
+    pots: potOverview(
+      transfers,
+      accounts,
+      perAccount,
+      { realPerAccount, asidePerAccount, unknownCharge },
+      lines
+    ),
     hub,
     warnings: [...new Set(warnings)],
   };
@@ -286,10 +292,20 @@ export function net(matrix) {
   return out.sort((x, y) => y.cents - x.cents);
 }
 
-/** Per shared account: what goes out, what should come in, and what is paid in. */
-function potOverview(transfers, accounts, perAccount, saving) {
+/**
+ * Per account: what goes out of it, what has to be on it, and — where people
+ * pay into it — what should come in and what is set to.
+ *
+ * Every account with expenses on it, not only the shared ones. A business
+ * account is charged the same yearly bills as any other, and "how much has to
+ * be sitting on it" is the same question there; it was simply never asked,
+ * because the panel started life as a view of a shared pot.
+ */
+function potOverview(transfers, accounts, perAccount, saving, lines) {
+  const carries = (id) =>
+    lines.some((l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === id);
   return accounts
-    .filter((a) => a.kind === 'shared')
+    .filter((a) => a.kind === 'shared' || carries(a.id))
     .map((account) => {
       const party = accountParty(account.id);
       const incoming = {};
@@ -336,7 +352,10 @@ function potOverview(transfers, accounts, perAccount, saving) {
         aside: saving.asidePerAccount[account.id] || 0,
         chargeUnknown: saving.unknownCharge.has(account.id),
       };
-    });
+    })
+    // The ones other people pay into first: those are the ones with someone
+    // else waiting on them.
+    .sort((a, b) => Number(b.account.kind === 'shared') - Number(a.account.kind === 'shared'));
 }
 
 /**

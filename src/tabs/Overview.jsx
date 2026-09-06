@@ -504,7 +504,9 @@ const AccountMark = () => (
 );
 
 function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
-  const hasContributions = Object.values(pot.contributions || {}).some((c) => Number(c) > 0);
+  const shared = pot.account.kind === 'shared';
+  const hasContributions =
+    shared && Object.values(pot.contributions || {}).some((c) => Number(c) > 0);
   const isHub = hub?.id === pot.account.id;
   const nameOf = (id) => people.find((p) => p.id === id)?.name || '?';
   const mine = lines.filter(
@@ -568,8 +570,8 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
         Object.entries(pot.toAccounts).map(([id, cents]) => ({
           key: `acc-out-${id}`,
           left: <AccountMark />,
-          what: `Terug naar ${accountName(id)}`,
-          sub: 'voorgeschoten van die rekening',
+          what: `Naar ${accountName(id)}`,
+          sub: 'het deel dat deze rekening zelf draagt',
           cents: -cents,
           onClick: opens(here, `account:${id}`),
         }))
@@ -810,10 +812,17 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
           boodschappen, is dat ook goed — de inleg is daar een afspraak, geen som.
         </div>
       )}
-      {!hasContributions && !isHub && (
+      {shared && !hasContributions && !isHub && (
         <div className="hint" style={{ marginTop: -4 }}>
           Vul bij <strong>Mensen</strong> in wat ieder maandelijks stort, dan zie je hier of deze
           rekening uitkomt.
+        </div>
+      )}
+      {!shared && (
+        <div className="hint" style={{ marginTop: -4 }}>
+          Deze rekening is van één persoon, dus er wordt niet op gestort — wat hierboven staat is
+          wat er af gaat en wat er dus op moet staan. Wie de kosten uiteindelijk draagt staat
+          onderaan bij <strong>Wat ieder uiteindelijk draagt</strong>.
         </div>
       )}
     </>

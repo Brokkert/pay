@@ -815,6 +815,33 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
+describe('an account of your own with bills on it', () => {
+  it('says what leaves it and what has to be on it, like any other', async () => {
+    const set = exampleHousehold();
+    const me = set.people.find((p) => p.isMe).id;
+    // A yearly bill charged in March, off the business account.
+    set.expenses = [
+      ...set.expenses,
+      { id: 'e-biz', name: 'Beroepsaansprakelijkheid', amount: 24000, cadence: 'year',
+        chargeMonth: 3, category: 'Verzekeringen',
+        payer: { kind: 'account', id: set.accounts.find((a) => a.kind === 'business').id },
+        split: { kind: 'equal', participants: [me], weights: {} } },
+    ];
+    await withData(set);
+    await start();
+
+    await screen.findByText('Jouw deel');
+    const panel = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Zaak').nextElementSibling;
+
+    // 240,00 a year is 20,00 a month, and by September six months are in.
+    expect(within(panel).getByText('Hoort er nu op te staan').closest('.line').textContent)
+      .toContain('120,00');
+    // No deposits: nobody pays into an account of one person.
+    expect(within(panel).queryByText(/stort/)).toBe(null);
+  }, 30000);
+});
+
 describe('a bill charged every four weeks', () => {
   it('names the cushion for the month that carries two of them', async () => {
     const set = exampleHousehold();
