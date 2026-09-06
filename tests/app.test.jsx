@@ -850,6 +850,12 @@ describe('a holding, top of the chain', () => {
 
     // And it lands on the person as income, so what is left there follows too.
     expect(screen.getByText('Wat er overblijft')).toBeTruthy();
+
+    // What has to be on the account counts the salary as well: it leaves the
+    // same account on the same day as the bills do.
+    const own = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Je eigen rekeningen').nextElementSibling;
+    expect(within(own).getByText('Zaak').closest('.line').textContent).toContain('5.054,00');
   }, 30000);
 });
 

@@ -112,12 +112,14 @@ export default function Overview({ store, month, onMonth }) {
     .filter(
       (pot) =>
         pot.account.kind !== 'shared' &&
-        pot.needed !== 0 &&
+        pot.needed + pot.drawn !== 0 &&
         // Somebody else's own account is their business, not a line on your
         // list of things to see to.
         (!pot.account.ownerId || pot.account.ownerId === me?.id)
     )
-    .map((pot) => ({ account: pot.account, pot, cents: pot.needed }))
+    // Everything that leaves it, salary and what it feeds another account
+    // included — those go off the same account on the same day as the bills.
+    .map((pot) => ({ account: pot.account, pot, cents: pot.needed + pot.drawn }))
     .sort((a, b) => b.cents - a.cents);
   const totalDetail = {
     title: 'Loopt in totaal',
@@ -266,14 +268,29 @@ export default function Overview({ store, month, onMonth }) {
                           l.expense.payer?.kind === 'account' &&
                           l.expense.payer.id === row.account.id
                       )
-                    ).concat(
-                      Object.entries(row.pot.toAccounts).map(([id, cents]) => ({
-                        key: `to-${id}`,
-                        what: `Naar ${accounts.find((a) => a.id === id)?.name || 'rekening'}`,
-                        sub: 'het deel dat deze rekening zelf draagt',
-                        cents,
-                      }))
-                    ),
+                    )
+                      .concat(
+                        Object.entries(row.pot.toAccounts).map(([id, cents]) => ({
+                          key: `to-${id}`,
+                          what: `Naar ${accounts.find((a) => a.id === id)?.name || 'rekening'}`,
+                          sub: 'het deel dat deze rekening zelf draagt',
+                          cents,
+                        }))
+                      )
+                      .concat(
+                        row.pot.salaries.map((r) => ({
+                          key: `salary-${r.person.id}`,
+                          what: `Salaris naar ${r.person.name}`,
+                          cents: r.cents,
+                        }))
+                      )
+                      .concat(
+                        row.pot.feeds.map((r) => ({
+                          key: `feed-${r.account.id}`,
+                          what: `Vaste inleg naar ${r.account.name}`,
+                          cents: r.cents,
+                        }))
+                      ),
                     note: 'Wat er elke maand van deze rekening af gaat. Er stort niemand op, dus dit bedrag moet er maandelijks staan — of dat nu geld is dat je er laat staan of dat je het er zelf op zet. Wat anderen ervan dragen komt langs de verrekening bij je terug.',
                   })
                 }
