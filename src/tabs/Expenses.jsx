@@ -65,6 +65,22 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
 
   const total = rows.reduce((sum, r) => sum + r.monthly, 0);
 
+  // One list, or one per category when that is what you sorted on.
+  const groups = useMemo(() => {
+    if (sort !== 'category') return [{ label: null, rows, total }];
+    const out = [];
+    for (const row of rows) {
+      const label = categoryOf(row.expense.category).label;
+      const last = out[out.length - 1];
+      if (last && last.label === label) last.rows.push(row);
+      else out.push({ label, rows: [row], total: 0 });
+    }
+    for (const group of out) {
+      group.total = group.rows.reduce((sum, r) => sum + r.monthly, 0);
+    }
+    return out;
+  }, [rows, sort, total]);
+
   return (
     <>
       <div style={{ margin: '4px 0 12px', position: 'relative' }}>
@@ -108,19 +124,32 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
           Pas het filter aan, of voeg een post toe met de knop rechtsonder.
         </Empty>
       ) : (
-        <div className="panel">
-          {rows.map((row) => (
-            <ExpenseRow
-              key={row.expense.id}
-              row={row}
-              month={month}
-              people={people}
-              accounts={accounts}
-              onOpen={onOpen}
-              onSave={onSave}
-            />
-          ))}
-        </div>
+        /* Sorted by category, the list is already in groups — it just does not
+           look like it. Thirty rows in a row is a wall whichever way you sort
+           them; with a heading and a subtotal it is six short lists. */
+        groups.map(({ label, rows: group, total: sum }) => (
+          <div key={label || 'all'}>
+            {label && (
+              <div className="row" style={{ margin: '2px 2px 8px', alignItems: 'baseline' }}>
+                <div className="section grow" style={{ margin: 0 }}>{label}</div>
+                <Money cents={sum} />
+              </div>
+            )}
+            <div className="panel">
+              {group.map((row) => (
+                <ExpenseRow
+                  key={row.expense.id}
+                  row={row}
+                  month={month}
+                  people={people}
+                  accounts={accounts}
+                  onOpen={onOpen}
+                  onSave={onSave}
+                />
+              ))}
+            </div>
+          </div>
+        ))
       )}
 
       <button className="fab" onClick={onNew} aria-label="Nieuwe post">

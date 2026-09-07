@@ -815,6 +815,26 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
+describe('a long list of expenses', () => {
+  it('falls into named groups with a subtotal when sorted by category', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+
+    // One list to begin with.
+    expect(document.querySelectorAll('.panel').length).toBe(1);
+
+    await user.selectOptions(screen.getByLabelText('Sortering'), 'category');
+    expect(document.querySelectorAll('.panel').length).toBeGreaterThan(3);
+
+    // Each group is headed by its category and what it comes to.
+    const heading = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Verzekeringen');
+    expect(heading).toBeTruthy();
+    expect(heading.parentElement.textContent).toContain('20,00');
+  }, 30000);
+});
+
 describe('what is left, on its own tab', () => {
   const go = async (user) => user.click(await screen.findByRole('button', { name: /Overhouden/ }));
 

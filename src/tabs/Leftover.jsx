@@ -123,6 +123,15 @@ function Chain({ pot }) {
           tone={pot.difference < 0 ? 'debt' : 'credit'}
         />
       </div>
+      {/* The blocks are each about one account, and they overlap: an expense the
+          business pays but you carry half of comes off here in full and off
+          your own income by half. Adding them up counts that half twice, so
+          say what each block is before someone reaches for a calculator. */}
+      <div className="hint" style={{ marginTop: -4 }}>
+        Dit is wat er op deze rekening gebeurt. Wat anderen van deze posten dragen komt bij jou
+        privé terug via de verrekening, niet op deze rekening — tel de blokken hieronder dus niet
+        bij elkaar op.
+      </div>
       {pot.aside > 0 && (
         <div className="hint" style={{ marginTop: -4 }}>
           Daar bovenop hoort <strong>{formatMoney(pot.aside)}</strong> op deze rekening te blijven
