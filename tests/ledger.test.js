@@ -806,3 +806,29 @@ describe('a holding at the top of the chain', () => {
     expect(below.difference).toBe(40000 - 12596);
   });
 });
+
+describe('a cost that belongs to one account and nobody else', () => {
+  it('comes off what is left there and touches nothing else', () => {
+    const holding = { id: 'a-holding', name: 'Holding', kind: 'business', ownerId: ME,
+      income: 800000, overhead: 96600 };
+    const result = forMonth({
+      people,
+      accounts: [holding],
+      expenses: [
+        expense({ id: 'o1', name: 'Software', amount: 5000,
+          payer: { kind: 'account', id: 'a-holding' },
+          split: { kind: 'equal', participants: [ME] } }),
+      ],
+    }, '2026-09');
+
+    // Not in the monthly load, not in a category, not in anyone's share.
+    expect(result.monthlyTotal).toBe(5000);
+    expect(result.borne[ME]).toBe(5000);
+    expect(Object.values(result.perCategory).reduce((a, b) => a + b, 0)).toBe(5000);
+
+    // But it does come off what stays on the account.
+    const pot = result.pots.find((p) => p.account.id === 'a-holding');
+    expect(pot.overhead).toBe(96600);
+    expect(pot.difference).toBe(800000 - 96600 - 5000);
+  });
+});

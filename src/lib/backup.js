@@ -118,6 +118,7 @@ export function readBackup(source) {
         : {}),
       settlement: a.settlement === true,
       ...(Number.isInteger(a.income) && a.income !== 0 ? { income: a.income } : {}),
+      ...(Number.isInteger(a.overhead) && a.overhead !== 0 ? { overhead: a.overhead } : {}),
       ...(text(a.fundedBy) ? { fundedBy: text(a.fundedBy) } : {}),
     };
   });

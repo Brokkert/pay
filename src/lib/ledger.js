@@ -306,6 +306,7 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
   const carries = (id) =>
     lines.some((l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === id) ||
     Number(accounts.find((a) => a.id === id)?.income) > 0 ||
+    Number(accounts.find((a) => a.id === id)?.overhead) > 0 ||
     people.some((p) => p.incomeFrom === id) ||
     accounts.some((a) => a.fundedBy === id);
   return accounts
@@ -340,6 +341,12 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
       // the top of the chain cannot say what is left on it, which is the whole
       // reason to look.
       const income = Number(account.income) || 0;
+      // Costs that belong to this account and to nobody else: payroll tax on a
+      // holding, an insurance of the company. They are not posts — a post is
+      // something you share or carry yourself — so they stay out of the
+      // monthly load, the categories and everyone's share, and only count
+      // where the question is what is left on this account.
+      const overhead = Number(account.overhead) || 0;
       const salaries = people
         .filter((p) => p.incomeFrom === account.id && Number(p.income) > 0)
         .map((p) => ({ person: p, cents: Number(p.income) }));
@@ -375,11 +382,12 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
         contributions,
         paidIn,
         income,
+        overhead,
         salaries,
         feeds,
         drawn,
         // What is left on it: everything arriving, less everything leaving.
-        difference: income + paidIn - needed - drawn,
+        difference: income + paidIn - needed - drawn - overhead,
         // What really leaves this month, what is being saved for later, and
         // whether some expense could not say which month it goes out.
         charged: saving.realPerAccount[account.id] || 0,

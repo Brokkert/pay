@@ -28,7 +28,8 @@ export default function Leftover({ store, month }) {
   // nothing to be left over from, and calling that a shortfall would be a claim
   // about money Pay has never been told about.
   const chains = result.pots.filter(
-    (pot) => pot.account.kind !== 'shared' && (pot.income > 0 || pot.paidIn > 0)
+    (pot) =>
+      pot.account.kind !== 'shared' && (pot.income > 0 || pot.paidIn > 0 || pot.overhead > 0)
   );
   const persons = people
     .filter((p) => Number(p.income) > 0)
@@ -104,6 +105,13 @@ function Chain({ pot }) {
             what="Vaste lasten eraf"
             sub="de posten die van deze rekening afgaan"
             cents={-out}
+          />
+        )}
+        {pot.overhead > 0 && (
+          <Line
+            what="Kosten buiten je posten om"
+            sub="kosten van deze rekening die je met niemand deelt"
+            cents={-pot.overhead}
           />
         )}
         {pot.salaries.map((row) => (

@@ -454,6 +454,15 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
         </Field>
       )}
 
+      {!shared && (
+        <Field
+          label="Gaat er maandelijks af, buiten je posten om"
+          hint="Kosten van de zaak die je met niemand deelt — loonheffing bijvoorbeeld. Ze horen niet tussen je posten en tellen dus niet mee in je maandlast; ze staan alleen bij Overhouden, waar de vraag is wat er op deze rekening blijft."
+        >
+          <AmountInput cents={draft.overhead || 0} onChange={(c) => set({ overhead: c })} />
+        </Field>
+      )}
+
       {!shared && draft.ownerId && (
         <Field
           label="Vaste inleg per maand"
