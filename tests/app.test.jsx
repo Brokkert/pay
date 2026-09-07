@@ -815,12 +815,14 @@ describe('taking the overview apart', () => {
   }, 30000);
 });
 
-describe('a holding, top of the chain', () => {
-  it('takes turnover in, salary out, and says what stays', async () => {
+describe('what is left, on its own tab', () => {
+  const go = async (user) => user.click(await screen.findByRole('button', { name: /Overhouden/ }));
+
+  it('runs a holding from turnover down to what stays', async () => {
     await withData(exampleHousehold());
     const user = await start();
 
-    // Turnover on the business account.
+    // Turnover on the business account, and a salary paid out of it.
     await user.click(await screen.findByRole('button', { name: /Mensen/ }));
     await user.click(await screen.findByText('Zaak'));
     let sheet = screen.getByRole('heading', { name: 'Rekening wijzigen' }).closest('.sheet');
@@ -828,7 +830,6 @@ describe('a holding, top of the chain', () => {
     await user.type(within(field).getByRole('textbox'), '8000,00');
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
-    // And a salary paid out of it.
     await user.click(await screen.findByText('Ik'));
     sheet = screen.getByRole('heading', { name: 'Persoon wijzigen' }).closest('.sheet');
     field = within(sheet).getByText('Inkomen per maand').closest('.field');
@@ -836,140 +837,51 @@ describe('a holding, top of the chain', () => {
     await user.click(within(field).getByRole('button', { name: 'Zaak' }));
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
-    await user.click(await screen.findByRole('button', { name: /Overzicht/ }));
+    await go(user);
     const panel = [...document.querySelectorAll('.section')]
       .find((el) => el.textContent === 'Zaak').nextElementSibling;
-
-    expect(within(panel).getByText('Komt erop').closest('.line').textContent)
+    expect(within(panel).getByText('Komt binnen').closest('.line').textContent)
       .toContain('8.000,00');
     expect(within(panel).getByText('Salaris naar Ik').closest('.line').textContent)
       .toContain('5.000,00');
     // 8.000 in, 5.000 salary, 50,00 of internet and 4,00 of bank charges.
-    expect(within(panel).getByText('Blijft over').closest('.total').textContent)
+    expect(within(panel).getByText('Blijft staan').closest('.total').textContent)
       .toContain('2.946,00');
 
-    // And it lands on the person as income, so what is left there follows too.
-    expect(screen.getByText('Wat er overblijft')).toBeTruthy();
-
-    // What has to be on the account counts the salary as well: it leaves the
-    // same account on the same day as the bills do.
-    const own = [...document.querySelectorAll('.section')]
-      .find((el) => el.textContent === 'Je eigen rekeningen').nextElementSibling;
-    expect(within(own).getByText('Zaak').closest('.line').textContent).toContain('5.054,00');
+    // And the person below it: income against what they carry.
+    const mine = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Ik').nextElementSibling;
+    expect(within(mine).getByText('Houd je over').closest('.total').textContent)
+      .toContain('4.853,50');
   }, 30000);
-});
 
-describe('what is left after the fixed costs', () => {
-  it('shows it per person who filled in an income, and nobody else', async () => {
+  it('says it is a plan, not a sum out of the ledger', async () => {
     const set = exampleHousehold();
-    set.people = set.people.map((p) =>
-      p.isMe ? { ...p, income: 300000 } : p.name === 'Partner' ? { ...p, income: 250000 } : p
-    );
+    set.people = set.people.map((p) => (p.isMe ? { ...p, income: 300000 } : p));
     await withData(set);
     const user = await start();
-
-    await screen.findByText('Jouw deel');
-    const panel = [...document.querySelectorAll('.section')]
-      .find((el) => el.textContent === 'Wat er overblijft').nextElementSibling;
-
-    // 3.000,00 in, 146,50 of fixed costs carried.
-    const rows = [...panel.querySelectorAll('.line')];
-    expect(rows).toHaveLength(2);
-    expect(rows[0].textContent).toContain('Ik');
-    expect(rows[0].textContent).toContain('2.853,50');
-    // The friend and the neighbour gave no income, so they are not in it.
-    expect(panel.textContent).not.toContain('Vriend');
-
-    // And it opens on where it went.
-    await user.click(rows[0]);
-    const sheet = screen.getByRole('heading', { name: 'Ik' }).closest('.sheet');
-    expect(within(sheet).getByText('Inkomen')).toBeTruthy();
-    expect(within(sheet).getByText('Streamingdienst')).toBeTruthy();
+    await go(user);
+    expect(screen.getByText(/Deze bedragen vul je zelf in/)).toBeTruthy();
   }, 30000);
 
-  it('stays away entirely when no income is filled in', async () => {
-    await withData(exampleHousehold());
-    await start();
-    await screen.findByText('Jouw deel');
-    expect(
-      [...document.querySelectorAll('.section')].some((el) => el.textContent === 'Wat er overblijft')
-    ).toBe(false);
-  }, 30000);
-});
-
-describe('a standing order on an account of your own', () => {
-  it('is held against what leaves it, the same as on a shared pot', async () => {
-    const set = exampleHousehold();
-    const me = set.people.find((p) => p.isMe).id;
-    set.accounts = set.accounts.map((a) =>
-      a.kind === 'business' ? { ...a, ownerId: me, contributions: { [me]: 5000 } } : a
-    );
-    await withData(set);
-    await start();
-
-    await screen.findByText('Jouw deel');
-    const panel = [...document.querySelectorAll('.section')]
-      .find((el) => el.textContent === 'Zaak').nextElementSibling;
-
-    // 54,00 leaves it a month and 50,00 is set: 4,00 short.
-    expect(within(panel).getByText('Staat als vaste inleg ingesteld').closest('.line').textContent)
-      .toContain('50,00');
-    const total = within(panel).getByText('Komt tekort').closest('.total');
-    expect(total.textContent).toContain('4,00');
-  }, 30000);
-});
-
-describe('an account of your own in the monthly list', () => {
-  it('says how much has to be on it, without saying where that comes from', async () => {
+  it('stays empty until something is filled in', async () => {
     await withData(exampleHousehold());
     const user = await start();
-    await screen.findByText('Jouw deel');
-
-    const heading = [...document.querySelectorAll('.section')]
-      .find((el) => el.textContent === 'Je eigen rekeningen');
-    expect(heading).toBeTruthy();
-    const panel = heading.nextElementSibling;
-
-    // The business account pays 50,00 of internet and owes 4,00 of the bank
-    // charges to the bills account: 54,00 leaves it every month.
-    const row = within(panel).getByText('Zaak').closest('.line');
-    expect(row.textContent).toContain('54,00');
-    // Not "transfer this there": a business account is usually where the money
-    // starts, not somewhere you top up.
-    expect(panel.textContent).not.toContain('Naar Zaak');
-
-    // And it opens on what it is made of.
-    await user.click(row);
-    const sheet = screen.getByRole('heading', { name: 'Zaak' }).closest('.sheet');
-    expect(within(sheet).getByText('Internet')).toBeTruthy();
-    expect(within(sheet).getByText(/Naar Vaste lasten/)).toBeTruthy();
+    await go(user);
+    expect(screen.getByText(/Nog niets ingevuld/)).toBeTruthy();
   }, 30000);
-});
 
-describe('an account of your own with bills on it', () => {
-  it('says what leaves it and what has to be on it, like any other', async () => {
+  it('leaves the overview to sharing and settling', async () => {
     const set = exampleHousehold();
-    const me = set.people.find((p) => p.isMe).id;
-    // A yearly bill charged in March, off the business account.
-    set.expenses = [
-      ...set.expenses,
-      { id: 'e-biz', name: 'Beroepsaansprakelijkheid', amount: 24000, cadence: 'year',
-        chargeMonth: 3, category: 'Verzekeringen',
-        payer: { kind: 'account', id: set.accounts.find((a) => a.kind === 'business').id },
-        split: { kind: 'equal', participants: [me], weights: {} } },
-    ];
+    set.people = set.people.map((p) => (p.isMe ? { ...p, income: 300000 } : p));
     await withData(set);
     await start();
-
     await screen.findByText('Jouw deel');
-    const panel = [...document.querySelectorAll('.section')]
-      .find((el) => el.textContent === 'Zaak').nextElementSibling;
-
-    // 240,00 a year is 20,00 a month, and by September six months are in.
-    expect(within(panel).getByText('Hoort er nu op te staan').closest('.line').textContent)
-      .toContain('120,00');
-    // No deposits: nobody pays into an account of one person.
-    expect(within(panel).queryByText(/stort/)).toBe(null);
+    const headings = [...document.querySelectorAll('.section')].map((el) => el.textContent);
+    expect(headings).not.toContain('Wat er overblijft');
+    expect(headings).not.toContain('Je eigen rekeningen');
+    // A shared pot still has its panel there.
+    expect(headings).toContain('Vaste lasten');
   }, 30000);
 });
 

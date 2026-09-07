@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Overview from './tabs/Overview.jsx';
 import Expenses from './tabs/Expenses.jsx';
 import Settle from './tabs/Settle.jsx';
+import Leftover from './tabs/Leftover.jsx';
 import People from './tabs/People.jsx';
 import Settings from './tabs/Settings.jsx';
 import Login from './views/Login.jsx';
@@ -20,6 +21,7 @@ const TABS = [
   { id: 'overview', label: 'Overzicht' },
   { id: 'expenses', label: 'Lasten' },
   { id: 'settle', label: 'Verrekenen' },
+  { id: 'leftover', label: 'Overhouden' },
   { id: 'people', label: 'Mensen' },
   { id: 'more', label: 'Meer' },
 ];
@@ -125,6 +127,8 @@ export default function App() {
         )}
 
         {tab === 'settle' && <Settle store={store} month={month} />}
+
+        {tab === 'leftover' && <Leftover store={store} month={month} />}
 
         {tab === 'people' && <People store={store} />}
 

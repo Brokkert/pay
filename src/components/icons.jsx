@@ -47,6 +47,12 @@ const PATHS = {
       <path d="M11.2 8H18M6 16h6.8" />
     </>
   ),
+  // What is left: a stack that gets shorter as the money goes out.
+  leftover: (
+    <>
+      <path d="M4 6.5h16M4 12h11M4 17.5h6" />
+    </>
+  ),
   people: (
     <>
       <circle cx="9" cy="8" r="3.2" />

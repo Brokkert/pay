@@ -95,32 +95,6 @@ export default function Overview({ store, month, onMonth }) {
   }
 
   const mine = me ? result.borne[me.id] || 0 : 0;
-  // Income is optional and changes nothing; where it is filled in, it turns
-  // "what does this cost me" into "so what is left".
-  const left = people
-    .filter((p) => Number(p.income) > 0)
-    .map((person) => ({
-      person,
-      income: Number(person.income),
-      borne: result.borne[person.id] || 0,
-      cents: Number(person.income) - (result.borne[person.id] || 0),
-    }))
-    .sort((a, b) => Number(b.person.isMe) - Number(a.person.isMe) || b.cents - a.cents);
-
-  // Accounts of your own: what has to be on them each month.
-  const funding = result.pots
-    .filter(
-      (pot) =>
-        pot.account.kind !== 'shared' &&
-        pot.needed + pot.drawn !== 0 &&
-        // Somebody else's own account is their business, not a line on your
-        // list of things to see to.
-        (!pot.account.ownerId || pot.account.ownerId === me?.id)
-    )
-    // Everything that leaves it, salary and what it feeds another account
-    // included — those go off the same account on the same day as the bills.
-    .map((pot) => ({ account: pot.account, pot, cents: pot.needed + pot.drawn }))
-    .sort((a, b) => b.cents - a.cents);
   const totalDetail = {
     title: 'Loopt in totaal',
     label: 'Per maand',
@@ -239,73 +213,7 @@ export default function Overview({ store, month, onMonth }) {
         </>
       )}
 
-      {/* Your own accounts do not appear above: nobody owes anything to them, so
-          the ledger has nothing to settle there. But money does leave them
-          every month, and how much has to be there is a figure you need in the
-          same sitting. What it does not say is where that money comes from —
-          a business account is usually the source of the whole chain, not
-          somewhere you transfer to. So it states the requirement, not an
-          instruction to move anything. */}
-      {funding.length > 0 && (
-        <>
-          <div className="section">Je eigen rekeningen</div>
-          <div className="panel">
-            {funding.map((row) => (
-              <Line
-                key={row.account.id}
-                left={<AccountMark />}
-                what={row.account.name}
-                sub="gaat er elke maand af"
-                cents={row.cents}
-                onClick={() =>
-                  setDetail({
-                    title: row.account.name,
-                    label: 'Gaat er elke maand af',
-                    cents: row.cents,
-                    rows: postRows(
-                      result.lines.filter(
-                        (l) =>
-                          l.expense.payer?.kind === 'account' &&
-                          l.expense.payer.id === row.account.id
-                      )
-                    )
-                      .concat(
-                        Object.entries(row.pot.toAccounts).map(([id, cents]) => ({
-                          key: `to-${id}`,
-                          what: `Naar ${accounts.find((a) => a.id === id)?.name || 'rekening'}`,
-                          sub: 'het deel dat deze rekening zelf draagt',
-                          cents,
-                        }))
-                      )
-                      .concat(
-                        row.pot.salaries.map((r) => ({
-                          key: `salary-${r.person.id}`,
-                          what: `Salaris naar ${r.person.name}`,
-                          cents: r.cents,
-                        }))
-                      )
-                      .concat(
-                        row.pot.feeds.map((r) => ({
-                          key: `feed-${r.account.id}`,
-                          what: `Vaste inleg naar ${r.account.name}`,
-                          cents: r.cents,
-                        }))
-                      ),
-                    note: 'Wat er elke maand van deze rekening af gaat. Er stort niemand op, dus dit bedrag moet er maandelijks staan — of dat nu geld is dat je er laat staan of dat je het er zelf op zet. Wat anderen ervan dragen komt langs de verrekening bij je terug.',
-                  })
-                }
-              />
-            ))}
-          </div>
-          <div className="hint" style={{ marginTop: -4 }}>
-            Deze rekeningen zijn van jou alleen, dus er stort niemand op. Zorg dat er elke maand
-            zoveel op staat — geld dat je er laat staan telt net zo goed als geld dat je overmaakt.
-            Wat anderen ervan dragen krijg je terug via de verrekening hierboven.
-          </div>
-        </>
-      )}
-
-      {result.pots.map((pot) => (
+      {result.pots.filter((pot) => pot.account.kind === 'shared').map((pot) => (
         <Pot
           key={pot.account.id}
           pot={pot}
@@ -429,40 +337,6 @@ export default function Overview({ store, month, onMonth }) {
           />
         ))}
       </div>
-
-      {left.length > 0 && (
-        <>
-          <div className="section">Wat er overblijft</div>
-          <div className="panel">
-            {left.map((row) => (
-              <Line
-                key={row.person.id}
-                left={<Avatar person={row.person} size="sm" />}
-                what={row.person.name}
-                sub={`${formatMoney(row.income)} min ${formatMoney(row.borne)} vaste lasten`}
-                cents={row.cents}
-                tone={row.cents < 0 ? 'debt' : ''}
-                onClick={() =>
-                  setDetail({
-                    title: row.person.name,
-                    label: 'Blijft over per maand',
-                    cents: row.cents,
-                    rows: [
-                      { key: 'in', what: 'Inkomen', cents: row.income },
-                      ...postRows(result.lines, (l) => -(l.shares[row.person.id] || 0)),
-                    ],
-                    note: 'Je inkomen min alles wat je van de vaste lasten draagt. Wat je verder uitgeeft staat niet in Pay, dus dit is wat er vóór boodschappen en de rest overblijft.',
-                  })
-                }
-              />
-            ))}
-          </div>
-          <div className="hint" style={{ marginTop: -4 }}>
-            Inkomen vul je per persoon in bij <strong>Mensen</strong>. Het verandert niets aan de
-            verdeling — het staat er alleen naast.
-          </div>
-        </>
-      )}
 
       <div className="section">Wat ieder uiteindelijk draagt</div>
       <div className="panel">
