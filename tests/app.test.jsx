@@ -931,6 +931,17 @@ describe('what is left, on its own tab', () => {
       .find((el) => el.textContent === 'Ik').nextElementSibling;
     expect(within(mine).getByText('Houd je over').closest('.total').textContent)
       .toContain('4.853,50');
+
+    // And that is not a lump either: it opens into your share of every post,
+    // said as a share of the whole and off whose account it goes.
+    await user.click(within(mine).getByText('Vaste lasten').closest('.line'));
+    const opened = screen.getByRole('heading', { name: 'Vaste lasten van Ik' }).closest('.sheet');
+    const row = within(opened).getByText('Streamingdienst').closest('.line');
+    // 20,00 over four, off the personal account.
+    expect(row.textContent).toContain('5,00');
+    expect(row.textContent).toContain('jouw deel van € 20,00');
+    expect(row.textContent).toContain('van Privé');
+    expect(within(opened).getByText('Samen').closest('.total').textContent).toContain('146,50');
   }, 30000);
 
   it('names what one account puts into another, even with no amount set', async () => {
@@ -963,6 +974,13 @@ describe('what is left, on its own tab', () => {
       .toContain('45,00');
     expect(within(prive).getByText('Blijft staan').closest('.total').textContent)
       .toContain('0,00');
+
+    // The posts on that account open too, at their full amount.
+    await user.click(within(prive).getByText('Vaste lasten eraf').closest('.line'));
+    const costs = screen.getByRole('heading', { name: 'Vaste lasten van Privé' }).closest('.sheet');
+    expect(within(costs).getByText('Streamingdienst').closest('.line').textContent)
+      .toContain('20,00');
+    await user.click(within(costs).getByRole('button', { name: 'Sluiten' }));
 
     // Tapping the row opens the bill behind it, post by post.
     await user.click(feed.querySelector('.line-open') || feed);

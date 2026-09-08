@@ -70,7 +70,12 @@ export default function Leftover({ store, month }) {
       </Notice>
 
       {chains.map((pot) => (
-        <Chain key={pot.account.id} pot={pot} onOpenFeed={(feed) => setOpen({ pot, feed })} />
+        <Chain
+          key={pot.account.id}
+          pot={pot}
+          onOpenFeed={(feed) => setOpen({ kind: 'feed', feed })}
+          onOpenCosts={() => setOpen({ kind: 'costs', pot })}
+        />
       ))}
 
       {persons.map(({ person, income, borne, left }) => (
@@ -85,6 +90,7 @@ export default function Leftover({ store, month }) {
               what="Vaste lasten"
               sub="wat je van alle posten draagt — rekent Pay uit"
               cents={-borne}
+              onClick={() => setOpen({ kind: 'borne', person, cents: borne })}
             />
             <Total
               label="Houd je over"
@@ -95,11 +101,31 @@ export default function Leftover({ store, month }) {
         </div>
       ))}
 
-      {open && (
+      {open?.kind === 'feed' && (
         <FeedBreakdown
           feed={open.feed}
           pot={result.pots.find((p) => p.account.id === open.feed.account.id)}
           lines={result.lines}
+          accounts={accounts}
+          onClose={() => setOpen(null)}
+        />
+      )}
+
+      {open?.kind === 'costs' && (
+        <AccountCosts
+          pot={open.pot}
+          lines={result.lines}
+          accounts={accounts}
+          onClose={() => setOpen(null)}
+        />
+      )}
+
+      {open?.kind === 'borne' && (
+        <BorneBreakdown
+          person={open.person}
+          cents={open.cents}
+          lines={result.lines}
+          people={people}
           accounts={accounts}
           onClose={() => setOpen(null)}
         />
@@ -109,7 +135,7 @@ export default function Leftover({ store, month }) {
 }
 
 /** One account, top to bottom: what comes in, what goes out, what stays. */
-function Chain({ pot, onOpenFeed }) {
+function Chain({ pot, onOpenFeed, onOpenCosts }) {
   const out = pot.needed;
   return (
     <>
@@ -144,6 +170,7 @@ function Chain({ pot, onOpenFeed }) {
             what="Vaste lasten eraf"
             sub="de posten die van deze rekening afgaan"
             cents={-out}
+            onClick={onOpenCosts}
           />
         )}
         {pot.overhead > 0 && (
@@ -209,40 +236,41 @@ function Chain({ pot, onOpenFeed }) {
   );
 }
 
-/**
- * What a fed account actually has to cover in a month, spelled out.
- *
- * The standing order is a figure you typed; this is the bill behind it. Every
- * post that comes off that account, every cent it settles with another account,
- * and what it costs outside the posts — the same sum the account's own block is
- * built from, so the two can never say different things.
- */
-function FeedBreakdown({ feed, pot, lines, accounts, onClose }) {
-  const nameOf = (id) => accounts.find((a) => a.id === id)?.name || 'een andere rekening';
-  const rows = [];
+/** A dot in the colour of the post's category. */
+const dot = (expense) => (
+  <span className="cat-dot" style={{ background: categoryOf(expense.category).colour }} />
+);
 
-  for (const line of lines) {
-    if (line.expense.payer?.kind !== 'account' || line.expense.payer.id !== feed.account.id) continue;
-    const cadence = cadenceOf(line.expense.cadence);
-    rows.push({
-      key: line.expense.id,
-      left: (
-        <span
-          className="cat-dot"
-          style={{ background: categoryOf(line.expense.category).colour }}
-        />
-      ),
-      what: line.expense.name,
-      // Per month, always — a yearly bill divided over twelve is what a standing
-      // order has to carry, not the bill itself.
-      sub:
-        line.expense.cadence === 'month'
-          ? undefined
-          : `${formatMoney(line.expense.amount)} ${cadence.short}, omgerekend per maand`,
-      cents: line.amount,
-    });
-  }
-  rows.sort((a, b) => b.cents - a.cents);
+/** A post at its full monthly amount, with the real charge behind it. */
+const postRow = (line) => ({
+  key: line.expense.id,
+  left: dot(line.expense),
+  what: line.expense.name,
+  // Per month, always — a yearly bill divided over twelve is what a standing
+  // order has to carry, not the bill itself.
+  sub:
+    line.expense.cadence === 'month'
+      ? undefined
+      : `${formatMoney(line.expense.amount)} ${cadenceOf(line.expense.cadence).short}, omgerekend per maand`,
+  cents: line.amount,
+});
+
+/**
+ * Everything one account has to cover in a month.
+ *
+ * The same sum the account's own block is built from, so the two can never say
+ * different things: its posts, what it settles with other accounts, and — where
+ * asked for — what it costs outside the posts.
+ */
+function needRows(pot, lines, accounts, { overhead = false } = {}) {
+  const nameOf = (id) => accounts.find((a) => a.id === id)?.name || 'een andere rekening';
+  const rows = lines
+    .filter(
+      (line) =>
+        line.expense.payer?.kind === 'account' && line.expense.payer.id === pot?.account.id
+    )
+    .map(postRow)
+    .sort((a, b) => b.cents - a.cents);
 
   // Traffic with other accounts: this one fronting for another, or the other way
   // round. It leaves and arrives just like a post does.
@@ -257,7 +285,7 @@ function FeedBreakdown({ feed, pot, lines, accounts, onClose }) {
       tone: 'credit',
     });
   }
-  if (pot?.overhead > 0) {
+  if (overhead && pot?.overhead > 0) {
     rows.push({
       key: 'overhead',
       what: 'Kosten buiten je posten om',
@@ -265,13 +293,96 @@ function FeedBreakdown({ feed, pot, lines, accounts, onClose }) {
       cents: pot.overhead,
     });
   }
+  return rows;
+}
 
+/** The posts that come off one account, at their full amount. */
+function AccountCosts({ pot, lines, accounts, onClose }) {
+  return (
+    <Breakdown
+      title={`Vaste lasten van ${pot.account.name}`}
+      label="Gaat er elke maand af"
+      cents={pot.needed}
+      rows={needRows(pot, lines, accounts)}
+      empty={`Er staan geen posten op ${pot.account.name}.`}
+      note={
+        <>
+          Elke post voor zijn volle bedrag, want dat is wat er van deze rekening af gaat. Wat
+          anderen ervan dragen komt via de verrekening bij je terug, niet hier.
+          {pot.aside > 0 && (
+            <>
+              {' '}
+              Daar bovenop hoort <strong>{formatMoney(pot.aside)}</strong> op deze rekening te
+              staan voor posten die niet elke maand worden afgeschreven.
+            </>
+          )}
+        </>
+      }
+      onClose={onClose}
+    />
+  );
+}
+
+/**
+ * What one person carries of everything that runs.
+ *
+ * Their share per post, not the post — the block above is about what is left of
+ * their income, and only their own part of a bill comes off that.
+ */
+function BorneBreakdown({ person, cents, lines, people, accounts, onClose }) {
+  const payerName = (expense) =>
+    expense.payer?.kind === 'account'
+      ? accounts.find((a) => a.id === expense.payer.id)?.name
+      : people.find((p) => p.id === expense.payer?.id)?.name;
+
+  const rows = lines
+    .filter((line) => line.shares[person.id])
+    .map((line) => {
+      const whole = line.amount;
+      const share = line.shares[person.id];
+      const from = payerName(line.expense);
+      return {
+        key: line.expense.id,
+        left: dot(line.expense),
+        what: line.expense.name,
+        // What it is a share of, and off whose account it goes — the two things
+        // that make a share you did not choose yourself explainable.
+        sub:
+          (share === whole ? 'helemaal van jou' : `jouw deel van ${formatMoney(whole)}`) +
+          (from ? ` · van ${from}` : ''),
+        cents: share,
+      };
+    })
+    .sort((a, b) => b.cents - a.cents);
+
+  return (
+    <Breakdown
+      title={`Vaste lasten van ${person.name}`}
+      label="Draagt per maand"
+      cents={cents}
+      rows={rows}
+      empty={`${person.name} draagt van geen enkele post een deel.`}
+      note="Jouw deel van elke post die deze maand loopt, omgerekend naar per maand. Niet wat er van je rekening af gaat — dat staat per rekening hierboven, en daar zit ook het deel van anderen in."
+      onClose={onClose}
+    />
+  );
+}
+
+/**
+ * What a fed account actually has to cover in a month, spelled out.
+ *
+ * The standing order is a figure you typed; this is the bill behind it. Every
+ * post that comes off that account, every cent it settles with another account,
+ * and what it costs outside the posts — the same sum the account's own block is
+ * built from, so the two can never say different things.
+ */
+function FeedBreakdown({ feed, pot, lines, accounts, onClose }) {
   return (
     <Breakdown
       title={`Naar ${feed.account.name}`}
       label="Wat die rekening elke maand nodig heeft"
       cents={feed.needed}
-      rows={rows}
+      rows={needRows(pot, lines, accounts, { overhead: true })}
       empty={`Er staan nog geen posten op ${feed.account.name}, dus valt er niets te berekenen.`}
       note={
         <>
