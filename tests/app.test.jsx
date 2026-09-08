@@ -933,6 +933,45 @@ describe('what is left, on its own tab', () => {
       .toContain('4.853,50');
   }, 30000);
 
+  it('names what one account puts into another, even with no amount set', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+
+    // Privé is filled from Zaak. No standing order typed — that is the point:
+    // the question used to be hidden until you had already answered it.
+    await user.click(await screen.findByRole('button', { name: /Mensen/ }));
+    await user.click(await screen.findByText('Privé'));
+    const sheet = screen.getByRole('heading', { name: 'Rekening wijzigen' }).closest('.sheet');
+    const field = within(sheet).getByText('Wordt gevuld vanaf').closest('.field');
+    await user.click(within(field).getByRole('button', { name: 'Zaak' }));
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    await go(user);
+
+    // Zaak now says where that money goes, at what Privé actually costs:
+    // 20,00 of streaming and 25,00 of sport.
+    const zaak = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Zaak').nextElementSibling;
+    const feed = within(zaak).getByText('Naar Privé').closest('.line');
+    expect(feed.textContent).toContain('45,00');
+    expect(feed.textContent).toContain('nog geen vast bedrag');
+
+    // And Privé is not reported as short of money that arrives every month.
+    const prive = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Privé').nextElementSibling;
+    expect(within(prive).getByText('Komt van Zaak').closest('.line').textContent)
+      .toContain('45,00');
+    expect(within(prive).getByText('Blijft staan').closest('.total').textContent)
+      .toContain('0,00');
+
+    // Tapping the row opens the bill behind it, post by post.
+    await user.click(feed.querySelector('.line-open') || feed);
+    const opened = screen.getByRole('heading', { name: 'Naar Privé' }).closest('.sheet');
+    expect(within(opened).getByText('Streamingdienst')).toBeTruthy();
+    expect(within(opened).getByText('Sportclub')).toBeTruthy();
+    expect(opened.textContent).toContain('Er staat nog geen vaste inleg bij Privé');
+  }, 30000);
+
   it('says it is a plan, not a sum out of the ledger', async () => {
     const set = exampleHousehold();
     set.people = set.people.map((p) => (p.isMe ? { ...p, income: 300000 } : p));

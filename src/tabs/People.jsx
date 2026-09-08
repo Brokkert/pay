@@ -335,6 +335,11 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
             : {},
         ownerId: shared ? null : draft.ownerId,
         settlement: shared ? Boolean(draft.settlement) : false,
+        // Neither question is asked of a shared account, so neither may be left
+        // behind on one that used to be your own — an answer you cannot see is
+        // an answer you cannot correct.
+        overhead: shared ? 0 : Number(draft.overhead) || 0,
+        fundedBy: shared ? '' : draft.fundedBy || '',
       });
       onClose();
     } catch (err) {
@@ -503,34 +508,44 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
               </span>
             </div>
           </div>
-          {Number(draft.contributions?.[draft.ownerId]) > 0 && (
-            <>
-              <div className="tiny dim" style={{ margin: '12px 0 7px' }}>
-                Komt dat van een andere rekening in Pay? Dan telt het daar als uitgave.
-              </div>
-              <div className="chips">
+        </Field>
+      )}
+
+      {/* Where this account is filled from, asked on its own. It used to hang
+          under the standing order and only appear once an amount had been
+          typed, which put the answer behind the question: an account fed by
+          another one but with no amount set yet is exactly the one that has to
+          say so, because then Pay works out the amount itself. */}
+      {!shared && draft.ownerId && accounts.some((a) => a.id !== draft.id) && (
+        <Field
+          label="Wordt gevuld vanaf"
+          hint={
+            Number(draft.contributions?.[draft.ownerId]) > 0
+              ? 'Komt die vaste inleg van een andere rekening in Pay? Dan telt hij daar als uitgave.'
+              : 'Komt het geld voor deze rekening van een andere rekening in Pay? Dan telt het daar als uitgave. Zonder vaste inleg hierboven rekent Pay met wat deze rekening per maand nodig heeft.'
+          }
+        >
+          <div className="chips">
+            <button
+              type="button"
+              className={`chip${!draft.fundedBy ? ' on' : ''}`}
+              onClick={() => set({ fundedBy: '' })}
+            >
+              Van buiten Pay
+            </button>
+            {accounts
+              .filter((a) => a.id !== draft.id)
+              .map((a) => (
                 <button
+                  key={a.id}
                   type="button"
-                  className={`chip${!draft.fundedBy ? ' on' : ''}`}
-                  onClick={() => set({ fundedBy: '' })}
+                  className={`chip${draft.fundedBy === a.id ? ' on' : ''}`}
+                  onClick={() => set({ fundedBy: a.id })}
                 >
-                  Van buiten Pay
+                  {a.name}
                 </button>
-                {accounts
-                  .filter((a) => a.id !== draft.id)
-                  .map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      className={`chip${draft.fundedBy === a.id ? ' on' : ''}`}
-                      onClick={() => set({ fundedBy: a.id })}
-                    >
-                      {a.name}
-                    </button>
-                  ))}
-              </div>
-            </>
-          )}
+              ))}
+          </div>
         </Field>
       )}
 
