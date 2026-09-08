@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseMoney, formatMoney, formatShort, toInput } from '../src/lib/money.js';
+import { parseMoney, formatMoney, formatShort, toInput, toPlain } from '../src/lib/money.js';
 
 describe('parseMoney', () => {
   it('reads Dutch notation', () => {
@@ -61,6 +61,19 @@ describe('formatting', () => {
   it('reads back what it writes', () => {
     for (const cents of [0, 1, 99, 100, 12345, 999999]) {
       expect(parseMoney(toInput(cents))).toBe(cents);
+    }
+  });
+
+  it('hands a bank field an amount without decoration', () => {
+    // No symbol and no grouping dot: an amount field that reads "1.234,56" as
+    // more than a thousand is not something you can count on.
+    expect(toPlain(123456)).toBe('1234,56');
+    expect(toPlain(2450)).toBe('24,50');
+    expect(toPlain(0)).toBe('0,00');
+    expect(toPlain(null)).toBe('');
+    // And what comes out still reads back as the same amount.
+    for (const cents of [1, 99, 100, 12345, 1234567]) {
+      expect(parseMoney(toPlain(cents))).toBe(cents);
     }
   });
 });

@@ -205,6 +205,24 @@ svg { display: block; }
   transition: background 0.12s;
 }
 button.item:active { background: var(--sunk); }
+.item.has-copy { padding: 0; gap: 10px; }
+.item.has-copy .item-open {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  flex: 1;
+  min-width: 0;
+  padding: 15px 0 15px 17px;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.item.has-copy .item-open:active { background: var(--sunk); }
+.item.has-copy > .right { padding: 15px 17px 15px 0; }
 .item .mid { flex: 1; min-width: 0; }
 .item .title { font-size: 14.5px; font-weight: 550; letter-spacing: -0.1px; }
 /* Room to breathe under the name, and between the grey line and whatever
@@ -337,6 +355,58 @@ button.item:active { background: var(--sunk); }
 }
 .line.tappable:active { background: var(--sunk); }
 
+/* A row whose amount you can copy. The text opens the breakdown, the amount
+   goes to the clipboard, so the padding moves off the row and into the two
+   controls — otherwise half the row would be dead space between them. */
+.line.has-copy {
+  padding: 0;
+  align-items: stretch;
+  gap: 10px;
+}
+.line.has-copy .line-open {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+  padding: 12px 0 12px 17px;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+button.line-open { cursor: pointer; }
+button.line-open:active { background: var(--sunk); }
+.line.has-copy > .copy-money { margin: 0; padding: 12px 17px; align-self: center; }
+
+/* The amount as a control: the mark in front of it, so the figures stay lined
+   up in their column whatever the mark is doing. */
+.copy-money {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  padding: 8px 0 8px 10px;
+  margin: -8px 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.copy-money:active { background: var(--sunk); }
+.copy-money .copy-mark {
+  display: inline-flex;
+  color: var(--text-3);
+  transition: color 0.15s;
+}
+.copy-money.done .copy-mark { color: var(--credit); }
+
 /* A figure you can open, with no chrome of its own: the hero carries its own
    look, and a button around it should not add a second one. */
 .bare {
@@ -412,6 +482,15 @@ button.item:active { background: var(--sunk); }
   -webkit-tap-highlight-color: transparent;
 }
 .total.tappable:active { background: var(--line); }
+.total.has-copy > .copy-money { margin: 0; padding: 6px 0 6px 10px; }
+.total-open {
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
 .total .k {
   flex: 1;
   font-size: 11px;

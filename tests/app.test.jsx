@@ -326,8 +326,13 @@ describe('a friend who settles through the bills account', () => {
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Verrekenen/ }));
 
-    // Frans is there with the netted amount, not with two separate debts.
-    const row = await screen.findByRole('button', { name: /Frans/ });
+    // Frans is there with the netted amount, not with two separate debts. The
+    // row holds two controls now — the name opens it, the amount copies — so
+    // reach for the row itself rather than for a button.
+    const row = (await screen.findAllByText('Frans'))
+      .map((n) => n.closest('.line'))
+      .find(Boolean);
+    expect(row).toBeTruthy();
     expect(within(row).getByText(/3,50/)).toBeTruthy();
     expect(within(row).getByText(/krijgt terug van BUNQ/)).toBeTruthy();
     // Not green: money leaving the account is not money coming your way — you
@@ -336,7 +341,7 @@ describe('a friend who settles through the bills account', () => {
     expect(screen.queryByText(/8,49/)).toBe(null);
 
     // And tapping him shows where that 3,50 comes from, at full value.
-    await user.click(row);
+    await user.click(row.querySelector('.line-open'));
     const sheet = screen.getByRole('heading', { name: /Jij en Frans/ }).closest('.sheet');
     expect(within(sheet).getByText('YouTube Family')).toBeTruthy();
     expect(within(sheet).getByText(/4,99/)).toBeTruthy();
@@ -344,6 +349,32 @@ describe('a friend who settles through the bills account', () => {
     expect(within(sheet).getByText(/8,49/)).toBeTruthy();
     // Named as running through the account, because that is where it comes from.
     expect(within(sheet).getByText(/via BUNQ/)).toBeTruthy();
+  }, 30000);
+
+  it('hands you the bare amount, ready to paste into a direct debit', async () => {
+    await withData(household());
+    const user = await start();
+
+    // After user-event's own setup, which installs a clipboard of its own.
+    const copied = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (text) => void copied.push(text) },
+    });
+
+    await user.click(await screen.findByRole('button', { name: /Verrekenen/ }));
+
+    const row = (await screen.findAllByText('Frans'))
+      .map((n) => n.closest('.line'))
+      .find(Boolean);
+    await user.click(within(row).getByRole('button', { name: /kopiëren/ }));
+
+    // No euro sign, no minus, no thousands dot: what a bank field accepts.
+    expect(copied).toEqual(['3,50']);
+    // And it says so, so you know the tap landed.
+    expect(row.querySelector('.copy-money.done')).toBeTruthy();
+
+    delete navigator.clipboard;
   }, 30000);
 });
 

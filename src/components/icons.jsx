@@ -81,6 +81,13 @@ const PATHS = {
     </>
   ),
   download: <path d="M12 4.5v13M6.5 12L12 17.5 17.5 12M5 20h14" />,
+  copy: (
+    <>
+      <rect x="9" y="3.5" width="11.5" height="14" rx="2" />
+      <path d="M15 20.5H5.5a2 2 0 0 1-2-2V7" />
+    </>
+  ),
+  check: <path d="M5 12.5l4.5 4.5L19 7" strokeWidth="2" />,
   paste: (
     <>
       <path d="M9 4.5h6v3H9z" />

@@ -4,7 +4,7 @@
 // not redundant — a settlement you cannot retrace is one you will not trust.
 
 import { useMemo, useState } from 'react';
-import { Line, Total, Money, Avatar, Empty, Sheet, Notice } from '../components/ui.jsx';
+import { Line, Total, CopyMoney, Avatar, Empty, Sheet, Notice } from '../components/ui.jsx';
 import {
   forMonth,
   openSettlements,
@@ -104,17 +104,20 @@ export default function Settle({ store, month }) {
                   sub={inbound ? `stort op ${accountName}` : `krijgt terug van ${accountName}`}
                   cents={inbound ? t.cents : -t.cents}
                   onClick={person ? () => setOpen(person) : null}
+                  copy
                 />
               );
             })}
             <Total
               label={`Per maand · ${formatMonth(month)}`}
               cents={withAccounts.reduce((s, t) => s + (isAccountParty(t.from) ? -t.cents : t.cents), 0)}
+              copy
             />
           </div>
           <div className="hint">
             Storten is geen kostenpost: je zet geld klaar waar de gedeelde lasten van afgaan. Wat
-            ieder werkelijk draagt staat op het overzicht. Tik op een naam voor de posten erachter.
+            ieder werkelijk draagt staat op het overzicht. Tik op een naam voor de posten erachter,
+            of op een bedrag om het te kopiëren — dan zet je het zo in je incasso.
           </div>
         </>
       )}
@@ -123,23 +126,28 @@ export default function Settle({ store, month }) {
       {rows.length > 0 && (
         <div className="panel">
           {rows.map((r) => (
-            <button key={r.person.id} className="item" onClick={() => setOpen(r.person)}>
-              <Avatar person={r.person} size="lg" />
-              <span className="mid">
-                <span className="title truncate" style={{ display: 'block' }}>{r.person.name}</span>
-                <span className="sub" style={{ display: 'block' }}>
-                  {r.monthly === 0
-                    ? 'alleen iets losstaands'
-                    : r.monthly > 0
-                      ? 'staat bij jou in het krijt'
-                      : 'daar sta jij in het krijt'}
+            /* The name opens the reasoning, the amount goes to the clipboard.
+               Two separate controls, because one cannot do both. */
+            <div key={r.person.id} className="item has-copy">
+              <button type="button" className="item-open" onClick={() => setOpen(r.person)}>
+                <Avatar person={r.person} size="lg" />
+                <span className="mid">
+                  <span className="title truncate" style={{ display: 'block' }}>{r.person.name}</span>
+                  <span className="sub" style={{ display: 'block' }}>
+                    {r.monthly === 0
+                      ? 'alleen iets losstaands'
+                      : r.monthly > 0
+                        ? 'staat bij jou in het krijt'
+                        : 'daar sta jij in het krijt'}
+                  </span>
                 </span>
-              </span>
+              </button>
               <span className="right">
-                <Money
+                <CopyMoney
                   cents={Math.abs(r.monthly)}
                   size="mid"
                   tone={r.monthly === 0 ? '' : r.monthly > 0 ? 'credit' : 'debt'}
+                  label={r.person.name}
                 />
                 <span className="sub" style={{ display: 'block' }}>
                   {r.monthly >= 0 ? 'krijg je' : 'betaal je'} /mnd
@@ -153,7 +161,7 @@ export default function Settle({ store, month }) {
                   </span>
                 )}
               </span>
-            </button>
+            </div>
           ))}
         </div>
       )}
@@ -231,12 +239,14 @@ function Breakdown({ person, me, result, loose, accounts, hub, onClose }) {
           }
           cents={Math.abs(total)}
           tone={total >= 0 ? 'credit' : 'debt'}
+          copy
         />
       </div>
       <div className="hint">
         Elke post staat hier voor zijn volle bedrag; onderaan staat wat er ná wegstrepen
         overblijft. Staat er "via" bij, dan loopt de betaling langs die rekening in plaats van
-        rechtstreeks. Eenmalige posten tellen voor hun hele bedrag, de rest per maand.
+        rechtstreeks. Eenmalige posten tellen voor hun hele bedrag, de rest per maand. Tik op het
+        bedrag onderaan om het te kopiëren.
       </div>
     </Sheet>
   );

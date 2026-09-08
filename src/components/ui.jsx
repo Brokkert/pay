@@ -1,7 +1,7 @@
 // Small building blocks that come back everywhere.
 
 import { useEffect, useState } from 'react';
-import { formatMoney, parseMoney, toInput } from '../lib/money.js';
+import { formatMoney, parseMoney, toInput, toPlain } from '../lib/money.js';
 import Icon from './icons.jsx';
 
 export function Sheet({ title, onClose, children, actions = null }) {
@@ -89,9 +89,57 @@ export const Money = ({ cents, size = '', tone = '' }) => (
   <span className={`amount ${size} ${tone}`.trim()}>{formatMoney(cents)}</span>
 );
 
+/**
+ * An amount you can lift out of the app: tap it and the bare number lands on
+ * your clipboard, ready to paste into a bank app. What you copy is always the
+ * amount without its sign — a direct debit is collected, not owed, and a minus
+ * in that field is a rejected payment.
+ */
+export function CopyMoney({ cents, size = '', tone = '', label = '' }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return undefined;
+    const timer = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  return (
+    <button
+      type="button"
+      className={`copy-money${copied ? ' done' : ''}`}
+      title={copied ? 'Gekopieerd' : 'Bedrag kopiëren'}
+      aria-label={
+        copied
+          ? `${formatMoney(cents)} gekopieerd`
+          : `${formatMoney(cents)}${label ? ` van ${label}` : ''} kopiëren`
+      }
+      onClick={async (e) => {
+        // The row underneath opens a breakdown; copying is not opening.
+        e.stopPropagation();
+        if (await copyText(toPlain(Math.abs(cents)))) setCopied(true);
+      }}
+    >
+      <span className="copy-mark" aria-hidden="true">
+        <Icon name={copied ? 'check' : 'copy'} size={13} />
+      </span>
+      <Money cents={cents} size={size} tone={tone} />
+    </button>
+  );
+}
+
 /** A line with an amount: description on the left, number on the right. */
-export const Line = ({ what, sub, cents, tone, left = null, right = null, onClick = null }) => {
-  const body = (
+export const Line = ({
+  what,
+  sub,
+  cents,
+  tone,
+  left = null,
+  right = null,
+  onClick = null,
+  copy = false,
+}) => {
+  const text = (
     <>
       {left}
       <div className="what">
@@ -101,6 +149,29 @@ export const Line = ({ what, sub, cents, tone, left = null, right = null, onClic
             reading. */}
         {sub && <div className="s">{sub}</div>}
       </div>
+    </>
+  );
+
+  // With a copyable amount the row holds two controls instead of one, so the
+  // text and the amount become separate buttons side by side. A button inside a
+  // button is not something a browser will render, let alone a screen reader.
+  if (copy && cents != null) {
+    return (
+      <div className="line has-copy">
+        {onClick ? (
+          <button type="button" className="line-open" onClick={onClick}>{text}</button>
+        ) : (
+          <div className="line-open">{text}</div>
+        )}
+        <CopyMoney cents={cents} tone={tone} label={typeof what === 'string' ? what : ''} />
+        {right}
+      </div>
+    );
+  }
+
+  const body = (
+    <>
+      {text}
       {cents != null && <Money cents={cents} tone={tone} />}
       {right}
     </>
@@ -114,7 +185,19 @@ export const Line = ({ what, sub, cents, tone, left = null, right = null, onClic
   );
 };
 
-export const Total = ({ label, cents, tone, onClick = null }) => {
+export const Total = ({ label, cents, tone, onClick = null, copy = false }) => {
+  if (copy) {
+    return (
+      <div className="total has-copy">
+        {onClick ? (
+          <button type="button" className="k total-open" onClick={onClick}>{label}</button>
+        ) : (
+          <span className="k">{label}</span>
+        )}
+        <CopyMoney cents={cents} size="mid" tone={tone} label={typeof label === 'string' ? label : ''} />
+      </div>
+    );
+  }
   const body = (
     <>
       <span className="k">{label}</span>

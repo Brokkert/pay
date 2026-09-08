@@ -83,3 +83,14 @@ export function toInput(cents) {
   if (cents == null) return '';
   return formatMoney(cents, { symbol: false }).replace('−', '-');
 }
+
+/**
+ * The amount as you would paste it into a bank app: no symbol, no thousands
+ * separator, a comma for the cents. The grouping dots are dropped on purpose —
+ * an amount field that reads "1.234,56" as more than a thousand is not something
+ * you can count on, and "1234,56" is understood everywhere.
+ */
+export function toPlain(cents) {
+  if (cents == null || !Number.isFinite(cents)) return '';
+  return toInput(cents).replace(/\./g, '');
+}
