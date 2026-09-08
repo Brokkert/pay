@@ -441,13 +441,15 @@ describe('a business account that pays but bears nothing', () => {
     expect(bearers.textContent).toContain('Dit deel ligt bij de zaak');
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
-    // And in the list it is off you: the full 25,00 still leaves the account,
-    // your share of it is nothing.
-    const row = () => screen.getByText('Sportclub').closest('.item');
-    expect(within(row()).getByText(/25,00/)).toBeTruthy();
+    // And in the list it is off you: the full 25,00 still leaves the account.
+    expect(within(screen.getByText('Sportclub').closest('.item')).getByText(/25,00/))
+      .toBeTruthy();
+
+    // Reading your own share it is gone altogether — a row of "€ 0,00" is true
+    // and useless — but the count line still accounts for it.
     await user.click(screen.getByRole('button', { name: 'Mijn deel' }));
-    expect(within(row()).getByText('€ 0,00')).toBeTruthy();
-    expect(within(row()).getByText('van € 25,00')).toBeTruthy();
+    expect(screen.queryByText('Sportclub')).toBe(null);
+    expect(screen.getByText(/1 draag je niet/)).toBeTruthy();
   }, 30000);
 });
 

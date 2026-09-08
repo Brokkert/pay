@@ -110,12 +110,18 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
 
   const amountOf = (row) => (mine ? row.shareMonthly : row.monthly);
   const total = rows.reduce((sum, r) => sum + amountOf(r), 0);
+  // Reading your own share, a post you carry nothing of is a row of "€ 0,00" —
+  // true, and useless. The list is about what you carry, so it is not in it;
+  // the count line says how many were left out, and the full view still has
+  // them all.
+  const untaken = mine ? rows.filter((r) => r.share === 0).length : 0;
+  const listed = untaken ? rows.filter((r) => r.share !== 0) : rows;
 
   // One list, or one per category when that is what you sorted on.
   const groups = useMemo(() => {
-    if (sort !== 'category') return [{ label: null, rows, total }];
+    if (sort !== 'category') return [{ label: null, rows: listed, total }];
     const out = [];
-    for (const row of rows) {
+    for (const row of listed) {
       const label = categoryOf(row.expense.category).label;
       const last = out[out.length - 1];
       if (last && last.label === label) last.rows.push(row);
@@ -125,7 +131,7 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
       group.total = group.rows.reduce((sum, r) => sum + (mine ? r.shareMonthly : r.monthly), 0);
     }
     return out;
-  }, [rows, sort, total, mine]);
+  }, [listed, sort, total, mine]);
 
   return (
     <>
@@ -168,8 +174,9 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
 
       <div className="row small dim" style={{ marginBottom: 10 }}>
         <span className="grow">
-          {count(rows.length, 'post', 'posten')} · {formatMoney(total)}
+          {count(listed.length, 'post', 'posten')} · {formatMoney(total)}
           {mine ? ' voor jou' : ''} per maand
+          {untaken > 0 && ` · ${untaken} draag je niet`}
         </span>
         <select
           className="select"
@@ -182,7 +189,7 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
         </select>
       </div>
 
-      {!rows.length ? (
+      {!listed.length ? (
         <Empty icon="search" title="Niets gevonden">
           Pas het filter aan, of voeg een post toe met de knop rechtsonder.
         </Empty>
