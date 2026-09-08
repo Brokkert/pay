@@ -40,6 +40,35 @@ export function possibleBearers(people = [], accounts = []) {
   ];
 }
 
+/**
+ * Who carries an expense when nobody has said otherwise.
+ *
+ * Almost always the same answer as "which account does the bank empty": a cost
+ * of the business is the business's, a household bill is the household's, and
+ * what you pay yourself is yours. Asking both questions from scratch, with the
+ * same names under each, is asking one question twice — and then taking the
+ * default from the wrong one, which is how a company car ends up on someone's
+ * private salary.
+ *
+ * A shared account is the exception: it cannot bear anything itself, it only
+ * holds what its members put in, so there the answer is its members.
+ */
+export function defaultBearers(payer, people = [], accounts = []) {
+  const me = people.find((p) => p.isMe);
+  const mine = me ? [me.id] : [];
+  if (payer?.kind === 'person') return payer.id ? [payer.id] : mine;
+  if (payer?.kind !== 'account') return mine;
+  const account = accounts.find((a) => a.id === payer.id);
+  if (!account) return mine;
+  if (account.kind === 'business') return [asAccountBearer(account.id)];
+  if (account.kind === 'shared') {
+    const members = (account.members || []).filter((id) => people.some((p) => p.id === id));
+    return members.length ? members : mine;
+  }
+  // A personal account is the person who owns it.
+  return account.ownerId ? [account.ownerId] : mine;
+}
+
 /** The name behind a key from a split. */
 export function bearerName(key, people = [], accounts = []) {
   if (isAccountBearer(key)) {

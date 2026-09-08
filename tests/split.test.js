@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { byWeight, split, describeSplit, possibleBearers, bearerName } from '../src/lib/split.js';
+import {
+  byWeight,
+  split,
+  describeSplit,
+  possibleBearers,
+  bearerName,
+  defaultBearers,
+} from '../src/lib/split.js';
 
 const sum = (o) => Object.values(o).reduce((s, c) => s + c, 0);
 
@@ -87,5 +94,43 @@ describe('describeSplit', () => {
     expect(describeSplit({ kind: 'equal', participants: ['a', 'b'] }, nameOf)).toBe('gelijk over 2');
     expect(describeSplit({ kind: 'equal', participants: ['a'] }, nameOf)).toBe('helemaal voor Anne');
     expect(describeSplit({ kind: 'percent', weights: { a: 60, b: 40 } }, nameOf)).toBe('60%/40%');
+  });
+});
+
+describe('who carries it when nobody has said otherwise', () => {
+  const ME = 'p-me';
+  const people = [
+    { id: ME, name: 'Ik', isMe: true },
+    { id: 'p-partner', name: 'Partner' },
+    { id: 'p-friend', name: 'Vriend' },
+  ];
+  const accounts = [
+    { id: 'a-biz', name: 'Zaak', kind: 'business', ownerId: ME },
+    { id: 'a-own', name: 'Privé', kind: 'personal', ownerId: ME },
+    { id: 'a-pot', name: 'RABO', kind: 'shared', members: [ME, 'p-partner'] },
+    { id: 'a-empty', name: 'Nieuw', kind: 'shared', members: [] },
+  ];
+  const from = (payer) => defaultBearers(payer, people, accounts);
+
+  it('follows the account the money leaves from', () => {
+    // A business account carries its own costs, and says so as an account: it
+    // is not the same thing as the person who owns it.
+    expect(from({ kind: 'account', id: 'a-biz' })).toEqual(['account:a-biz']);
+    // A personal account is the person who owns it.
+    expect(from({ kind: 'account', id: 'a-own' })).toEqual([ME]);
+    // A shared pot bears nothing itself — it only holds what its members put
+    // in, so they are the ones carrying it.
+    expect(from({ kind: 'account', id: 'a-pot' })).toEqual([ME, 'p-partner']);
+    // And someone else fronting it carries it until you say you took part.
+    expect(from({ kind: 'person', id: 'p-friend' })).toEqual(['p-friend']);
+  });
+
+  it('falls back to you where the payer says nothing', () => {
+    expect(from({ kind: 'account', id: 'a-empty' })).toEqual([ME]);
+    expect(from({ kind: 'account', id: null })).toEqual([ME]);
+    expect(from(null)).toEqual([ME]);
+    // Without a "me" there is nobody to fall back to, and guessing would be
+    // worse than an empty split the form already warns about.
+    expect(defaultBearers(null, [{ id: 'x', name: 'X' }], [])).toEqual([]);
   });
 });

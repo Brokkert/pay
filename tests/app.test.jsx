@@ -423,12 +423,21 @@ describe('a business account that pays but bears nothing', () => {
     // the person, so it is already right.
     expect(within(bearers).queryByText(/draagt dit helemaal zelf/)).toBe(null);
 
-    // Now the business pays it, and it still sits on me alone.
+    // Picking the account answers the second question too: a cost of the
+    // business is the business's, and you should not have to say so twice.
     const payer = within(sheet).getByText('Waar gaat het vanaf').closest('.field');
     await user.click(within(payer).getByRole('button', { name: 'Zaak' }));
-    await user.click(within(bearers).getByRole('button', { name: /Zaak draagt dit helemaal zelf/ }));
+    expect(bearers.textContent).toContain('Dit deel ligt bij de zaak');
+    // A chip carries the initials of its avatar as well as the name, so reach
+    // for the label and step out to the button around it.
+    const chip = (name) => within(bearers).getByText(name).closest('button');
+    expect(chip('Ik').className).not.toContain('on');
 
-    // The split follows in one go: the business carries it, nobody personally.
+    // Put it back on me by hand — now it is an answer, not a default, so the
+    // form leaves it alone and offers to move it instead.
+    await user.click(chip('Ik'));
+    await user.click(chip('Zaak'));
+    await user.click(within(bearers).getByRole('button', { name: /Zaak draagt dit helemaal zelf/ }));
     expect(bearers.textContent).toContain('Dit deel ligt bij de zaak');
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 

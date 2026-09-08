@@ -6,6 +6,7 @@ import SplitPicker from './SplitPicker.jsx';
 import { CADENCES, MONTH_NAMES, cadenceOf, chargeAnchor } from '../lib/cadence.js';
 import { SUGGESTED, categoryName } from '../data/categories.js';
 import LabelPicker from './LabelPicker.jsx';
+import { defaultBearers } from '../lib/split.js';
 
 const blank = (meId) => ({
   name: '',
@@ -52,6 +53,32 @@ export default function ExpenseForm({
   // already in use, plus whatever you type here. One less thing to keep tidy,
   // and picking from them is what stops "Verzekeringspakket" and
   // "Verzekeringpakket" from quietly becoming two different charges.
+  /**
+   * Picking the account also answers who carries it — until you say otherwise.
+   *
+   * The two questions have the same names under them, so the second one reads
+   * as the first asked twice, and whatever was there stays. That is how a cost
+   * of the business ends up on someone's salary: nobody chose it, the form
+   * simply never moved. It follows along now, and stops the moment you tick a
+   * bearer yourself — from then on it is your answer, not a default.
+   */
+  const choosePayer = (payer) => {
+    const current =
+      draft.split?.kind === 'equal'
+        ? [...(draft.split.participants || [])]
+        : Object.keys(draft.split?.weights || {});
+    const was = defaultBearers(draft.payer, people, accounts);
+    const untouched =
+      current.length === was.length && current.every((key) => was.includes(key));
+    setDraft((d) => ({
+      ...d,
+      payer,
+      split: untouched
+        ? { kind: 'equal', participants: defaultBearers(payer, people, accounts), weights: {} }
+        : d.split,
+    }));
+  };
+
   const dutch = (a, b) => a.localeCompare(b, 'nl');
   const knownCharges = useMemo(
     () => [...new Set([...charges, expense?.charge].filter(Boolean))].sort(dutch),
@@ -156,7 +183,7 @@ export default function ExpenseForm({
 
       <Field
         label="Waar gaat het vanaf"
-        hint="De rekening waar de bank het weghaalt. Wie het uiteindelijk draagt regel je hieronder."
+        hint="De rekening waar de bank het weghaalt. Pay zet hieronder meteen goed wie het draagt; doet er iemand mee, dan vink je die er zelf bij."
       >
         <div className="chips">
           {accounts.map((a) => (
@@ -164,7 +191,7 @@ export default function ExpenseForm({
               key={a.id}
               type="button"
               className={`chip${draft.payer?.kind === 'account' && draft.payer.id === a.id ? ' on' : ''}`}
-              onClick={() => set({ payer: { kind: 'account', id: a.id } })}
+              onClick={() => choosePayer({ kind: 'account', id: a.id })}
             >
               {a.name}
             </button>
@@ -181,7 +208,7 @@ export default function ExpenseForm({
                   key={p.id}
                   type="button"
                   className={`chip${draft.payer?.kind === 'person' && draft.payer.id === p.id ? ' on' : ''}`}
-                  onClick={() => set({ payer: { kind: 'person', id: p.id } })}
+                  onClick={() => choosePayer({ kind: 'person', id: p.id })}
                 >
                   <Avatar person={p} size="sm" /> {p.name}
                 </button>
