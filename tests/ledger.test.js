@@ -832,3 +832,26 @@ describe('a cost that belongs to one account and nobody else', () => {
     expect(pot.difference).toBe(800000 - 96600 - 5000);
   });
 });
+
+describe('a salary off a payslip', () => {
+  it('costs the account the gross, and lands on the person as the net', () => {
+    const holding = { id: 'a-holding', name: 'Holding', kind: 'business', ownerId: ME,
+      income: 800000 };
+    const result = forMonth({
+      // Net 2.632,29 with 967,71 withheld: a gross of 3.600,00.
+      people: [{ ...people[0], income: 263229, withheld: 96771, incomeFrom: 'a-holding' },
+        ...people.slice(1)],
+      accounts: [holding],
+      expenses: [],
+    }, '2026-09');
+
+    const pot = result.pots.find((p) => p.account.id === 'a-holding');
+    expect(pot.salaries[0].cents).toBe(263229);
+    expect(pot.salaries[0].withheld).toBe(96771);
+    // Both leave the account: 800.000 in, 360.000 out.
+    expect(pot.drawn).toBe(360000);
+    expect(pot.difference).toBe(800000 - 360000);
+    // And what the person has to live on is the net, not the gross.
+    expect(result.borne[ME]).toBe(0);
+  });
+});

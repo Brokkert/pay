@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sheet, Field, Notice, Avatar, AmountInput, Confirm, Total, Money, Icon } from '../components/ui.jsx';
 import { ACCOUNT_KINDS, accountKindOf, COLOURS } from '../data/categories.js';
 import { count } from '../lib/words.js';
+import { formatMoney } from '../lib/money.js';
 
 export default function People({ store }) {
   const { people, accounts, save, remove, claim, cloud } = store;
@@ -180,6 +181,25 @@ function PersonForm({ person, people, accounts = [], cloud, onClaim, onSave, onR
           </>
         )}
       </Field>
+
+      {/* Straight off the payslip, and only where the salary comes from an
+          account in Pay: the withholding leaves that account too. Entering it
+          here rather than as a cost of its own keeps one payslip as one place
+          to change when it changes. */}
+      {draft.income > 0 && draft.incomeFrom && (
+        <Field
+          label="Ingehouden op dat salaris"
+          hint="Loonbelasting plus de ingehouden Zvw-bijdrage — de bedragen die op je loonstrook van je brutoloon af gaan. Die draagt de rekening hierboven af aan de Belastingdienst."
+        >
+          <AmountInput cents={draft.withheld || 0} onChange={(c) => set({ withheld: c })} />
+          {draft.withheld > 0 && (
+            <div className="hint" style={{ marginTop: 8 }}>
+              Kost die rekening dus <strong>{formatMoney(draft.income + draft.withheld)}</strong>{' '}
+              bruto per maand. Dat hoort het brutoloon op je loonstrook te zijn.
+            </div>
+          )}
+        </Field>
+      )}
 
       <Field label="Kleur" hint="Waaraan je deze persoon herkent in de lijsten.">
         <div className="chips">

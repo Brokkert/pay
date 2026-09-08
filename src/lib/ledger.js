@@ -347,9 +347,17 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
       // monthly load, the categories and everyone's share, and only count
       // where the question is what is left on this account.
       const overhead = Number(account.overhead) || 0;
+      // A salary costs the account the gross: what lands on the person, plus
+      // what is withheld from it and paid to the tax office. Both come off the
+      // same account on the same day, and both come from one payslip — so
+      // neither is typed anywhere twice.
       const salaries = people
         .filter((p) => p.incomeFrom === account.id && Number(p.income) > 0)
-        .map((p) => ({ person: p, cents: Number(p.income) }));
+        .map((p) => ({
+          person: p,
+          cents: Number(p.income),
+          withheld: Number(p.withheld) || 0,
+        }));
       const feeds = accounts
         .filter((a) => a.fundedBy === account.id && a.id !== account.id)
         .map((a) => ({
@@ -358,7 +366,8 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
         }))
         .filter((f) => f.cents !== 0);
       const drawn =
-        salaries.reduce((sum, r) => sum + r.cents, 0) + feeds.reduce((sum, r) => sum + r.cents, 0);
+        salaries.reduce((sum, r) => sum + r.cents + r.withheld, 0) +
+        feeds.reduce((sum, r) => sum + r.cents, 0);
       // What has to come in. On an account people pay into that is their
       // deposits: the expenses plus whatever it pays back to someone who
       // fronted, which has to be on it first — holding a standing order

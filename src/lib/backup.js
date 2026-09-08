@@ -92,6 +92,7 @@ export function readBackup(source) {
       isMe: p.isMe === true,
       ...(Number.isInteger(p.income) && p.income !== 0 ? { income: p.income } : {}),
       ...(text(p.incomeFrom) ? { incomeFrom: text(p.incomeFrom) } : {}),
+      ...(Number.isInteger(p.withheld) && p.withheld !== 0 ? { withheld: p.withheld } : {}),
     };
   });
 

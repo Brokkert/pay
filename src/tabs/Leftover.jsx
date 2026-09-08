@@ -12,7 +12,7 @@
 // It lives on its own tab for the same reason. Beside a settlement that is
 // right to the cent, an estimate reads as if it were one too.
 
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { Line, Total, Empty, Notice } from '../components/ui.jsx';
 import { forMonth } from '../lib/ledger.js';
 import { formatMoney } from '../lib/money.js';
@@ -115,7 +115,20 @@ function Chain({ pot }) {
           />
         )}
         {pot.salaries.map((row) => (
-          <Line key={row.person.id} what={`Salaris naar ${row.person.name}`} cents={-row.cents} />
+          <Fragment key={row.person.id}>
+            <Line
+              what={`Salaris naar ${row.person.name}`}
+              sub={row.withheld > 0 ? 'netto, wat er op de rekening wordt gestort' : undefined}
+              cents={-row.cents}
+            />
+            {row.withheld > 0 && (
+              <Line
+                what="Loonheffing daarover"
+                sub="wat er van dat salaris is ingehouden en wordt afgedragen"
+                cents={-row.withheld}
+              />
+            )}
+          </Fragment>
         ))}
         {pot.feeds.map((row) => (
           <Line
