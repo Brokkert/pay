@@ -308,8 +308,9 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
     Number(accounts.find((a) => a.id === id)?.income) > 0 ||
     Number(accounts.find((a) => a.id === id)?.overhead) > 0 ||
     people.some((p) => p.incomeFrom === id) ||
-    accounts.some((a) => a.fundedBy === id);
-  return accounts
+    accounts.some((a) => a.fundedBy === id) ||
+    Boolean(accounts.find((a) => a.id === id)?.fundedBy);
+  const rows = accounts
     .filter((a) => a.kind === 'shared' || carries(a.id))
     .map((account) => {
       const party = accountParty(account.id);
@@ -358,16 +359,21 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
           cents: Number(p.income),
           withheld: Number(p.withheld) || 0,
         }));
+      // An account this one feeds: a fixed-costs account of the business, fed by
+      // a standing order the way a shared pot is. It is listed whether or not a
+      // standing order has been typed yet — a fed account with nothing set is
+      // exactly the one worth seeing, and leaving it out made the money look
+      // like it stayed here. What it really needs per month is filled in below,
+      // once every account has been worked out.
       const feeds = accounts
         .filter((a) => a.fundedBy === account.id && a.id !== account.id)
         .map((a) => ({
           account: a,
-          cents: Object.values(a.contributions || {}).reduce((sum, c) => sum + (Number(c) || 0), 0),
-        }))
-        .filter((f) => f.cents !== 0);
-      const drawn =
-        salaries.reduce((sum, r) => sum + r.cents + r.withheld, 0) +
-        feeds.reduce((sum, r) => sum + r.cents, 0);
+          order: Object.values(a.contributions || {}).reduce((sum, c) => sum + (Number(c) || 0), 0),
+          needed: 0,
+          aside: 0,
+          cents: 0,
+        }));
       // What has to come in. On an account people pay into that is their
       // deposits: the expenses plus whatever it pays back to someone who
       // fronted, which has to be on it first — holding a standing order
@@ -394,19 +400,56 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
         overhead,
         salaries,
         feeds,
-        drawn,
-        // What is left on it: everything arriving, less everything leaving.
-        difference: income + paidIn - needed - drawn - overhead,
+        // All three filled in below, once the accounts they point at are known.
+        fedBy: null,
+        drawn: 0,
+        difference: 0,
         // What really leaves this month, what is being saved for later, and
         // whether some expense could not say which month it goes out.
         charged: saving.realPerAccount[account.id] || 0,
         aside: saving.asidePerAccount[account.id] || 0,
         chargeUnknown: saving.unknownCharge.has(account.id),
       };
-    })
-    // The ones other people pay into first: those are the ones with someone
-    // else waiting on them.
-    .sort((a, b) => Number(b.account.kind === 'shared') - Number(a.account.kind === 'shared'));
+    });
+
+  // Second pass: what an account draws out of itself. A standing order to
+  // another account can only be held against that account's own bill once every
+  // account has been worked out, so it happens here rather than above.
+  const byId = new Map(rows.map((row) => [row.account.id, row]));
+  for (const row of rows) {
+    for (const feed of row.feeds) {
+      const fed = byId.get(feed.account.id);
+      // Everything that account pays for in a month: its posts, what it settles
+      // with other accounts, and its own costs outside the posts.
+      feed.needed = fed ? fed.needed + fed.overhead : 0;
+      feed.aside = fed ? fed.aside : 0;
+      // What actually leaves is the standing order you set. Where none is set
+      // yet, the bill it has to cover is the only honest figure — better than
+      // silently counting nothing and reporting a surplus.
+      feed.cents = feed.order || feed.needed;
+      // And from the other side: an account that is fed knows where from. Its
+      // own block would otherwise report a shortfall for money that arrives
+      // every month, just not from a person.
+      if (fed) fed.fedBy = { account: row.account, cents: feed.cents, order: feed.order };
+    }
+  }
+  // Only once every standing order is known, because an account can be both fed
+  // and feeding.
+  for (const row of rows) {
+    row.drawn =
+      row.salaries.reduce((sum, r) => sum + r.cents + r.withheld, 0) +
+      row.feeds.reduce((sum, r) => sum + r.cents, 0);
+    // A typed standing order is already counted as what you put in yourself, so
+    // only a feed nobody typed is added here.
+    const arrives = row.income + row.paidIn + (row.fedBy && !row.fedBy.order ? row.fedBy.cents : 0);
+    row.difference = arrives - row.needed - row.drawn - row.overhead;
+  }
+
+  // The ones other people pay into first: those are the ones with someone else
+  // waiting on them.
+  return rows.sort(
+    (a, b) => Number(b.account.kind === 'shared') - Number(a.account.kind === 'shared')
+  );
 }
 
 /**

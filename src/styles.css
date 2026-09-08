@@ -669,6 +669,37 @@ button.line-open:active { background: var(--sunk); }
   color: var(--text-3);
 }
 
+/* Two ways of reading the same list, side by side. Not chips: chips are filters
+   you can combine, and this is one thing or the other. */
+.segment {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  margin: 0 0 10px;
+  background: var(--sunk);
+  border-radius: 999px;
+}
+.segment button {
+  flex: 1;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, box-shadow 0.14s;
+  -webkit-tap-highlight-color: transparent;
+}
+.segment button.on {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
 /* A suggestion, not a choice you have made: lighter than the row above it. */
 .chip.quiet { background: none; border-style: dashed; color: var(--text-2); }
 .chip.tiny { padding: 4px 10px; font-size: 11px; gap: 5px; }

@@ -804,6 +804,45 @@ describe('a holding at the top of the chain', () => {
     const below = result.pots.find((p) => p.account.id === 'a-costs');
     expect(below.needed).toBe(12596);
     expect(below.difference).toBe(40000 - 12596);
+    // The bill behind the standing order travels with it, so the holding can
+    // say whether 400,00 a month is the right figure.
+    expect(top.feeds[0].order).toBe(40000);
+    expect(top.feeds[0].needed).toBe(12596);
+    // And from below: it knows where its money comes from.
+    expect(below.fedBy.account.id).toBe('a-holding');
+    expect(below.fedBy.order).toBe(40000);
+  });
+
+  it('still shows the standing order when none has been set, at what it costs', () => {
+    const holding = { id: 'a-holding', name: 'Holding', kind: 'business', ownerId: ME,
+      income: 800000 };
+    // Funded, but nobody typed an amount. The money leaves all the same.
+    const costs = { id: 'a-costs', name: 'Zakelijke vaste lasten', kind: 'business', ownerId: ME,
+      fundedBy: 'a-holding', overhead: 2500 };
+    const result = forMonth({
+      people,
+      accounts: [holding, costs],
+      expenses: [
+        expense({ id: 'h1', name: 'Autoverzekering', amount: 12596,
+          payer: { kind: 'account', id: 'a-costs' },
+          split: { kind: 'equal', participants: [ME] } }),
+      ],
+    }, '2026-09');
+
+    const top = result.pots.find((p) => p.account.id === 'a-holding');
+    // Listed, not dropped for being zero — and at what that account has to
+    // cover: its posts plus its own costs outside them.
+    expect(top.feeds).toHaveLength(1);
+    expect(top.feeds[0].order).toBe(0);
+    expect(top.feeds[0].needed).toBe(12596 + 2500);
+    expect(top.feeds[0].cents).toBe(12596 + 2500);
+    // So what is left on the holding is short by exactly that.
+    expect(top.difference).toBe(800000 - 12596 - 2500);
+
+    // And the fed account is not reported as short of money that does arrive.
+    const below = result.pots.find((p) => p.account.id === 'a-costs');
+    expect(below.fedBy.order).toBe(0);
+    expect(below.difference).toBe(0);
   });
 });
 

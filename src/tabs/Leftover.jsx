@@ -12,10 +12,13 @@
 // It lives on its own tab for the same reason. Beside a settlement that is
 // right to the cent, an estimate reads as if it were one too.
 
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Line, Total, Empty, Notice } from '../components/ui.jsx';
+import Breakdown from '../components/Breakdown.jsx';
 import { forMonth } from '../lib/ledger.js';
 import { formatMoney } from '../lib/money.js';
+import { cadenceOf } from '../lib/cadence.js';
+import { categoryOf } from '../data/categories.js';
 
 export default function Leftover({ store, month }) {
   const { people, accounts, expenses } = store;
@@ -24,12 +27,20 @@ export default function Leftover({ store, month }) {
     [people, accounts, expenses, month]
   );
 
+  const [open, setOpen] = useState(null);
+
   // Only where something comes in. An account with costs and no inflow has
   // nothing to be left over from, and calling that a shortfall would be a claim
-  // about money Pay has never been told about.
+  // about money Pay has never been told about. An account that feeds another —
+  // or is fed by one — does have an inflow, even when nothing was typed on it.
   const chains = result.pots.filter(
     (pot) =>
-      pot.account.kind !== 'shared' && (pot.income > 0 || pot.paidIn > 0 || pot.overhead > 0)
+      pot.account.kind !== 'shared' &&
+      (pot.income > 0 ||
+        pot.paidIn > 0 ||
+        pot.overhead > 0 ||
+        pot.feeds.length > 0 ||
+        Boolean(pot.fedBy))
   );
   const persons = people
     .filter((p) => Number(p.income) > 0)
@@ -59,7 +70,7 @@ export default function Leftover({ store, month }) {
       </Notice>
 
       {chains.map((pot) => (
-        <Chain key={pot.account.id} pot={pot} />
+        <Chain key={pot.account.id} pot={pot} onOpenFeed={(feed) => setOpen({ pot, feed })} />
       ))}
 
       {persons.map(({ person, income, borne, left }) => (
@@ -83,12 +94,22 @@ export default function Leftover({ store, month }) {
           </div>
         </div>
       ))}
+
+      {open && (
+        <FeedBreakdown
+          feed={open.feed}
+          pot={result.pots.find((p) => p.account.id === open.feed.account.id)}
+          lines={result.lines}
+          accounts={accounts}
+          onClose={() => setOpen(null)}
+        />
+      )}
     </>
   );
 }
 
 /** One account, top to bottom: what comes in, what goes out, what stays. */
-function Chain({ pot }) {
+function Chain({ pot, onOpenFeed }) {
   const out = pot.needed;
   return (
     <>
@@ -98,7 +119,25 @@ function Chain({ pot }) {
           <Line what="Komt binnen" sub="geld dat van buiten Pay op deze rekening komt" cents={pot.income} />
         )}
         {pot.paidIn > 0 && (
-          <Line what="Vaste inleg erop" sub="wat je er zelf maandelijks op zet" cents={pot.paidIn} />
+          <Line
+            what="Vaste inleg erop"
+            sub={
+              pot.fedBy
+                ? `wat je er maandelijks vanaf ${pot.fedBy.account.name} op zet`
+                : 'wat je er zelf maandelijks op zet'
+            }
+            cents={pot.paidIn}
+          />
+        )}
+        {/* Fed, but no standing order typed yet. The money still arrives, so
+            leave it out and the block reports a shortfall for something that is
+            not one. */}
+        {pot.fedBy && !pot.fedBy.order && pot.fedBy.cents !== 0 && (
+          <Line
+            what={`Komt van ${pot.fedBy.account.name}`}
+            sub="nog geen vast bedrag ingesteld — dit is wat deze rekening nodig heeft"
+            cents={pot.fedBy.cents}
+          />
         )}
         {out !== 0 && (
           <Line
@@ -134,8 +173,15 @@ function Chain({ pot }) {
           <Line
             key={row.account.id}
             what={`Naar ${row.account.name}`}
-            sub="de vaste inleg die je daarheen overmaakt"
+            sub={
+              !row.order
+                ? 'nog geen vast bedrag ingesteld — dit is wat die rekening nodig heeft'
+                : row.order === row.needed
+                  ? 'de vaste inleg die je daarheen overmaakt — precies genoeg'
+                  : `je stort dit; de posten daar kosten ${formatMoney(row.needed)} per maand`
+            }
             cents={-row.cents}
+            onClick={() => onOpenFeed(row)}
           />
         ))}
         <Total
@@ -160,5 +206,94 @@ function Chain({ pot }) {
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * What a fed account actually has to cover in a month, spelled out.
+ *
+ * The standing order is a figure you typed; this is the bill behind it. Every
+ * post that comes off that account, every cent it settles with another account,
+ * and what it costs outside the posts — the same sum the account's own block is
+ * built from, so the two can never say different things.
+ */
+function FeedBreakdown({ feed, pot, lines, accounts, onClose }) {
+  const nameOf = (id) => accounts.find((a) => a.id === id)?.name || 'een andere rekening';
+  const rows = [];
+
+  for (const line of lines) {
+    if (line.expense.payer?.kind !== 'account' || line.expense.payer.id !== feed.account.id) continue;
+    const cadence = cadenceOf(line.expense.cadence);
+    rows.push({
+      key: line.expense.id,
+      left: (
+        <span
+          className="cat-dot"
+          style={{ background: categoryOf(line.expense.category).colour }}
+        />
+      ),
+      what: line.expense.name,
+      // Per month, always — a yearly bill divided over twelve is what a standing
+      // order has to carry, not the bill itself.
+      sub:
+        line.expense.cadence === 'month'
+          ? undefined
+          : `${formatMoney(line.expense.amount)} ${cadence.short}, omgerekend per maand`,
+      cents: line.amount,
+    });
+  }
+  rows.sort((a, b) => b.cents - a.cents);
+
+  // Traffic with other accounts: this one fronting for another, or the other way
+  // round. It leaves and arrives just like a post does.
+  for (const [id, cents] of Object.entries(pot?.toAccounts || {})) {
+    rows.push({ key: `to-${id}`, what: `Betaalt door aan ${nameOf(id)}`, cents });
+  }
+  for (const [id, cents] of Object.entries(pot?.fromAccounts || {})) {
+    rows.push({
+      key: `from-${id}`,
+      what: `Krijgt terug van ${nameOf(id)}`,
+      cents: -cents,
+      tone: 'credit',
+    });
+  }
+  if (pot?.overhead > 0) {
+    rows.push({
+      key: 'overhead',
+      what: 'Kosten buiten je posten om',
+      sub: 'kosten van die rekening die je met niemand deelt',
+      cents: pot.overhead,
+    });
+  }
+
+  return (
+    <Breakdown
+      title={`Naar ${feed.account.name}`}
+      label="Wat die rekening elke maand nodig heeft"
+      cents={feed.needed}
+      rows={rows}
+      empty={`Er staan nog geen posten op ${feed.account.name}, dus valt er niets te berekenen.`}
+      note={
+        <>
+          {feed.order
+            ? feed.order === feed.needed
+              ? `Je maakt er ${formatMoney(feed.order)} per maand naartoe over. Dat is precies genoeg.`
+              : `Je maakt er ${formatMoney(feed.order)} per maand naartoe over, ${
+                  feed.order > feed.needed ? 'meer' : 'minder'
+                } dan de ${formatMoney(feed.needed)} hierboven. Pas je vaste inleg bij ${
+                  feed.account.name
+                } aan, of laat het staan als je bewust een buffer opbouwt.`
+            : `Er staat nog geen vaste inleg bij ${feed.account.name}. Zolang die er niet is, rekent Pay met dit bedrag.`}
+          {feed.aside > 0 && (
+            <>
+              {' '}
+              Daar bovenop hoort <strong>{formatMoney(feed.aside)}</strong> op die rekening te staan
+              voor posten die niet elke maand worden afgeschreven.
+            </>
+          )}
+        </>
+      }
+      onClose={onClose}
+    />
   );
 }

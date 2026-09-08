@@ -16,6 +16,28 @@ const SORTS = [
   { id: 'category', label: 'Op categorie' },
 ];
 
+// Which amount the list is about. The full amount is what leaves the account
+// and what the split is worked out from, so it is where the list starts; your
+// own share answers a different question and gets the same column when you ask
+// for it. One switch for the whole list, never per row — two rows in one list
+// meaning different things is a list you cannot read, let alone add up.
+const VIEWS = [
+  { id: 'full', label: 'Volledig' },
+  { id: 'mine', label: 'Mijn deel' },
+];
+
+const VIEW_KEY = 'pay:view:expenses';
+
+const readView = () => {
+  try {
+    const saved = localStorage.getItem(VIEW_KEY);
+    return VIEWS.some((v) => v.id === saved) ? saved : 'full';
+  } catch {
+    // A browser that refuses storage still gets a working list.
+    return 'full';
+  }
+};
+
 const FILTERS = [
   ['all', 'Alles'],
   ['running', 'Loopt nu'],
@@ -31,7 +53,20 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('amount');
+  const [view, setView] = useState(readView);
   const me = people.find((p) => p.isMe);
+  // Only a question you can ask once Pay knows which of the people is you.
+  const mode = me ? view : 'full';
+  const mine = mode === 'mine';
+
+  const chooseView = (id) => {
+    setView(id);
+    try {
+      localStorage.setItem(VIEW_KEY, id);
+    } catch {
+      /* not remembering it is better than not switching at all */
+    }
+  };
 
   const rows = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -51,7 +86,17 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
       .map((expense) => {
         const monthly = perMonth(expense.amount, expense.cadence);
         const { parts } = split(expense.cadence === 'once' ? expense.amount : monthly, expense.split);
-        return { expense, monthly, parts };
+        // Your share of what the row shows, and of what the column adds up. For
+        // a one-off those differ: the row is about the whole amount, the column
+        // is per month and a one-off costs nothing per month.
+        const share = (me && parts[me.id]) || 0;
+        return {
+          expense,
+          monthly,
+          parts,
+          share,
+          shareMonthly: expense.cadence === 'once' ? 0 : share,
+        };
       })
       .sort((a, b) => {
         if (sort === 'name') return a.expense.name.localeCompare(b.expense.name, 'nl');
@@ -63,7 +108,8 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
       });
   }, [expenses, query, filter, sort, month, me]);
 
-  const total = rows.reduce((sum, r) => sum + r.monthly, 0);
+  const amountOf = (row) => (mine ? row.shareMonthly : row.monthly);
+  const total = rows.reduce((sum, r) => sum + amountOf(r), 0);
 
   // One list, or one per category when that is what you sorted on.
   const groups = useMemo(() => {
@@ -76,10 +122,10 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
       else out.push({ label, rows: [row], total: 0 });
     }
     for (const group of out) {
-      group.total = group.rows.reduce((sum, r) => sum + r.monthly, 0);
+      group.total = group.rows.reduce((sum, r) => sum + (mine ? r.shareMonthly : r.monthly), 0);
     }
     return out;
-  }, [rows, sort, total]);
+  }, [rows, sort, total, mine]);
 
   return (
     <>
@@ -104,9 +150,26 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
         ))}
       </div>
 
+      {me && (
+        <div className="segment" role="group" aria-label="Welk bedrag">
+          {VIEWS.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              className={mode === v.id ? 'on' : ''}
+              aria-pressed={mode === v.id}
+              onClick={() => chooseView(v.id)}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="row small dim" style={{ marginBottom: 10 }}>
         <span className="grow">
-          {count(rows.length, 'post', 'posten')} · {formatMoney(total)} per maand
+          {count(rows.length, 'post', 'posten')} · {formatMoney(total)}
+          {mine ? ' voor jou' : ''} per maand
         </span>
         <select
           className="select"
@@ -140,6 +203,7 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
                 <ExpenseRow
                   key={row.expense.id}
                   row={row}
+                  mine={mine}
                   month={month}
                   people={people}
                   accounts={accounts}
@@ -159,8 +223,11 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
   );
 }
 
-function ExpenseRow({ row, month, people, accounts, onOpen, onSave }) {
-  const { expense, monthly, parts } = row;
+function ExpenseRow({ row, mine, month, people, accounts, onOpen, onSave }) {
+  const { expense, monthly, parts, share } = row;
+  // What the row is about, and what it is a part of.
+  const whole = expense.cadence === 'once' ? expense.amount : monthly;
+  const shown = mine ? share : whole;
   const cat = categoryOf(expense.category);
   const cadence = cadenceOf(expense.cadence);
   const active = isActive(expense, month) || expense.cadence === 'once';
@@ -216,7 +283,14 @@ function ExpenseRow({ row, month, people, accounts, onOpen, onSave }) {
       </span>
 
       <span className="right">
-        <Money cents={expense.cadence === 'once' ? expense.amount : monthly} size="mid" />
+        <Money cents={shown} size="mid" />
+        {/* Showing your share, say what it is a share of — otherwise the row no
+            longer matches your bank statement and nothing on it says why. */}
+        {mine && (
+          <span className="sub" style={{ display: 'block' }}>
+            van {formatMoney(whole)}
+          </span>
+        )}
         {/* The column is per month — the header above says so — and repeating
             "/mnd" on every row says nothing. What is worth a second line is an
             expense charged in some other rhythm, because then the big number is

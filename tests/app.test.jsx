@@ -378,6 +378,33 @@ describe('a friend who settles through the bills account', () => {
   }, 30000);
 });
 
+describe('the list of posts', () => {
+  it('switches between the full amount and your share, all rows at once', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+
+    const row = () => screen.getByText('Streamingdienst').closest('.item');
+    // 20,00 a month over four, and the list starts at what leaves the account.
+    expect(within(row()).getByText(/20,00/)).toBeTruthy();
+    expect(within(row()).queryByText(/van € /)).toBe(null);
+
+    await user.click(screen.getByRole('button', { name: 'Mijn deel' }));
+
+    // Your share in the column, and the amount it is a share of under it — a
+    // row that no longer matches your bank statement has to say why.
+    expect(within(row()).getByText('€ 5,00')).toBeTruthy();
+    expect(within(row()).getByText('van € 20,00')).toBeTruthy();
+    // And the count line is about the same thing as the column.
+    expect(screen.getByText(/posten · .* voor jou per maand/)).toBeTruthy();
+
+    // Back again, and the switch is remembered for next time.
+    await user.click(screen.getByRole('button', { name: 'Volledig' }));
+    expect(within(row()).getByText(/20,00/)).toBeTruthy();
+    expect(localStorage.getItem('pay:view:expenses')).toBe('full');
+  }, 30000);
+});
+
 describe('changing one person\'s amount', () => {
   it('starts from tapping that amount, not from a division method', async () => {
     await withData(exampleHousehold());
