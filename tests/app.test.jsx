@@ -405,6 +405,43 @@ describe('the list of posts', () => {
   }, 30000);
 });
 
+describe('a business account that pays but bears nothing', () => {
+  it('offers to let it carry its own cost, in one tap', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    // Sportclub: 25,00, borne by me alone.
+    await user.click(await screen.findByText('Sportclub'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
+
+    const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    const bearers = within(sheet).getByText('Wie draagt het').closest('.field');
+    // The two questions read as one until the second says what it decides.
+    expect(bearers.textContent).toContain('wiens geld het uiteindelijk is');
+
+    // Nothing to suggest while a personal account pays it — that account is
+    // the person, so it is already right.
+    expect(within(bearers).queryByText(/draagt dit helemaal zelf/)).toBe(null);
+
+    // Now the business pays it, and it still sits on me alone.
+    const payer = within(sheet).getByText('Waar gaat het vanaf').closest('.field');
+    await user.click(within(payer).getByRole('button', { name: 'Zaak' }));
+    await user.click(within(bearers).getByRole('button', { name: /Zaak draagt dit helemaal zelf/ }));
+
+    // The split follows in one go: the business carries it, nobody personally.
+    expect(bearers.textContent).toContain('Dit deel ligt bij de zaak');
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    // And in the list it is off you: the full 25,00 still leaves the account,
+    // your share of it is nothing.
+    const row = () => screen.getByText('Sportclub').closest('.item');
+    expect(within(row()).getByText(/25,00/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Mijn deel' }));
+    expect(within(row()).getByText('€ 0,00')).toBeTruthy();
+    expect(within(row()).getByText('van € 25,00')).toBeTruthy();
+  }, 30000);
+});
+
 describe('changing one person\'s amount', () => {
   it('starts from tapping that amount, not from a division method', async () => {
     await withData(exampleHousehold());

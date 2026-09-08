@@ -197,6 +197,7 @@ export default function ExpenseForm({
         spec={draft.split}
         people={people}
         accounts={accounts}
+        payer={draft.payer}
         onChange={(spec) => set({ split: spec })}
       />
 

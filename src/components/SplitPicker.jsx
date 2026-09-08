@@ -4,11 +4,25 @@
 // in euros sits right underneath it. A percentage says nothing; "Partner
 // € 152,64 per maand" does.
 
-import { SPLIT_KINDS, split, possibleBearers, ACCOUNT_PREFIX } from '../lib/split.js';
+import {
+  SPLIT_KINDS,
+  split,
+  possibleBearers,
+  asAccountBearer,
+  ACCOUNT_PREFIX,
+} from '../lib/split.js';
 import { perMonth } from '../lib/cadence.js';
 import { Field, Money, BearerAvatar, AmountInput } from './ui.jsx';
 
-export default function SplitPicker({ amount, cadence, spec, people, accounts = [], onChange }) {
+export default function SplitPicker({
+  amount,
+  cadence,
+  spec,
+  people,
+  accounts = [],
+  payer = null,
+  onChange,
+}) {
   const bearers = possibleBearers(people, accounts);
   const bearerOf = (key) => bearers.find((b) => b.key === key);
 
@@ -43,6 +57,21 @@ export default function SplitPicker({ amount, cadence, spec, people, accounts = 
     return onChange({ kind, participants: ids, weights: { ...parts } });
   };
 
+  // The business pays it and the owner alone bears it: that is a fixed cost of
+  // the company sitting in someone's private life, and nine times out of ten
+  // nobody meant it that way — the two questions look alike and the answer to
+  // the first does not carry over to the second. Only in this exact shape, so a
+  // post the business fronts for other people is left alone.
+  const fronting = (() => {
+    if (payer?.kind !== 'account') return null;
+    const account = accounts.find((a) => a.id === payer.id);
+    if (account?.kind !== 'business' || !account.ownerId) return null;
+    if (taking.length !== 1 || taking[0] !== account.ownerId) return null;
+    return account;
+  })();
+
+  const takeItAll = (key) => onChange({ kind: 'equal', participants: [key], weights: {} });
+
   const toggle = (key) => {
     const on = inSet.has(key);
     if (s.kind === 'equal') {
@@ -62,9 +91,17 @@ export default function SplitPicker({ amount, cadence, spec, people, accounts = 
 
   return (
     <>
+      {/* Two questions in one sheet, with the same names under both: the one
+          above is which account the bank empties, this one is whose money it
+          turns out to be. Without saying so they read as the same question
+          asked twice, and the answer to the first does not carry over. */}
       <Field
         label="Wie draagt het"
-        hint={!taking.length ? 'Kies minstens één persoon, anders telt deze post nergens mee.' : null}
+        hint={
+          !taking.length
+            ? 'Kies minstens één drager, anders telt deze post nergens mee.'
+            : 'Niet wie het overmaakt, maar wiens geld het uiteindelijk is. Staat iemand hier die de rekening niet betaalt, dan komt dat bij Verrekenen te staan.'
+        }
         warn={!taking.length}
       >
         <div className="chips">
@@ -79,6 +116,24 @@ export default function SplitPicker({ amount, cadence, spec, people, accounts = 
             </button>
           ))}
         </div>
+        {fronting && (
+          <>
+            <div className="hint">
+              Deze post gaat van <strong>{fronting.name}</strong> af, maar staat helemaal op{' '}
+              {people.find((p) => p.id === fronting.ownerId)?.name || 'jou'} privé. Klopt dat, of
+              draagt de zaak hem zelf?
+            </div>
+            <div className="chips" style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                className="chip quiet"
+                onClick={() => takeItAll(asAccountBearer(fronting.id))}
+              >
+                {fronting.name} draagt dit helemaal zelf
+              </button>
+            </div>
+          </>
+        )}
         {taking.some((key) => key.startsWith(ACCOUNT_PREFIX)) && (
           <div className="hint">
             Dit deel ligt bij de zaak, niet bij jou privé. Zo zie je wat je kunt terughalen.
