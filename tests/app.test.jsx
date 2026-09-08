@@ -978,8 +978,11 @@ describe('what is left, on its own tab', () => {
     // The posts on that account open too, at their full amount.
     await user.click(within(prive).getByText('Vaste lasten eraf').closest('.line'));
     const costs = screen.getByRole('heading', { name: 'Vaste lasten van Privé' }).closest('.sheet');
-    expect(within(costs).getByText('Streamingdienst').closest('.line').textContent)
-      .toContain('20,00');
+    const full = within(costs).getByText('Streamingdienst').closest('.line');
+    // The whole amount big, your share of it small — the person's sheet puts
+    // the same two numbers the other way round.
+    expect(full.textContent).toContain('20,00');
+    expect(full.textContent).toContain('waarvan jij € 5,00');
     await user.click(within(costs).getByRole('button', { name: 'Sluiten' }));
 
     // Tapping the row opens the bill behind it, post by post.

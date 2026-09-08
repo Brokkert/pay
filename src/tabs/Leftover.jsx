@@ -22,6 +22,7 @@ import { categoryOf } from '../data/categories.js';
 
 export default function Leftover({ store, month }) {
   const { people, accounts, expenses } = store;
+  const me = people.find((p) => p.isMe) || null;
   const result = useMemo(
     () => forMonth({ people, accounts, expenses }, month),
     [people, accounts, expenses, month]
@@ -107,6 +108,7 @@ export default function Leftover({ store, month }) {
           pot={result.pots.find((p) => p.account.id === open.feed.account.id)}
           lines={result.lines}
           accounts={accounts}
+          me={me}
           onClose={() => setOpen(null)}
         />
       )}
@@ -116,6 +118,7 @@ export default function Leftover({ store, month }) {
           pot={open.pot}
           lines={result.lines}
           accounts={accounts}
+          me={me}
           onClose={() => setOpen(null)}
         />
       )}
@@ -241,19 +244,37 @@ const dot = (expense) => (
   <span className="cat-dot" style={{ background: categoryOf(expense.category).colour }} />
 );
 
-/** A post at its full monthly amount, with the real charge behind it. */
-const postRow = (line) => ({
-  key: line.expense.id,
-  left: dot(line.expense),
-  what: line.expense.name,
-  // Per month, always — a yearly bill divided over twelve is what a standing
-  // order has to carry, not the bill itself.
-  sub:
-    line.expense.cadence === 'month'
-      ? undefined
-      : `${formatMoney(line.expense.amount)} ${cadenceOf(line.expense.cadence).short}, omgerekend per maand`,
-  cents: line.amount,
-});
+/**
+ * One post, in a sheet that is about either the whole amount or your share.
+ *
+ * The same row either way: the figure the sheet is about, and under it what it
+ * is a part of or what part of it is yours. Two sheets that put the same two
+ * numbers in a different order are two sheets you have to learn separately —
+ * and reading one as the other is how you end up counting a bill twice.
+ */
+function postRow(line, { showing, me, from = null }) {
+  const whole = line.amount;
+  const share = (me && line.shares[me.id]) || 0;
+  const bits = [];
+  // Every figure here is per month; a bill that comes once a year says so, or
+  // the row cannot be found on a bank statement.
+  if (line.expense.cadence !== 'month') {
+    bits.push(`${formatMoney(line.expense.amount)} ${cadenceOf(line.expense.cadence).short}`);
+  }
+  if (showing === 'whole') {
+    if (share) bits.push(share === whole ? 'helemaal van jou' : `waarvan jij ${formatMoney(share)}`);
+  } else {
+    bits.push(share === whole ? 'helemaal van jou' : `jouw deel van ${formatMoney(whole)}`);
+    if (from) bits.push(`van ${from}`);
+  }
+  return {
+    key: line.expense.id,
+    left: dot(line.expense),
+    what: line.expense.name,
+    sub: bits.length ? bits.join(' · ') : undefined,
+    cents: showing === 'whole' ? whole : share,
+  };
+}
 
 /**
  * Everything one account has to cover in a month.
@@ -262,14 +283,14 @@ const postRow = (line) => ({
  * different things: its posts, what it settles with other accounts, and — where
  * asked for — what it costs outside the posts.
  */
-function needRows(pot, lines, accounts, { overhead = false } = {}) {
+function needRows(pot, lines, accounts, me, { overhead = false } = {}) {
   const nameOf = (id) => accounts.find((a) => a.id === id)?.name || 'een andere rekening';
   const rows = lines
     .filter(
       (line) =>
         line.expense.payer?.kind === 'account' && line.expense.payer.id === pot?.account.id
     )
-    .map(postRow)
+    .map((line) => postRow(line, { showing: 'whole', me }))
     .sort((a, b) => b.cents - a.cents);
 
   // Traffic with other accounts: this one fronting for another, or the other way
@@ -297,18 +318,19 @@ function needRows(pot, lines, accounts, { overhead = false } = {}) {
 }
 
 /** The posts that come off one account, at their full amount. */
-function AccountCosts({ pot, lines, accounts, onClose }) {
+function AccountCosts({ pot, lines, accounts, me, onClose }) {
   return (
     <Breakdown
       title={`Vaste lasten van ${pot.account.name}`}
       label="Gaat er elke maand af"
       cents={pot.needed}
-      rows={needRows(pot, lines, accounts)}
+      rows={needRows(pot, lines, accounts, me)}
       empty={`Er staan geen posten op ${pot.account.name}.`}
       note={
         <>
-          Elke post voor zijn volle bedrag, want dat is wat er van deze rekening af gaat. Wat
-          anderen ervan dragen komt via de verrekening bij je terug, niet hier.
+          Groot staat het volle bedrag, want dat is wat er van deze rekening af gaat; klein wat
+          jij ervan draagt. Bij een persoon staat het andersom. Wat anderen dragen komt via de
+          verrekening bij je terug, niet op deze rekening.
           {pot.aside > 0 && (
             <>
               {' '}
@@ -337,22 +359,9 @@ function BorneBreakdown({ person, cents, lines, people, accounts, onClose }) {
 
   const rows = lines
     .filter((line) => line.shares[person.id])
-    .map((line) => {
-      const whole = line.amount;
-      const share = line.shares[person.id];
-      const from = payerName(line.expense);
-      return {
-        key: line.expense.id,
-        left: dot(line.expense),
-        what: line.expense.name,
-        // What it is a share of, and off whose account it goes — the two things
-        // that make a share you did not choose yourself explainable.
-        sub:
-          (share === whole ? 'helemaal van jou' : `jouw deel van ${formatMoney(whole)}`) +
-          (from ? ` · van ${from}` : ''),
-        cents: share,
-      };
-    })
+    // What it is a share of, and off whose account it goes — the two things
+    // that make a share you did not set yourself explainable.
+    .map((line) => postRow(line, { showing: 'share', me: person, from: payerName(line.expense) }))
     .sort((a, b) => b.cents - a.cents);
 
   return (
@@ -362,7 +371,7 @@ function BorneBreakdown({ person, cents, lines, people, accounts, onClose }) {
       cents={cents}
       rows={rows}
       empty={`${person.name} draagt van geen enkele post een deel.`}
-      note="Jouw deel van elke post die deze maand loopt, omgerekend naar per maand. Niet wat er van je rekening af gaat — dat staat per rekening hierboven, en daar zit ook het deel van anderen in."
+      note="Groot staat jouw deel, want dat is wat er van je inkomen af gaat; klein waar het een deel van is. Bij een rekening staat het andersom. Tel de twee dus niet bij elkaar op — dan telt hetzelfde bedrag dubbel."
       onClose={onClose}
     />
   );
@@ -376,13 +385,13 @@ function BorneBreakdown({ person, cents, lines, people, accounts, onClose }) {
  * and what it costs outside the posts — the same sum the account's own block is
  * built from, so the two can never say different things.
  */
-function FeedBreakdown({ feed, pot, lines, accounts, onClose }) {
+function FeedBreakdown({ feed, pot, lines, accounts, me, onClose }) {
   return (
     <Breakdown
       title={`Naar ${feed.account.name}`}
       label="Wat die rekening elke maand nodig heeft"
       cents={feed.needed}
-      rows={needRows(pot, lines, accounts, { overhead: true })}
+      rows={needRows(pot, lines, accounts, me, { overhead: true })}
       empty={`Er staan nog geen posten op ${feed.account.name}, dus valt er niets te berekenen.`}
       note={
         <>
