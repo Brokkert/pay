@@ -248,7 +248,13 @@ function Sheets({ open, setOpen, result, accounts, people, me }) {
 
 /** One account, top to bottom: what comes in, what goes out, what stays. */
 function Chain({ pot, onOpenFeed, onOpenCosts }) {
+  // Not only the posts: an account can also be settling with another account —
+  // fronting for it, or being paid back. That is money leaving here too, and
+  // calling the sum "the posts of this account" made it a figure you could hold
+  // against the list of posts and find short.
   const out = pot.needed;
+  const settles =
+    Object.keys(pot.toAccounts || {}).length > 0 || Object.keys(pot.fromAccounts || {}).length > 0;
   return (
     <>
       <div className="section">{pot.account.name}</div>
@@ -280,7 +286,11 @@ function Chain({ pot, onOpenFeed, onOpenCosts }) {
         {out !== 0 && (
           <Line
             what="Vaste lasten eraf"
-            sub="de posten die van deze rekening afgaan"
+            sub={
+              settles
+                ? 'de posten van deze rekening, plus wat hij met een andere rekening verrekent'
+                : 'de posten die van deze rekening afgaan'
+            }
             cents={-out}
             onClick={onOpenCosts}
           />
