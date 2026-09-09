@@ -520,16 +520,9 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
   // cycle walks through the calendar — so the cushion is named instead.
   const cycling = mine.filter((l) => cadenceOf(l.expense.cadence).perYear > 12);
   const cushion = cycling.reduce((sum, l) => sum + l.expense.amount, 0);
-  // Twelve monthly instalments do not always add up to the year: 100,00 a year
-  // is 8,33 a month, and twelve of those is 99,96. Kept as one number per
-  // account so it can be said out loud rather than turning up on a statement.
-  const drift = mine.reduce(
-    (sum, l) =>
-      sum +
-      12 * perMonth(l.expense.amount, l.expense.cadence) -
-      perYear(l.expense.amount, l.expense.cadence),
-    0
-  );
+  // Worked out once, per account, where every other figure about that account
+  // comes from — so the leftover tab cannot say a different number.
+  const drift = pot.drift;
   const transferBetween = (from, to) =>
     transfers.find((t) => t.from === from && t.to === to) || null;
   const accountName = (id) => context.accounts.find((a) => a.id === id)?.name || 'rekening';

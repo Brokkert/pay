@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { forMonth, openSettlements, net, payerParty, explainTransfer, isBusiness, mineFirst } from '../src/lib/ledger.js';
+import {
+  forMonth,
+  openSettlements,
+  net,
+  payerParty,
+  explainTransfer,
+  isBusiness,
+  mineFirst,
+  isAccountParty,
+} from '../src/lib/ledger.js';
 
 // A household with everything in it that makes this hard: two people with a
 // household bills account, a business account that also pays for shared things,
@@ -902,5 +911,60 @@ describe('a salary off a payslip', () => {
     expect(pot.difference).toBe(800000 - 360000);
     // And what the person has to live on is the net, not the gross.
     expect(result.borne[ME]).toBe(0);
+  });
+});
+
+describe('an account that has to end its cycle on nothing', () => {
+  // The whole point of a fixed-costs account: put a twelfth aside every month
+  // and the yearly bill is covered on the day it lands, with nothing left over
+  // and nothing missing.
+  const holding = { id: 'a-holding', name: 'Holding', kind: 'business', ownerId: ME,
+    income: 423946 };
+  const costs = { id: 'a-costs', name: 'Zakelijke vaste lasten', kind: 'business', ownerId: ME,
+    fundedBy: 'a-holding' };
+  const shared = { kind: 'equal', participants: [ME, PARTNER], weights: {} };
+  const own = { kind: 'equal', participants: [ME], weights: {} };
+  const expenses = [
+    expense({ id: 'y1', name: 'Internet', amount: 6000,
+      payer: { kind: 'account', id: 'a-costs' }, split: shared }),
+    expense({ id: 'y2', name: 'Autoverzekering', amount: 151152, cadence: 'year', chargeMonth: 3,
+      payer: { kind: 'account', id: 'a-costs' }, split: own }),
+    // 868,00 a year over four quarters. Deliberately not divisible by twelve.
+    expense({ id: 'y3', name: 'Wegenbelasting', amount: 21700, cadence: 'quarter', chargeMonth: 1,
+      payer: { kind: 'account', id: 'a-costs' }, split: own }),
+  ];
+  const run = (month) =>
+    forMonth({ people, accounts: [holding, costs], expenses }, month);
+
+  it('names the cents that twelve instalments cannot cover', () => {
+    // 217,00 a quarter is 72,33 a month, and twelve of those is 867,96 against
+    // 868,00 a year. The other two come out even.
+    expect(run('2026-01').pots.find((p) => p.account.id === 'a-costs').drift).toBe(-4);
+  });
+
+  it('holds exactly what it says it should, every month of the year', () => {
+    let balance = null;
+    let drift = 0;
+    for (let i = 1; i <= 12; i += 1) {
+      const result = run(`2026-${String(i).padStart(2, '0')}`);
+      const pot = result.pots.find((p) => p.account.id === 'a-costs');
+      const top = result.pots.find((p) => p.account.id === 'a-holding');
+      // Everything arriving: the standing order that fills it, plus what the
+      // people sharing its bills pay into it.
+      const order = top.feeds.find((f) => f.account.id === 'a-costs').cents;
+      const paid = result.transfers
+        .filter((t) => t.to === 'account:a-costs' && !isAccountParty(t.from))
+        .reduce((sum, t) => sum + t.cents, 0);
+      // Starting where Pay says the account should already stand.
+      if (balance === null) balance = pot.aside + pot.charged - order - paid;
+      balance += order + paid - pot.charged;
+      drift = pot.drift;
+      // And it keeps standing there, to within the rounding it already names.
+      expect(Math.abs(balance - pot.aside)).toBeLessThanOrEqual(Math.abs(drift));
+    }
+    // After a full cycle it is back where it started, short by the drift and by
+    // nothing else — which is why that one gets its own line.
+    expect(Math.abs(balance - run('2026-12').pots.find((p) => p.account.id === 'a-costs').aside))
+      .toBeLessThanOrEqual(Math.abs(drift));
   });
 });

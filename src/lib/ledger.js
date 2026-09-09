@@ -352,6 +352,19 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
       const contributions = account.contributions || {};
       const paidIn = Object.values(contributions).reduce((sum, c) => sum + (Number(c) || 0), 0);
       const out = perAccount[account.id] || 0;
+      // Twelve monthly instalments do not always add up to the year: 100,00 a
+      // year is 8,33 a month, and twelve of those is 99,96. Four cents that
+      // never leave anyone's account and never arrive either, so an account
+      // aiming to end a cycle on zero misses by exactly this much.
+      const drift = lines
+        .filter((l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === account.id)
+        .reduce(
+          (sum, l) =>
+            sum +
+            12 * perMonth(l.expense.amount, l.expense.cadence) -
+            perYear(l.expense.amount, l.expense.cadence),
+          0
+        );
 
       // What comes in from outside the ledger, and what is drawn out of it the
       // same way. Neither is a cost and neither is a debt — a holding paying
@@ -430,6 +443,7 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
         difference: 0,
         // What really leaves this month, what is being saved for later, and
         // whether some expense could not say which month it goes out.
+        drift,
         charged: saving.realPerAccount[account.id] || 0,
         aside: saving.asidePerAccount[account.id] || 0,
         chargeUnknown: saving.unknownCharge.has(account.id),
