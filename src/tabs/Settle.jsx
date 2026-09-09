@@ -108,8 +108,11 @@ export default function Settle({ store, month }) {
                 />
               );
             })}
+            {/* Every deposit above it, everyone's together — not yours. A total
+                with no owner under a list of named people reads as the last
+                one's, and it is the one figure here you would never transfer. */}
             <Total
-              label={`Per maand · ${formatMonth(month)}`}
+              label={`Iedereen samen · ${formatMonth(month)}`}
               cents={withAccounts.reduce((s, t) => s + (isAccountParty(t.from) ? -t.cents : t.cents), 0)}
               copy
             />
