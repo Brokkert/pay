@@ -170,6 +170,7 @@ export function readBackup(source) {
       charge: text(e.charge),
       note: text(e.note),
       paused: e.paused === true,
+      ...(e.savings === true ? { savings: true } : {}),
       ...(Number(e.chargeMonth) >= 1 && Number(e.chargeMonth) <= 12
         ? { chargeMonth: Number(e.chargeMonth) }
         : {}),

@@ -57,6 +57,8 @@ export default function Leftover({ store, month }) {
         income: Number(person.income),
         borne,
         fronted,
+        // Part of those same fixed costs, and not spending at all.
+        saved: result.saved[person.id] || 0,
         left: Number(person.income) - borne + fronted,
       };
     })
@@ -171,7 +173,7 @@ const Flows = ({ cents, label }) => (
   </div>
 );
 
-function PersonBlock({ person, income, borne, fronted, left, from, onOpen }) {
+function PersonBlock({ person, income, borne, fronted, saved, left, from, onOpen }) {
   return (
     <>
       {from && <Flows {...from} />}
@@ -202,6 +204,16 @@ function PersonBlock({ person, income, borne, fronted, left, from, onOpen }) {
               tone={left < 0 ? 'debt' : 'credit'}
             />
           </div>
+          {/* The bottom line is what is free to spend, and that is the number
+              you want most months. It is not the same as what you are worse off
+              by: a part of those fixed costs is still yours the day after. */}
+          {saved > 0 && (
+            <div className="hint" style={{ marginTop: -4 }}>
+              <strong>{formatMoney(saved)}</strong> van die vaste lasten is sparen of beleggen — dat
+              geld ben je niet kwijt. Je zet dat elke maand opzij en houdt daarnaast{' '}
+              {formatMoney(left)} over.
+            </div>
+          )}
       </div>
     </>
   );

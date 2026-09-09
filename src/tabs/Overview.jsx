@@ -109,6 +109,12 @@ export default function Overview({ store, month, onMonth }) {
     .filter((a) => a.kind === 'business')
     .reduce((sum, a) => sum + (result.perAccount[a.id] || 0), 0);
 
+  // What of the monthly load is not spending: saving and investing, at their
+  // full amount the way every other figure on this card is.
+  const putAway = result.lines
+    .filter((l) => l.expense.savings)
+    .reduce((sum, l) => sum + l.amount, 0);
+
   return (
     <>
       <MonthPicker month={month} onMonth={onMonth} />
@@ -176,6 +182,26 @@ export default function Overview({ store, month, onMonth }) {
           >
             <span className="grow">Waarvan zakelijk geboekt</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatMoney(business)}</span>
+          </button>
+        )}
+        {/* Beside it, the other part of that figure that is not what it looks
+            like: money that left the account and is still yours. */}
+        {putAway > 0 && (
+          <button
+            type="button"
+            className="bare strip"
+            onClick={() =>
+              setDetail({
+                title: 'Opzij gezet',
+                label: 'Per maand',
+                cents: putAway,
+                rows: postRows(result.lines.filter((l) => l.expense.savings)),
+                note: 'Sparen en beleggen. Het gaat wel van je rekening af, dus het staat gewoon tussen je vaste lasten — maar je bent het niet kwijt. Jouw eigen deel ervan staat bij Overhouden.',
+              })
+            }
+          >
+            <span className="grow">Waarvan opzij gezet</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatMoney(putAway)}</span>
           </button>
         )}
       </div>

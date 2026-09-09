@@ -89,6 +89,11 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
   // altogether would say they do not have it. It is both: a cost of theirs, and
   // one they did not pay out of what comes in.
   const fronted = Object.fromEntries(people.map((p) => [p.id, 0]));
+  // And of what someone carries, the part that is not spending at all. Money
+  // moved to a savings account leaves your account like any other bill and
+  // belongs in the fixed costs — it is what you have to be able to miss every
+  // month — but you still have it afterwards, and no total says so.
+  const saved = Object.fromEntries(people.map((p) => [p.id, 0]));
   const perAccount = Object.fromEntries(accounts.map((a) => [a.id, 0]));
   const perCategory = {};
   const charges = {};
@@ -166,6 +171,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
       if (!part) continue;
       borne[key] = (borne[key] || 0) + part;
       if (isBusiness(expense, accounts) && key in fronted) fronted[key] += part;
+      if (expense.savings && key in saved) saved[key] += part;
       if (paidItsOwnShare(key, expense)) continue;
       book(raw, bearerParty(key), party, part);
     }
@@ -187,6 +193,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     yearlyTotal,
     borne,
     fronted,
+    saved,
     unassigned,
     perAccount,
     perCategory,

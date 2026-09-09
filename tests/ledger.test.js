@@ -958,3 +958,32 @@ describe('an account that has to end its cycle on nothing', () => {
       .toBeLessThanOrEqual(Math.abs(drift));
   });
 });
+
+describe('a post that is not spending', () => {
+  it('stays in the fixed costs and is counted apart', () => {
+    const result = forMonth({
+      people, accounts,
+      expenses: [
+        expense({ id: 's1', name: 'Sparen', amount: 50000, savings: true,
+          payer: { kind: 'account', id: 'a-bills' },
+          split: { kind: 'equal', participants: [ME, PARTNER] } }),
+        expense({ id: 's2', name: 'Beleggen', amount: 10000, savings: true,
+          payer: { kind: 'account', id: 'a-personal' },
+          split: { kind: 'equal', participants: [ME] } }),
+        expense({ id: 's3', name: 'Energie', amount: 9000,
+          payer: { kind: 'account', id: 'a-bills' },
+          split: { kind: 'equal', participants: [ME, PARTNER] } }),
+      ],
+    }, '2026-09');
+
+    // It leaves the account like any other bill, so it is in the load and in
+    // what each of them carries — that is what you hold against a statement.
+    expect(result.monthlyTotal).toBe(50000 + 10000 + 9000);
+    expect(result.borne[ME]).toBe(25000 + 10000 + 4500);
+    // And separately: of that, the part you still have afterwards.
+    expect(result.saved[ME]).toBe(25000 + 10000);
+    expect(result.saved[PARTNER]).toBe(25000);
+    // Nothing about the energy, which really is gone.
+    expect(result.saved[FRIEND]).toBe(0);
+  });
+});

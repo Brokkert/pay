@@ -405,6 +405,44 @@ describe('the list of posts', () => {
   }, 30000);
 });
 
+describe('money you put away rather than spend', () => {
+  it('stays among the costs, and says it is still yours', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+
+    // An income, so there is a bottom line to say it about.
+    await user.click(await screen.findByRole('button', { name: /Mensen/ }));
+    await user.click(await screen.findByText('Ik'));
+    let sheet = screen.getByRole('heading', { name: 'Persoon wijzigen' }).closest('.sheet');
+    let field = within(sheet).getByText('Inkomen per maand').closest('.field');
+    await user.type(within(field).getByRole('textbox'), '3000,00');
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    // Sportclub is 25,00 a month, borne by me alone. Mark it as saving.
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Sportclub'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
+    sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    await user.click(within(sheet).getByText(/Looptijd, sparen/));
+    await user.click(within(sheet).getByText(/Dit is sparen of beleggen/));
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    // Still in the list at its full amount, marked for what it is.
+    const row = await screen.findByText('Sportclub');
+    expect(within(row.closest('.item')).getByText('sparen')).toBeTruthy();
+    expect(within(row.closest('.item')).getByText(/25,00/)).toBeTruthy();
+
+    // On the overview, beside what the load is made of.
+    await user.click(screen.getByRole('button', { name: /Overzicht/ }));
+    const strip = screen.getByText('Waarvan opzij gezet').closest('button');
+    expect(strip.textContent).toContain('25,00');
+
+    // And the bottom line says what part of it you still have.
+    await user.click(screen.getByRole('button', { name: /Overhouden/ }));
+    expect(document.body.textContent).toMatch(/€ 25,00 van die vaste lasten is sparen/);
+  }, 30000);
+});
+
 describe('a cost your own company account pays', () => {
   it('stays yours, and says it did not come off your salary', async () => {
     await withData(exampleHousehold());

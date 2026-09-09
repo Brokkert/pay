@@ -20,6 +20,7 @@ const blank = (meId) => ({
   from: '',
   until: '',
   paused: false,
+  savings: false,
   note: '',
 });
 
@@ -251,7 +252,7 @@ export default function ExpenseForm({
       />
 
       <details className="disclose" style={{ marginBottom: 18 }}>
-        <summary>Looptijd, notitie en pauzeren</summary>
+        <summary>Looptijd, sparen, notitie en pauzeren</summary>
         <div style={{ marginTop: 16 }}>
           {/* Stacked, not side by side: a date field is as wide as the date in
               it, so two of them in one row on a phone leaves neither room. */}
@@ -285,6 +286,22 @@ export default function ExpenseForm({
               onChange={(e) => set({ paused: e.target.checked })} />
             <span className="small">Even gepauzeerd — telt tijdelijk niet mee</span>
           </label>
+
+          {/* Not a kind of expense but a fact about one: it leaves your account
+              like any other, so it stays in the fixed costs where you can hold
+              it against your statement. What it is not is money you no longer
+              have, and nothing said so. */}
+          <label className="row" style={{ gap: 10, marginTop: 10 }}>
+            <input type="checkbox" checked={Boolean(draft.savings)}
+              onChange={(e) => set({ savings: e.target.checked })} />
+            <span className="small">Dit is sparen of beleggen — je bent het niet kwijt</span>
+          </label>
+          {draft.savings && (
+            <div className="hint">
+              Telt gewoon mee in je vaste lasten, want het gaat wel van je rekening af. Pay telt het
+              er alleen apart bij op, zodat je ziet wat je per maand opzij zet in plaats van uitgeeft.
+            </div>
+          )}
         </div>
       </details>
 

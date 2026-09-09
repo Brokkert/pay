@@ -259,6 +259,7 @@ function ExpenseRow({ row, mine, month, people, accounts, onOpen, onSave }) {
         <span className="row" style={{ gap: 7 }}>
           <span className="title truncate">{expense.name}</span>
           {expense.paused && <span className="chip static tiny">gepauzeerd</span>}
+          {expense.savings && <span className="chip static tiny">sparen</span>}
           {expense.cadence === 'once' && expense.settled && (
             <span className="chip static tiny">afgerekend</span>
           )}
