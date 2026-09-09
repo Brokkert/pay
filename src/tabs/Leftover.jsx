@@ -45,12 +45,20 @@ export default function Leftover({ store, month }) {
   );
   const persons = people
     .filter((p) => Number(p.income) > 0)
-    .map((person) => ({
-      person,
-      income: Number(person.income),
-      borne: result.borne[person.id] || 0,
-      left: Number(person.income) - (result.borne[person.id] || 0),
-    }))
+    .map((person) => {
+      const borne = result.borne[person.id] || 0;
+      // Of that, what a company account paid. Still a cost of theirs — it is in
+      // the list above and in every total — but not one their income paid for,
+      // so it goes back on before the bottom line.
+      const fronted = result.fronted[person.id] || 0;
+      return {
+        person,
+        income: Number(person.income),
+        borne,
+        fronted,
+        left: Number(person.income) - borne + fronted,
+      };
+    })
     .sort((a, b) => Number(b.person.isMe) - Number(a.person.isMe) || b.left - a.left);
 
   if (!chains.length && !persons.length) {
@@ -79,7 +87,7 @@ export default function Leftover({ store, month }) {
         />
       ))}
 
-      {persons.map(({ person, income, borne, left }) => (
+      {persons.map(({ person, income, borne, fronted, left }) => (
         <div key={person.id}>
           {/* By name, never "Privé": an account can be called that too, and two
               headings that read the same are two things you have to tell
@@ -93,6 +101,14 @@ export default function Leftover({ store, month }) {
               cents={-borne}
               onClick={() => setOpen({ kind: 'borne', person, cents: borne })}
             />
+            {fronted > 0 && (
+              <Line
+                what="Betaalt je zaak voor je"
+                sub="posten hierboven die van een zakelijke rekening af gaan — die komen niet van je salaris"
+                cents={fronted}
+                onClick={() => setOpen({ kind: 'fronted', person, cents: fronted })}
+              />
+            )}
             <Total
               label="Houd je over"
               cents={left}
@@ -123,13 +139,14 @@ export default function Leftover({ store, month }) {
         />
       )}
 
-      {open?.kind === 'borne' && (
+      {(open?.kind === 'borne' || open?.kind === 'fronted') && (
         <BorneBreakdown
           person={open.person}
           cents={open.cents}
           lines={result.lines}
           people={people}
           accounts={accounts}
+          onlyBusiness={open.kind === 'fronted'}
           onClose={() => setOpen(null)}
         />
       )}
@@ -351,14 +368,18 @@ function AccountCosts({ pot, lines, accounts, me, onClose }) {
  * Their share per post, not the post — the block above is about what is left of
  * their income, and only their own part of a bill comes off that.
  */
-function BorneBreakdown({ person, cents, lines, people, accounts, onClose }) {
+function BorneBreakdown({ person, cents, lines, people, accounts, onlyBusiness = false, onClose }) {
   const payerName = (expense) =>
     expense.payer?.kind === 'account'
       ? accounts.find((a) => a.id === expense.payer.id)?.name
       : people.find((p) => p.id === expense.payer?.id)?.name;
+  const fromBusiness = (expense) =>
+    expense.payer?.kind === 'account' &&
+    accounts.some((a) => a.id === expense.payer.id && a.kind === 'business');
 
   const rows = lines
     .filter((line) => line.shares[person.id])
+    .filter((line) => !onlyBusiness || fromBusiness(line.expense))
     // What it is a share of, and off whose account it goes — the two things
     // that make a share you did not set yourself explainable.
     .map((line) => postRow(line, { showing: 'share', me: person, from: payerName(line.expense) }))
@@ -366,12 +387,22 @@ function BorneBreakdown({ person, cents, lines, people, accounts, onClose }) {
 
   return (
     <Breakdown
-      title={`Vaste lasten van ${person.name}`}
-      label="Draagt per maand"
+      title={
+        onlyBusiness ? `Wat de zaak voor ${person.name} betaalt` : `Vaste lasten van ${person.name}`
+      }
+      label={onlyBusiness ? 'Gaat niet van het salaris af' : 'Draagt per maand'}
       cents={cents}
       rows={rows}
-      empty={`${person.name} draagt van geen enkele post een deel.`}
-      note="Groot staat jouw deel, want dat is wat er van je inkomen af gaat; klein waar het een deel van is. Bij een rekening staat het andersom. Tel de twee dus niet bij elkaar op — dan telt hetzelfde bedrag dubbel."
+      empty={
+        onlyBusiness
+          ? 'Geen enkele post van een zakelijke rekening staat op deze persoon.'
+          : `${person.name} draagt van geen enkele post een deel.`
+      }
+      note={
+        onlyBusiness
+          ? 'Deze posten staan gewoon in de lijst hierboven — het zijn kosten van jou. Alleen komen ze van een zakelijke rekening en niet van je salaris, dus tellen ze niet mee in wat je van je inkomen overhoudt.'
+          : 'Groot staat jouw deel, want dat is wat je van deze post draagt; klein waar het een deel van is. Bij een rekening staat het andersom. Tel de twee dus niet bij elkaar op — dan telt hetzelfde bedrag dubbel.'
+      }
       onClose={onClose}
     />
   );

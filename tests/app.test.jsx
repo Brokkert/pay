@@ -405,12 +405,12 @@ describe('the list of posts', () => {
   }, 30000);
 });
 
-describe('a business account that pays but bears nothing', () => {
-  it('offers to let it carry its own cost, in one tap', async () => {
+describe('a cost your own company account pays', () => {
+  it('stays yours, and says it did not come off your salary', async () => {
     await withData(exampleHousehold());
     const user = await start();
     await user.click(await screen.findByRole('button', { name: /Lasten/ }));
-    // Sportclub: 25,00, borne by me alone.
+    // Sportclub: 25,00, borne by me alone, off my personal account.
     await user.click(await screen.findByText('Sportclub'));
     await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
 
@@ -419,34 +419,40 @@ describe('a business account that pays but bears nothing', () => {
     // The two questions read as one until the second says what it decides.
     expect(bearers.textContent).toContain('wiens geld het uiteindelijk is');
 
-    // Nothing to suggest while a personal account pays it — that account is
-    // the person, so it is already right.
-    expect(within(bearers).queryByText(/draagt dit helemaal zelf/)).toBe(null);
-
-    // Picking the account answers the second question too: a cost of the
-    // business is the business's, and you should not have to say so twice.
+    // Let the business pay it. Which pocket it comes out of is the question
+    // above; this is still your sport, so it stays on you.
     const payer = within(sheet).getByText('Waar gaat het vanaf').closest('.field');
     await user.click(within(payer).getByRole('button', { name: 'Zaak' }));
-    expect(bearers.textContent).toContain('Dit deel ligt bij de zaak');
-    // A chip carries the initials of its avatar as well as the name, so reach
-    // for the label and step out to the button around it.
     const chip = (name) => within(bearers).getByText(name).closest('button');
-    expect(chip('Ik').className).not.toContain('on');
-
-    // Put it back on me by hand — now it is an answer, not a default, so the
-    // form leaves it alone and offers to move it instead.
-    await user.click(chip('Ik'));
-    await user.click(chip('Zaak'));
-    await user.click(within(bearers).getByRole('button', { name: /Zaak draagt dit helemaal zelf/ }));
-    expect(bearers.textContent).toContain('Dit deel ligt bij de zaak');
+    expect(chip('Ik').className).toContain('on');
+    expect(chip('Zaak').className).not.toContain('on');
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
-    // And in the list it is off you: the full 25,00 still leaves the account.
-    expect(within(screen.getByText('Sportclub').closest('.item')).getByText(/25,00/))
+    // So it is still in your list, at your share, where you can find it.
+    await user.click(screen.getByRole('button', { name: 'Mijn deel' }));
+    expect(within(screen.getByText('Sportclub').closest('.item')).getByText('€ 25,00'))
       .toBeTruthy();
+  }, 30000);
 
-    // Reading your own share it is gone altogether — a row of "€ 0,00" is true
-    // and useless — but the count line still accounts for it.
+  it('leaves a cost of the company itself out of everyone', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Sportclub'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
+
+    const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    const bearers = within(sheet).getByText('Wie draagt het').closest('.field');
+    const payer = within(sheet).getByText('Waar gaat het vanaf').closest('.field');
+    await user.click(within(payer).getByRole('button', { name: 'Zaak' }));
+
+    // Ticking the account on purpose is what takes it out of a personal total,
+    // and it says so rather than leaving you to notice.
+    await user.click(within(bearers).getByText('Zaak').closest('button'));
+    await user.click(within(bearers).getByText('Ik').closest('button'));
+    expect(bearers.textContent).toContain('telt niet mee in iemands vaste lasten');
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
     await user.click(screen.getByRole('button', { name: 'Mijn deel' }));
     expect(screen.queryByText('Sportclub')).toBe(null);
     expect(screen.getByText(/1 draag je niet/)).toBeTruthy();
@@ -977,8 +983,13 @@ describe('what is left, on its own tab', () => {
     // And the person below it: income against what they carry.
     const mine = [...document.querySelectorAll('.section')]
       .find((el) => el.textContent === 'Ik').nextElementSibling;
+    // 5.000 income, 146,50 of fixed costs — but 25,00 of that is your half of
+    // the internet, which the business pays. Your salary never saw it, so it
+    // goes back on: 5.000 − 146,50 + 25,00.
+    expect(within(mine).getByText('Betaalt je zaak voor je').closest('.line').textContent)
+      .toContain('25,00');
     expect(within(mine).getByText('Houd je over').closest('.total').textContent)
-      .toContain('4.853,50');
+      .toContain('4.878,50');
 
     // And that is not a lump either: it opens into your share of every post,
     // said as a share of the whole and off whose account it goes.

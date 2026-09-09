@@ -43,15 +43,16 @@ export function possibleBearers(people = [], accounts = []) {
 /**
  * Who carries an expense when nobody has said otherwise.
  *
- * Almost always the same answer as "which account does the bank empty": a cost
- * of the business is the business's, a household bill is the household's, and
- * what you pay yourself is yours. Asking both questions from scratch, with the
- * same names under each, is asking one question twice — and then taking the
- * default from the wrong one, which is how a company car ends up on someone's
- * private salary.
+ * Which account the bank empties is not the same question, but it does answer
+ * this one nearly every time: a household bill is the household's, and what one
+ * of your own accounts pays is yours. So the form fills it in from there rather
+ * than asking twice with the same names under each.
  *
- * A shared account is the exception: it cannot bear anything itself, it only
- * holds what its members put in, so there the answer is its members.
+ * An account of the business owned by someone answers with that someone, not
+ * with itself. A car it pays for is still a car you drive; leaving it off you
+ * would take a cost of yours out of your own list, and it is your list. An
+ * account only carries a cost that belongs to nobody's life — the accountant,
+ * software of the company — and that is a thing you tick on purpose.
  */
 export function defaultBearers(payer, people = [], accounts = []) {
   const me = people.find((p) => p.isMe);
@@ -60,7 +61,7 @@ export function defaultBearers(payer, people = [], accounts = []) {
   if (payer?.kind !== 'account') return mine;
   const account = accounts.find((a) => a.id === payer.id);
   if (!account) return mine;
-  if (account.kind === 'business') return [asAccountBearer(account.id)];
+  if (account.kind === 'business' && !account.ownerId) return [asAccountBearer(account.id)];
   if (account.kind === 'shared') {
     const members = (account.members || []).filter((id) => people.some((p) => p.id === id));
     return members.length ? members : mine;

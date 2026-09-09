@@ -113,9 +113,15 @@ describe('who carries it when nobody has said otherwise', () => {
   const from = (payer) => defaultBearers(payer, people, accounts);
 
   it('follows the account the money leaves from', () => {
-    // A business account carries its own costs, and says so as an account: it
-    // is not the same thing as the person who owns it.
-    expect(from({ kind: 'account', id: 'a-biz' })).toEqual(['account:a-biz']);
+    // A business account of your own answers with you. What it pays for is
+    // still your car, your phone — leaving it off you would take a cost of
+    // yours out of your own list, and the list is yours.
+    expect(from({ kind: 'account', id: 'a-biz' })).toEqual([ME]);
+    // Without an owner there is nobody to hand it to, so it carries it itself.
+    expect(defaultBearers({ kind: 'account', id: 'a-loose' }, people, [
+      ...accounts,
+      { id: 'a-loose', name: 'BV', kind: 'business' },
+    ])).toEqual(['account:a-loose']);
     // A personal account is the person who owns it.
     expect(from({ kind: 'account', id: 'a-own' })).toEqual([ME]);
     // A shared pot bears nothing itself — it only holds what its members put

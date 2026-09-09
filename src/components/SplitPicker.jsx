@@ -4,13 +4,7 @@
 // in euros sits right underneath it. A percentage says nothing; "Partner
 // € 152,64 per maand" does.
 
-import {
-  SPLIT_KINDS,
-  split,
-  possibleBearers,
-  asAccountBearer,
-  ACCOUNT_PREFIX,
-} from '../lib/split.js';
+import { SPLIT_KINDS, split, possibleBearers, ACCOUNT_PREFIX } from '../lib/split.js';
 import { perMonth } from '../lib/cadence.js';
 import { Field, Money, BearerAvatar, AmountInput } from './ui.jsx';
 
@@ -57,21 +51,6 @@ export default function SplitPicker({
     return onChange({ kind, participants: ids, weights: { ...parts } });
   };
 
-  // The business pays it and the owner alone bears it: that is a fixed cost of
-  // the company sitting in someone's private life, and nine times out of ten
-  // nobody meant it that way — the two questions look alike and the answer to
-  // the first does not carry over to the second. Only in this exact shape, so a
-  // post the business fronts for other people is left alone.
-  const fronting = (() => {
-    if (payer?.kind !== 'account') return null;
-    const account = accounts.find((a) => a.id === payer.id);
-    if (account?.kind !== 'business' || !account.ownerId) return null;
-    if (taking.length !== 1 || taking[0] !== account.ownerId) return null;
-    return account;
-  })();
-
-  const takeItAll = (key) => onChange({ kind: 'equal', participants: [key], weights: {} });
-
   const toggle = (key) => {
     const on = inSet.has(key);
     if (s.kind === 'equal') {
@@ -116,27 +95,15 @@ export default function SplitPicker({
             </button>
           ))}
         </div>
-        {fronting && (
-          <>
-            <div className="hint">
-              Deze post gaat van <strong>{fronting.name}</strong> af, maar staat helemaal op{' '}
-              {people.find((p) => p.id === fronting.ownerId)?.name || 'jou'} privé. Klopt dat, of
-              draagt de zaak hem zelf?
-            </div>
-            <div className="chips" style={{ marginTop: 8 }}>
-              <button
-                type="button"
-                className="chip quiet"
-                onClick={() => takeItAll(asAccountBearer(fronting.id))}
-              >
-                {fronting.name} draagt dit helemaal zelf
-              </button>
-            </div>
-          </>
-        )}
+        {/* A cost carried by an account is carried by nobody's life, so it
+            leaves every personal total. That is right for the accountant and
+            for software of the company, and wrong for anything you use
+            yourself — so it says which one it just did. */}
         {taking.some((key) => key.startsWith(ACCOUNT_PREFIX)) && (
           <div className="hint">
-            Dit deel ligt bij de zaak, niet bij jou privé. Zo zie je wat je kunt terughalen.
+            Dit deel telt niet mee in iemands vaste lasten — het is een kost van de zaak zelf.
+            Gebruik je het ook privé, zet het dan op jezelf; van welke rekening het af gaat staat
+            hierboven al.
           </div>
         )}
       </Field>

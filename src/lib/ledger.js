@@ -83,6 +83,12 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
   // What each bearer ends up carrying, keyed by the key from the split — so
   // accounts that bear a share of their own are in here too.
   const borne = Object.fromEntries(people.map((p) => [p.id, 0]));
+  // Of what someone carries, the part a company account paid for them. Their
+  // salary never saw that money, so subtracting it from their income would say
+  // they are poorer than they are — while leaving the cost out of their list
+  // altogether would say they do not have it. It is both: a cost of theirs, and
+  // one they did not pay out of what comes in.
+  const fronted = Object.fromEntries(people.map((p) => [p.id, 0]));
   const perAccount = Object.fromEntries(accounts.map((a) => [a.id, 0]));
   const perCategory = {};
   const charges = {};
@@ -159,6 +165,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     for (const [key, part] of Object.entries(shares)) {
       if (!part) continue;
       borne[key] = (borne[key] || 0) + part;
+      if (isBusiness(expense, accounts) && key in fronted) fronted[key] += part;
       if (paidItsOwnShare(key, expense)) continue;
       book(raw, bearerParty(key), party, part);
     }
@@ -179,6 +186,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     monthlyTotal,
     yearlyTotal,
     borne,
+    fronted,
     unassigned,
     perAccount,
     perCategory,
