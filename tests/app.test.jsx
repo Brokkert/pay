@@ -976,11 +976,9 @@ describe('what is left, on its own tab', () => {
       .toContain('8.000,00');
     expect(within(panel).getByText('Salaris naar Ik').closest('.line').textContent)
       .toContain('5.000,00');
-    // 8.000 in, 5.000 salary, 50,00 of internet and 4,00 of bank charges — less
-    // the 25,00 the partner pays into this account for her half of that
-    // internet, which is money it no longer has to be topped up with.
+    // 8.000 in, 5.000 salary, 50,00 of internet and 4,00 of bank charges.
     expect(within(panel).getByText('Blijft staan').closest('.total').textContent)
-      .toContain('2.971,00');
+      .toContain('2.946,00');
 
     // And the person below it: income against what they carry.
     const mine = [...document.querySelectorAll('.section')]
