@@ -700,6 +700,20 @@ button.line-open:active { background: var(--sunk); }
   box-shadow: var(--shadow);
 }
 
+/* The link between two blocks of a chain: what leaves the one above and lands
+   in the one below. Quiet on purpose — it carries no new figure, it only says
+   the two belong together. */
+.flows {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: -6px 0 12px;
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+}
+
 /* A suggestion, not a choice you have made: lighter than the row above it. */
 .chip.quiet { background: none; border-style: dashed; color: var(--text-2); }
 .chip.tiny { padding: 4px 10px; font-size: 11px; gap: 5px; }

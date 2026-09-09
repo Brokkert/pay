@@ -39,7 +39,14 @@ export function payerParty(expense, accounts) {
   if (p.kind === 'person') return p.id ? personParty(p.id) : null;
   const account = accounts.find((a) => a.id === p.id);
   if (!account) return null;
-  if (account.kind === 'shared') return accountParty(account.id);
+  // A shared pot and an account of the business are both parties of their own:
+  // what someone owes for a bill goes back to the account the bill came off, so
+  // the standing order that fills it drops by what the others put in. A
+  // personal account is the exception — that account *is* the person who owns
+  // it, and owing yourself is not a payment anyone makes.
+  if (account.kind === 'shared' || account.kind === 'business') {
+    return accountParty(account.id);
+  }
   return account.ownerId ? personParty(account.ownerId) : null;
 }
 
@@ -166,7 +173,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
       if (!part) continue;
       borne[key] = (borne[key] || 0) + part;
       if (isBusiness(expense, accounts) && key in fronted) fronted[key] += part;
-      if (paidItsOwnShare(key, expense)) continue;
+      if (paidItsOwnShare(key, expense, accounts)) continue;
       book(raw, bearerParty(key), party, part);
     }
 
@@ -229,12 +236,14 @@ function withRemainder(parts, remainder, party) {
  * like the business itself (that is a business cost). Without this rule the
  * business would owe you back its own quarter.
  */
-function paidItsOwnShare(key, expense) {
-  return (
-    isAccountBearer(key) &&
-    expense.payer?.kind === 'account' &&
-    accountOfBearer(key) === expense.payer.id
-  );
+function paidItsOwnShare(key, expense, accounts = []) {
+  if (expense.payer?.kind !== 'account') return false;
+  if (isAccountBearer(key)) return accountOfBearer(key) === expense.payer.id;
+  // And the owner of that account carries their own share out of their own
+  // money whichever pocket it left from. Booking it would have you transfer to
+  // yourself every month, which is not a payment — it is where the money
+  // already is.
+  return accounts.some((a) => a.id === expense.payer.id && a.ownerId === key);
 }
 
 function book(matrix, from, to, cents) {
@@ -390,10 +399,17 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
       // leaves it: the expenses plus what it owes another account, less what
       // another account owes it.
       const total = (o) => Object.values(o).reduce((sum, c) => sum + c, 0);
+      // What has to come in. On an account people pay into that is their
+      // deposits. On an account of your own it is what you have to put on it
+      // yourself: everything it pays, less everything anyone else pays into it.
       const needed =
         account.kind === 'shared'
           ? total(incoming)
-          : out + total(toAccounts) - total(fromAccounts);
+          : out +
+            total(toAccounts) +
+            total(outgoing) -
+            total(fromAccounts) -
+            total(incoming);
       return {
         account,
         out,
@@ -495,7 +511,7 @@ export function openSettlements(expenses, accounts) {
     const { parts, remainder } = split(expense.amount, expense.split);
     const shares = withRemainder(parts, remainder, party);
     for (const [key, part] of Object.entries(shares)) {
-      if (paidItsOwnShare(key, expense)) continue;
+      if (paidItsOwnShare(key, expense, accounts)) continue;
       book(raw, bearerParty(key), party, part);
     }
     lines.push({ expense, party, shares });

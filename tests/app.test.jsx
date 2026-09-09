@@ -976,9 +976,11 @@ describe('what is left, on its own tab', () => {
       .toContain('8.000,00');
     expect(within(panel).getByText('Salaris naar Ik').closest('.line').textContent)
       .toContain('5.000,00');
-    // 8.000 in, 5.000 salary, 50,00 of internet and 4,00 of bank charges.
+    // 8.000 in, 5.000 salary, 50,00 of internet and 4,00 of bank charges — less
+    // the 25,00 the partner pays into this account for her half of that
+    // internet, which is money it no longer has to be topped up with.
     expect(within(panel).getByText('Blijft staan').closest('.total').textContent)
-      .toContain('2.946,00');
+      .toContain('2.971,00');
 
     // And the person below it: income against what they carry.
     const mine = [...document.querySelectorAll('.section')]
@@ -990,6 +992,13 @@ describe('what is left, on its own tab', () => {
       .toContain('25,00');
     expect(within(mine).getByText('Houd je over').closest('.total').textContent)
       .toContain('4.878,50');
+
+    // Top to bottom, one chain: the account the money comes in on, then the
+    // person it pays a salary to, with the link between them named.
+    const headings = [...document.querySelectorAll('.section')].map((el) => el.textContent);
+    expect(headings.indexOf('Zaak')).toBeLessThan(headings.indexOf('Ik'));
+    const link = [...document.querySelectorAll('.flows')].map((el) => el.textContent);
+    expect(link.some((t) => /5\.000,00 salaris vanaf Zaak/.test(t))).toBe(true);
 
     // And that is not a lump either: it opens into your share of every post,
     // said as a share of the whole and off whose account it goes.
@@ -1025,6 +1034,12 @@ describe('what is left, on its own tab', () => {
     const feed = within(zaak).getByText('Naar Privé').closest('.line');
     expect(feed.textContent).toContain('45,00');
     expect(feed.textContent).toContain('nog geen vast bedrag');
+
+    // The account that feeds comes first, and the link says what runs down it.
+    const order = [...document.querySelectorAll('.section')].map((el) => el.textContent);
+    expect(order.indexOf('Zaak')).toBeLessThan(order.indexOf('Privé'));
+    expect([...document.querySelectorAll('.flows')].some((el) => /45,00 vanaf Zaak/.test(el.textContent)))
+      .toBe(true);
 
     // And Privé is not reported as short of money that arrives every month.
     const prive = [...document.querySelectorAll('.section')]

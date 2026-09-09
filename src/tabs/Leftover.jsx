@@ -61,6 +61,45 @@ export default function Leftover({ store, month }) {
     })
     .sort((a, b) => Number(b.person.isMe) - Number(a.person.isMe) || b.left - a.left);
 
+  // Top to bottom, the way the money actually moves: the account nobody feeds
+  // first, then what it feeds, then whoever draws a salary out of it. Read as
+  // separate blocks in whatever order they happened to be created, the same
+  // figures are a pile of facts; in this order they are one chain from turnover
+  // to what you keep.
+  const chain = useMemo(() => {
+    const byId = new Map(chains.map((pot) => [pot.account.id, pot]));
+    const items = [];
+    const seen = new Set();
+
+    const visit = (pot, from) => {
+      if (!pot || seen.has(pot.account.id)) return;
+      seen.add(pot.account.id);
+      items.push({ key: `a-${pot.account.id}`, kind: 'account', pot, from });
+      for (const feed of pot.feeds) {
+        visit(byId.get(feed.account.id), {
+          cents: feed.cents,
+          label: `vanaf ${pot.account.name}`,
+        });
+      }
+    };
+
+    // Start where money comes in from outside, so the top of the chain is the
+    // top of the list.
+    for (const pot of chains) if (!pot.fedBy) visit(pot, null);
+    for (const pot of chains) visit(pot, null);
+
+    for (const row of persons) {
+      const source = row.person.incomeFrom && byId.get(row.person.incomeFrom);
+      items.push({
+        key: `p-${row.person.id}`,
+        kind: 'person',
+        row,
+        from: source ? { cents: row.income, label: `salaris vanaf ${source.account.name}` } : null,
+      });
+    }
+    return items;
+  }, [chains, persons]);
+
   if (!chains.length && !persons.length) {
     return (
       <Empty icon="settle" title="Nog niets ingevuld">
@@ -78,17 +117,50 @@ export default function Leftover({ store, month }) {
         plan — leg het één keer per maand naast je bankapp.
       </Notice>
 
-      {chains.map((pot) => (
-        <Chain
-          key={pot.account.id}
-          pot={pot}
-          onOpenFeed={(feed) => setOpen({ kind: 'feed', feed })}
-          onOpenCosts={() => setOpen({ kind: 'costs', pot })}
-        />
-      ))}
+      {chain.map((item) =>
+        item.kind === 'account' ? (
+          <Fragment key={item.key}>
+            {item.from && <Flows {...item.from} />}
+            <Chain
+              pot={item.pot}
+              onOpenFeed={(feed) => setOpen({ kind: 'feed', feed })}
+              onOpenCosts={() => setOpen({ kind: 'costs', pot: item.pot })}
+            />
+          </Fragment>
+        ) : (
+          <PersonBlock
+            key={item.key}
+            {...item.row}
+            from={item.from}
+            onOpen={(kind, cents) => setOpen({ kind, person: item.row.person, cents })}
+          />
+        )
+      )}
 
-      {persons.map(({ person, income, borne, fronted, left }) => (
-        <div key={person.id}>
+      <Sheets
+        open={open}
+        setOpen={setOpen}
+        result={result}
+        accounts={accounts}
+        people={people}
+        me={me}
+      />
+    </>
+  );
+}
+
+/** The link between two blocks: what leaves the one above and lands below. */
+const Flows = ({ cents, label }) => (
+  <div className="flows">
+    <span aria-hidden="true">↓</span> {formatMoney(cents)} {label}
+  </div>
+);
+
+function PersonBlock({ person, income, borne, fronted, left, from, onOpen }) {
+  return (
+    <>
+      {from && <Flows {...from} />}
+      <div>
           {/* By name, never "Privé": an account can be called that too, and two
               headings that read the same are two things you have to tell
               apart before you can read either. */}
@@ -99,14 +171,14 @@ export default function Leftover({ store, month }) {
               what="Vaste lasten"
               sub="wat je van alle posten draagt — rekent Pay uit"
               cents={-borne}
-              onClick={() => setOpen({ kind: 'borne', person, cents: borne })}
+              onClick={() => onOpen('borne', borne)}
             />
             {fronted > 0 && (
               <Line
                 what="Betaalt je zaak voor je"
                 sub="posten hierboven die van een zakelijke rekening af gaan — die komen niet van je salaris"
                 cents={fronted}
-                onClick={() => setOpen({ kind: 'fronted', person, cents: fronted })}
+                onClick={() => onOpen('fronted', fronted)}
               />
             )}
             <Total
@@ -115,9 +187,14 @@ export default function Leftover({ store, month }) {
               tone={left < 0 ? 'debt' : 'credit'}
             />
           </div>
-        </div>
-      ))}
+      </div>
+    </>
+  );
+}
 
+function Sheets({ open, setOpen, result, accounts, people, me }) {
+  return (
+    <>
       {open?.kind === 'feed' && (
         <FeedBreakdown
           feed={open.feed}

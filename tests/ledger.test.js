@@ -53,7 +53,7 @@ describe('forMonth', () => {
     expect(flow(result, `person:${PARTNER}`, 'account:a-bills')).toBe(4500);
   });
 
-  it('charges a business-paid subscription back to the owner', () => {
+  it('charges a business-paid subscription back to that account', () => {
     const result = forMonth({
       people, accounts,
       expenses: [expense({
@@ -65,10 +65,13 @@ describe('forMonth', () => {
 
     // 4999 over four: 1250/1250/1250/1249 — exactly 4999 together.
     expect(Object.values(result.lines[0].shares).reduce((s, c) => s + c, 0)).toBe(4999);
-    // My own share is not a debt: I paid it myself.
-    expect(flow(result, `person:${ME}`, `person:${ME}`)).toBe(0);
-    expect(flow(result, `person:${PARTNER}`, `person:${ME}`)).toBe(1250);
-    expect(flow(result, `person:${NEIGHBOUR}`, `person:${ME}`)).toBe(1249);
+    // My own share is not a debt: it is my account, so the money is already
+    // where it belongs.
+    expect(result.transfers.some((t) => t.from === `person:${ME}`)).toBe(false);
+    // The others owe the account the money came off, not me — that is what
+    // makes the standing order filling it drop by what they put in.
+    expect(flow(result, `person:${PARTNER}`, 'account:a-business')).toBe(1250);
+    expect(flow(result, `person:${NEIGHBOUR}`, 'account:a-business')).toBe(1249);
   });
 
   it('cancels crossing subscriptions against each other', () => {
@@ -266,9 +269,12 @@ describe('forMonth', () => {
 });
 
 describe('settling through the bills account', () => {
-  // The tricky case: the internet runs on the business, but the partner pays her
-  // half into the bills account as usual. So she transfers one amount, and I put
-  // in less myself.
+  // The tricky case: the internet runs on the business and the energy on the
+  // bills account. Each share goes back to the account that paid, so the
+  // partner transfers twice — once into each pot. That is a payment more than
+  // netting it all into one, and it is the point: money owed for a bill the
+  // business paid has to reach the business, or the standing order filling it
+  // never drops and that account quietly carries everyone's share.
   const expenses = [
     expense({ id: 'a', name: 'Energie', amount: 9000, payer: { kind: 'account', id: 'a-bills' },
       split: { kind: 'equal', participants: [ME, PARTNER] } }),
@@ -276,24 +282,22 @@ describe('settling through the bills account', () => {
       split: { kind: 'equal', participants: [ME, PARTNER] } }),
   ];
 
-  it('has the partner transfer one amount instead of two', () => {
+  it('sends each share to the account that paid for it', () => {
     const result = forMonth({ people, accounts: withHub, expenses }, '2026-09');
-    const fromPartner = result.transfers.filter((t) => t.from === `person:${PARTNER}`);
-    expect(fromPartner).toHaveLength(1);
-    // 4500 (her half of the energy) + 2500 (her half of the internet, which the
-    // business paid; 5001 does not divide evenly, so she gets the smaller half)
-    // = 7000.
-    expect(fromPartner[0]).toMatchObject({ to: 'account:a-bills', cents: 7000 });
+    // Her half of the energy into the bills account, her half of the internet
+    // into the business — 5001 does not divide evenly, so she gets the smaller
+    // half of that one.
+    expect(flow(result, `person:${PARTNER}`, 'account:a-bills')).toBe(4500);
+    expect(flow(result, `person:${PARTNER}`, 'account:a-business')).toBe(2500);
   });
 
-  it('deducts what I already fronted myself', () => {
+  it('leaves my own share of what my own account paid alone', () => {
     const result = forMonth({ people, accounts: withHub, expenses }, '2026-09');
     const withMe = result.transfers.filter((t) => t.from === `person:${ME}` || t.to === `person:${ME}`);
+    // Only the energy: my half of the internet came off an account of mine, and
+    // transferring to yourself is not a payment.
     expect(withMe).toHaveLength(1);
-    // My share of the energy is 4500. The account owes me 2500, because that is
-    // what the partner pays into it for something the business already covered.
-    // 2000 left.
-    expect(withMe[0]).toMatchObject({ from: `person:${ME}`, to: 'account:a-bills', cents: 2000 });
+    expect(withMe[0]).toMatchObject({ from: `person:${ME}`, to: 'account:a-bills', cents: 4500 });
   });
 
   it('has all transfers cover exactly what the account pays', () => {
@@ -388,10 +392,10 @@ describe('an account bearing a share of its own', () => {
     expect(result.transfers.some((t) => t.from === 'account:a-business')).toBe(false);
     // It is still a business cost, so it counts in what the business bears.
     expect(result.borne['account:a-business']).toBe(450);
-    // The partner pays her share into the bills account; I fronted the rest
-    // through the business, so that account pays me back.
-    expect(flow(result, `person:${PARTNER}`, 'account:a-bills')).toBe(450);
-    expect(flow(result, 'account:a-bills', `person:${ME}`)).toBe(450);
+    // Nor do I owe my own account anything. Only the partner does, and she owes
+    // it to the account that paid rather than to me.
+    expect(result.transfers.some((t) => t.from === `person:${ME}`)).toBe(false);
+    expect(flow(result, `person:${PARTNER}`, 'account:a-business')).toBe(450);
   });
 });
 
@@ -441,9 +445,14 @@ describe('net', () => {
 });
 
 describe('payerParty', () => {
-  it('picks the account for a shared one and the owner for a personal one', () => {
+  it('picks the account itself, except for a personal one', () => {
     expect(payerParty({ payer: { kind: 'account', id: 'a-bills' } }, accounts)).toBe('account:a-bills');
-    expect(payerParty({ payer: { kind: 'account', id: 'a-business' } }, accounts)).toBe(`person:${ME}`);
+    // A pot people pay into and an account of the business are both owed money
+    // in their own right; a personal account is simply its owner.
+    expect(payerParty({ payer: { kind: 'account', id: 'a-business' } }, accounts))
+      .toBe('account:a-business');
+    expect(payerParty({ payer: { kind: 'account', id: 'a-personal' } }, accounts))
+      .toBe(`person:${ME}`);
     expect(payerParty({ payer: { kind: 'person', id: FRIEND } }, accounts)).toBe(`person:${FRIEND}`);
     expect(payerParty({ payer: { kind: 'account', id: 'gone' } }, accounts)).toBe(null);
   });
@@ -722,9 +731,10 @@ describe('explaining a transfer when there are two shared accounts', () => {
     };
     // The mortgage account knows about the mortgage and nothing else.
     expect(named(`person:${me}`, 'account:mortgage')).toEqual(['Hypotheek']);
-    // The bills account carries what it pays, plus what the business fronted:
-    // that debt is between two people, and those route through it.
-    expect(named(`person:${me}`, 'account:bills')).toEqual(['Gas', 'TV']);
+    // The bills account knows about what it pays and nothing else either. What
+    // the business fronted is owed to the business, so it does not run through
+    // here any more.
+    expect(named(`person:${me}`, 'account:bills')).toEqual(['Gas']);
   });
 });
 
