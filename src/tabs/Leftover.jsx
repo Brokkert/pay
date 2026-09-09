@@ -43,6 +43,7 @@ export default function Leftover({ store, month }) {
         pot.feeds.length > 0 ||
         Boolean(pot.fedBy))
   );
+  const shared = result.pots.filter((pot) => pot.account.kind === 'shared');
   const persons = people
     .filter((p) => Number(p.income) > 0)
     .map((person) => {
@@ -135,6 +136,20 @@ export default function Leftover({ store, month }) {
             onOpen={(kind, cents) => setOpen({ kind, person: item.row.person, cents })}
           />
         )
+      )}
+
+      {/* A pot you share has the same shape as an account of your own, and
+          leaving it out without a word reads as something missing rather than
+          as a different question being asked elsewhere. */}
+      {shared.length > 0 && (
+        <div className="hint">
+          {shared.length === 1 ? 'Je gedeelde rekening' : 'Je gedeelde rekeningen'}{' '}
+          <strong>{shared.map((pot) => pot.account.name).join(', ')}</strong>{' '}
+          {shared.length === 1 ? 'staat' : 'staan'} hier niet: die {shared.length === 1 ? 'is' : 'zijn'}{' '}
+          niet van jou alleen, dus is "wat blijft er staan" er geen antwoord voor jou. Wat er op moet
+          staan en wie er nog moet storten vind je op <strong>Overzicht</strong>. Jouw deel van de
+          posten die eraf gaan zit hierboven gewoon in je vaste lasten.
+        </div>
       )}
 
       <Sheets

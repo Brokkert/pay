@@ -991,6 +991,10 @@ describe('what is left, on its own tab', () => {
     expect(within(mine).getByText('Houd je over').closest('.total').textContent)
       .toContain('4.878,50');
 
+    // A pot you share has the same shape as an account of your own, so its
+    // absence has to be said out loud or it reads as something missing.
+    expect(document.body.textContent).toMatch(/Vaste lasten.*niet van jou alleen/s);
+
     // Top to bottom, one chain: the account the money comes in on, then the
     // person it pays a salary to, with the link between them named.
     const headings = [...document.querySelectorAll('.section')].map((el) => el.textContent);
