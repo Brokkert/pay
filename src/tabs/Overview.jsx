@@ -752,7 +752,10 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
             onClick={row.onClick}
           />
         ))}
-        {(hasContributions || pot.income > 0 || pot.drawn > 0) && (
+        {/* What everyone together has to put on it is worked out from the
+            posts, so it can be said whether or not anybody typed a standing
+            order. Only the comparison below it needs one. */}
+        {(hasContributions || pot.income > 0 || pot.drawn > 0 || (shared && pot.needed !== 0)) && (
           <>
             {shared && pot.needed !== pot.out && (
               <Line
