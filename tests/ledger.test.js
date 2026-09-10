@@ -987,3 +987,42 @@ describe('a post that is not spending', () => {
     expect(result.saved[FRIEND]).toBe(0);
   });
 });
+
+describe('a pot that people pay into', () => {
+  it('lands on nothing once everyone has paid what they owe it', () => {
+    const result = forMonth({
+      people, accounts: withHub,
+      expenses: [
+        expense({ id: 'p1', name: 'Energie', amount: 9000,
+          payer: { kind: 'account', id: 'a-bills' },
+          split: { kind: 'equal', participants: [ME, PARTNER] } }),
+        // Something a friend fronted, netted through the same account.
+        expense({ id: 'p2', name: 'Muziek', amount: 1200,
+          payer: { kind: 'person', id: FRIEND },
+          split: { kind: 'equal', participants: [ME, FRIEND] } }),
+      ],
+    }, '2026-09');
+
+    const pot = result.pots.find((p) => p.account.id === 'a-bills');
+    // Everything arriving leaves again: the bills it pays, plus what it hands
+    // on to whoever fronted. A pot holds nothing of its own.
+    expect(pot.closes).toBe(0);
+  });
+
+  it('says so when a share is not carried by anyone', () => {
+    const result = forMonth({
+      people, accounts: withHub,
+      expenses: [
+        // Fixed amounts that fall short of the expense: the rest belongs to
+        // nobody, so the account is left holding it.
+        expense({ id: 'p3', name: 'Energie', amount: 9000,
+          payer: { kind: 'account', id: 'a-bills' },
+          split: { kind: 'amount', weights: { [ME]: 4000, [PARTNER]: 4000 } } }),
+      ],
+    }, '2026-09');
+
+    const pot = result.pots.find((p) => p.account.id === 'a-bills');
+    expect(pot.closes).toBe(-1000);
+    expect(result.unassigned).toBe(1000);
+  });
+});

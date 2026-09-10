@@ -778,6 +778,17 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                 }
               />
             )}
+            {/* Without a standing order there is nothing to hold against, but
+                there is still something worth saying: that everything arriving
+                here leaves again. Nought is the answer, and it being anything
+                else is the whole reason to print it. */}
+            {shared && !hasContributions && (
+              <Total
+                label="Komt uit op"
+                cents={pot.closes}
+                tone={pot.closes === 0 ? 'credit' : 'debt'}
+              />
+            )}
             {hasContributions && (
             <Line
               what="Staat als vaste inleg ingesteld"
@@ -847,6 +858,13 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
           Bij een post hier is niet ingevuld in welke maand hij wordt afgeschreven, dus klopt
           hierboven niet wat er op de rekening hoort te staan. Vul bij die post
           <strong> Wordt afgeschreven in</strong> in.
+        </div>
+      )}
+      {shared && !hasContributions && (
+        <div className="hint" style={{ marginTop: -4 }}>
+          {pot.closes === 0
+            ? 'Nul, en dat hoort: stort iedereen wat hierboven staat, dan gaat er precies zoveel af als erop komt. Deze rekening houdt niets van zichzelf.'
+            : 'Dit hoort nul te zijn. Staat er iets anders, dan is er een post waarvan niet iedereen zijn deel draagt, of gaat er iets af dat nergens is toegewezen.'}
         </div>
       )}
       {isHub && (

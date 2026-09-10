@@ -414,9 +414,20 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
         account.kind === 'shared'
           ? total(incoming)
           : out + total(toAccounts) - total(fromAccounts);
+      // Everything the month's transfers bring in against everything that
+      // leaves. If nothing is missing this is nought — that is the check, not a
+      // surplus: an account people pay into holds no money of its own, it only
+      // passes what everyone puts in on to the bills.
+      const closes =
+        total(incoming) +
+        total(fromAccounts) -
+        out -
+        total(outgoing) -
+        total(toAccounts);
       return {
         account,
         out,
+        closes,
         needed,
         incoming,
         outgoing,
