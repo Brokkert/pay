@@ -634,6 +634,40 @@ button.line-open:active { background: var(--sunk); }
 }
 .money-input .input:focus { box-shadow: none; }
 
+/* Does it add up. Quiet by design: this is the line you read past when the
+   answer is yes, and the one you stop at when it is no. */
+.checks {
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
+}
+.checks.ok {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--credit);
+}
+.checks > button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.checks .chev { margin-left: auto; color: var(--text-3); }
+.checks ul {
+  margin: 9px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 7px;
+}
+
 /* ---------- chips ---------- */
 
 .chips { display: flex; flex-wrap: wrap; gap: 7px; }

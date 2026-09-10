@@ -367,15 +367,6 @@ function Chain({ pot, onOpenFeed, onOpenCosts }) {
           staan voor posten die niet elke maand worden afgeschreven.
         </div>
       )}
-      {/* An account meant to end its cycle on nothing misses by this much, and
-          "a few cents" is not something you can put in a banking app. */}
-      {pot.drift !== 0 && (
-        <div className="hint" style={{ marginTop: -4 }}>
-          Twaalf maandlasten dekken het jaar net niet precies. Stort er één keer per jaar{' '}
-          <strong>{formatMoney(Math.abs(pot.drift))}</strong>{' '}
-          {pot.drift < 0 ? 'bij, dan komt deze rekening precies op nul uit.' : 'af, anders blijft dat staan.'}
-        </div>
-      )}
     </>
   );
 }

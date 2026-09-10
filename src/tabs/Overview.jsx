@@ -29,6 +29,7 @@ import { categoryOf, categoryName, accountKindOf } from '../data/categories.js';
 import { possibleBearers } from '../lib/split.js';
 import { formatMoney } from '../lib/money.js';
 import { count } from '../lib/words.js';
+import { runChecks } from '../lib/checks.js';
 
 /** Under an expense in a breakdown: its category, and what it is charged as. */
 const postSub = (expense) => {
@@ -111,6 +112,10 @@ export default function Overview({ store, month, onMonth }) {
 
   // What of the monthly load is not spending: saving and investing, at their
   // full amount the way every other figure on this card is.
+  // Everything Pay can say about itself, in one place instead of a hint on
+  // whichever screen the account happened to be on.
+  const findings = runChecks({ people, accounts, expenses }, result);
+
   const putAway = result.lines
     .filter((l) => l.expense.savings)
     .reduce((sum, l) => sum + l.amount, 0);
@@ -119,7 +124,7 @@ export default function Overview({ store, month, onMonth }) {
     <>
       <MonthPicker month={month} onMonth={onMonth} />
 
-      {result.warnings.map((w) => <Notice key={w} tone="warn">{w}</Notice>)}
+      <Checks findings={findings} />
 
       {/* The two numbers it is all about: what runs in total, and how much of
           that is ultimately yours. The one card in the app that carries colour —
@@ -429,6 +434,51 @@ export default function Overview({ store, month, onMonth }) {
           month={month}
           onClose={() => setOpenCharge(null)}
         />
+      )}
+    </>
+  );
+}
+
+/**
+ * Does it add up — in one line when it does, and in a list when it does not.
+ *
+ * Silence would be cheaper, but "nothing is wrong" is the thing you actually
+ * came to find out, and a screen that only speaks up on trouble never tells you
+ * that.
+ */
+function Checks({ findings }) {
+  const [open, setOpen] = useState(false);
+  const wrong = findings.filter((f) => f.tone === 'warn');
+  const rest = findings.filter((f) => f.tone !== 'warn');
+
+  if (!findings.length) {
+    return (
+      <div className="checks ok">
+        <Icon name="check" size={15} /> Alles klopt — elke rekening komt uit en elke post heeft
+        een drager.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {wrong.map((f) => (
+        <Notice key={f.id} tone="warn">{f.text}</Notice>
+      ))}
+      {rest.length > 0 && (
+        <div className="checks">
+          <button type="button" className="bare" onClick={() => setOpen((v) => !v)}>
+            {wrong.length === 0 && <Icon name="check" size={15} />}{' '}
+            {wrong.length === 0 ? 'De sommen kloppen. ' : ''}
+            {count(rest.length, 'punt', 'punten')} om een keer naar te kijken
+            <span className="chev"> {open ? '▴' : '▾'}</span>
+          </button>
+          {open && (
+            <ul>
+              {rest.map((f) => <li key={f.id}>{f.text}</li>)}
+            </ul>
+          )}
+        </div>
       )}
     </>
   );
@@ -851,13 +901,6 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
           dezelfde maand. Houd daarvoor <strong>{formatMoney(cushion)}</strong> als bodem aan.
           Welke maand dat is valt niet te zeggen: zo'n cyclus van 28 dagen loopt niet met de
           kalender mee.
-        </div>
-      )}
-      {pot.chargeUnknown && (
-        <div className="hint warn" style={{ marginTop: -4 }}>
-          Bij een post hier is niet ingevuld in welke maand hij wordt afgeschreven, dus klopt
-          hierboven niet wat er op de rekening hoort te staan. Vul bij die post
-          <strong> Wordt afgeschreven in</strong> in.
         </div>
       )}
       {shared && !hasContributions && (

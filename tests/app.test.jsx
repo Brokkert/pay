@@ -405,6 +405,34 @@ describe('the list of posts', () => {
   }, 30000);
 });
 
+describe('whether it all adds up', () => {
+  it('says so in one line, and says what does not', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+
+    // What Pay already knew but only said on the account's own panel: a yearly
+    // post here has no charge month, so what should be on that account is wrong.
+    expect(await screen.findByText(/niet ingevuld in welke maand/)).toBeTruthy();
+    // And the rest, folded away until you want it.
+    expect(screen.getByText(/om een keer naar te kijken/)).toBeTruthy();
+
+    // Now give a post fixed amounts that fall short: ten euro nobody carries.
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    await user.click(await screen.findByText('Streamingdienst'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
+    const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    await user.click(within(sheet).getByRole('button', { name: 'Vaste bedragen' }));
+    const fields = within(sheet).getAllByPlaceholderText('0,00');
+    await user.clear(fields[fields.length - 1]);
+    await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
+
+    await user.click(screen.getByRole('button', { name: /Overzicht/ }));
+    // Named on the account it goes wrong on, at the top of the first screen,
+    // rather than as a hint three screens away.
+    expect(document.body.textContent).toMatch(/tellen de vaste bedragen niet op/);
+  }, 30000);
+});
+
 describe('money you put away rather than spend', () => {
   it('stays among the costs, and says it is still yours', async () => {
     await withData(exampleHousehold());
@@ -427,10 +455,13 @@ describe('money you put away rather than spend', () => {
     await user.click(within(sheet).getByText(/Dit is sparen of beleggen/));
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
-    // Still in the list at its full amount, marked for what it is.
-    const row = await screen.findByText('Sportclub');
-    expect(within(row.closest('.item')).getByText('sparen')).toBeTruthy();
-    expect(within(row.closest('.item')).getByText(/25,00/)).toBeTruthy();
+    // Still in the list at its full amount, marked for what it is. Waiting on
+    // the mark rather than on the row: the row is already there with the old
+    // flag on it, so finding it proves nothing about the save.
+    const mark = await screen.findByText('sparen');
+    const row = mark.closest('.item');
+    expect(within(row).getByText('Sportclub')).toBeTruthy();
+    expect(within(row).getByText(/25,00/)).toBeTruthy();
 
     // On the overview, beside what the load is made of.
     await user.click(screen.getByRole('button', { name: /Overzicht/ }));
