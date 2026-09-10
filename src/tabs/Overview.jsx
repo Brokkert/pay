@@ -868,12 +868,18 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                 a groceries pot is emptied by groceries it has never seen. */}
             {mine.length === 0 && !pot.income && !pot.drawn ? null : (
             <Total
-              label={pot.difference >= 0 ? 'Blijft over' : 'Komt tekort'}
+              label={
+                pot.difference === 0
+                  ? 'Komt uit op'
+                  : pot.difference > 0
+                    ? 'Blijft over'
+                    : 'Moet er nog bij'
+              }
               cents={Math.abs(pot.difference)}
-              tone={pot.difference >= 0 ? 'credit' : 'debt'}
+              tone="credit"
               onClick={() =>
                 onDetail({
-                  title: pot.difference >= 0 ? 'Blijft over' : 'Komt tekort',
+                  title: pot.difference >= 0 ? 'Blijft over' : 'Moet er nog bij',
                   label: 'Per maand',
                   cents: pot.difference,
                   rows: Object.entries(pot.contributions)

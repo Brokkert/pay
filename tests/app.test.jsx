@@ -1117,7 +1117,9 @@ describe('what is left, on its own tab', () => {
       .find((el) => el.textContent === 'Privé').nextElementSibling;
     expect(within(prive).getByText('Komt van Zaak').closest('.line').textContent)
       .toContain('45,00');
-    expect(within(prive).getByText('Blijft staan').closest('.total').textContent)
+    // Nought here means it balances, not that nothing stays — the words for
+    // those two are not the same.
+    expect(within(prive).getByText('Komt uit op').closest('.total').textContent)
       .toContain('0,00');
 
     // The posts on that account open too, at their full amount.

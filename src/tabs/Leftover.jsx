@@ -346,10 +346,20 @@ function Chain({ pot, onOpenFeed, onOpenCosts }) {
             onClick={() => onOpenFeed(row)}
           />
         ))}
+        {/* Nought is not "nothing stays" but "it balances", and that is the
+            answer this whole block is asked for. And below nought is not a
+            shortfall you have — it is money that still has to go on there,
+            which is something you do rather than something to worry about. */}
         <Total
-          label={pot.difference >= 0 ? 'Blijft staan' : 'Komt tekort'}
-          cents={pot.difference}
-          tone={pot.difference < 0 ? 'debt' : 'credit'}
+          label={
+            pot.difference === 0
+              ? 'Komt uit op'
+              : pot.difference > 0
+                ? 'Blijft staan'
+                : 'Moet er nog bij'
+          }
+          cents={Math.abs(pot.difference)}
+          tone="credit"
         />
       </div>
       {/* The blocks are each about one account, and they overlap: an expense the
