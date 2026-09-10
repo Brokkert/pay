@@ -147,10 +147,11 @@ export default function Leftover({ store, month }) {
         <div className="hint">
           {shared.length === 1 ? 'Je gedeelde rekening' : 'Je gedeelde rekeningen'}{' '}
           <strong>{shared.map((pot) => pot.account.name).join(', ')}</strong>{' '}
-          {shared.length === 1 ? 'staat' : 'staan'} hier niet: die {shared.length === 1 ? 'is' : 'zijn'}{' '}
-          niet van jou alleen, dus is "wat blijft er staan" er geen antwoord voor jou. Wat er op moet
-          staan en wie er nog moet storten vind je op <strong>Overzicht</strong>. Jouw deel van de
-          posten die eraf gaan zit hierboven gewoon in je vaste lasten.
+          {shared.length === 1 ? 'staat' : 'staan'} hier niet. Wat daarop staat is deels van jou en
+          deels van iemand anders, dus valt er geen bedrag van te maken dat jij overhoudt — bij een
+          gezamenlijke spaarrekening is de helft wel degelijk van jou, maar de helft ook niet. Wat er
+          maandelijks af gaat en wie er wat op stort staat op <strong>Overzicht</strong>. Jouw deel
+          van die posten zit hierboven gewoon in je vaste lasten.
         </div>
       )}
 
