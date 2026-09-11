@@ -43,6 +43,9 @@ export default function Leftover({ store, month }) {
         pot.feeds.length > 0 ||
         Boolean(pot.fedBy))
   );
+  // A pot you pay into is the last link: your salary lands on your own account
+  // and part of it goes straight back out to these. Leaving them off made the
+  // chain stop halfway, and made it look as though only some accounts settle.
   const shared = result.pots.filter((pot) => pot.account.kind === 'shared');
   const persons = people
     .filter((p) => Number(p.income) > 0)
@@ -100,8 +103,19 @@ export default function Leftover({ store, month }) {
         from: source ? { cents: row.income, label: `salaris vanaf ${source.account.name}` } : null,
       });
     }
+
+    // And then what you pay into out of that.
+    for (const pot of shared) {
+      const yours = me ? pot.incoming[me.id] || 0 : 0;
+      items.push({
+        key: `s-${pot.account.id}`,
+        kind: 'account',
+        pot,
+        from: yours ? { cents: yours, label: `vanaf ${me.name}` } : null,
+      });
+    }
     return items;
-  }, [chains, persons]);
+  }, [chains, persons, shared, me]);
 
   if (!chains.length && !persons.length) {
     return (
@@ -126,6 +140,7 @@ export default function Leftover({ store, month }) {
             {item.from && <Flows {...item.from} />}
             <Chain
               pot={item.pot}
+              people={people}
               onOpenFeed={(feed) => setOpen({ kind: 'feed', feed })}
               onOpenCosts={() => setOpen({ kind: 'costs', pot: item.pot })}
             />
@@ -138,21 +153,6 @@ export default function Leftover({ store, month }) {
             onOpen={(kind, cents) => setOpen({ kind, person: item.row.person, cents })}
           />
         )
-      )}
-
-      {/* A pot you share has the same shape as an account of your own, and
-          leaving it out without a word reads as something missing rather than
-          as a different question being asked elsewhere. */}
-      {shared.length > 0 && (
-        <div className="hint">
-          {shared.length === 1 ? 'Je gedeelde rekening' : 'Je gedeelde rekeningen'}{' '}
-          <strong>{shared.map((pot) => pot.account.name).join(', ')}</strong>{' '}
-          {shared.length === 1 ? 'staat' : 'staan'} hier niet. Wat daarop staat is deels van jou en
-          deels van iemand anders, dus valt er geen bedrag van te maken dat jij overhoudt — bij een
-          gezamenlijke spaarrekening is de helft wel degelijk van jou, maar de helft ook niet. Wat er
-          maandelijks af gaat en wie er wat op stort staat op <strong>Overzicht</strong>. Jouw deel
-          van die posten zit hierboven gewoon in je vaste lasten.
-        </div>
       )}
 
       <Sheets
@@ -266,7 +266,67 @@ function Sheets({ open, setOpen, result, accounts, people, me }) {
 }
 
 /** One account, top to bottom: what comes in, what goes out, what stays. */
-function Chain({ pot, onOpenFeed, onOpenCosts }) {
+function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
+  const nameOf = (id) => people.find((p) => p.id === id)?.name || 'iemand';
+
+  // A pot holds nothing of its own: everyone's share goes in, the bills go off,
+  // and what someone fronted goes back out to them. So it is the same block as
+  // any other account, with people where an income would be.
+  if (pot.account.kind === 'shared') {
+    return (
+      <>
+        <div className="section">{pot.account.name}</div>
+        <div className="panel">
+          {Object.entries(pot.incoming)
+            .sort((a, b) => b[1] - a[1])
+            .map(([id, cents]) => (
+              <Line
+                key={`in-${id}`}
+                what={`${nameOf(id)} stort`}
+                sub="zijn of haar deel van de posten hieronder"
+                cents={cents}
+              />
+            ))}
+          {Object.entries(pot.fromAccounts).map(([id, cents]) => (
+            <Line key={`fa-${id}`} what="Komt van een andere rekening" cents={cents} />
+          ))}
+          {pot.out !== 0 && (
+            <Line
+              what="Vaste lasten eraf"
+              sub="de posten die van deze rekening afgaan"
+              cents={-pot.out}
+              onClick={onOpenCosts}
+            />
+          )}
+          {Object.entries(pot.outgoing)
+            .sort((a, b) => b[1] - a[1])
+            .map(([id, cents]) => (
+              <Line
+                key={`out-${id}`}
+                what={`Terug naar ${nameOf(id)}`}
+                sub="wat diegene heeft voorgeschoten en hiervandaan terugkrijgt"
+                cents={-cents}
+                tone="credit"
+              />
+            ))}
+          {Object.entries(pot.toAccounts).map(([id, cents]) => (
+            <Line key={`ta-${id}`} what="Gaat naar een andere rekening" cents={-cents} />
+          ))}
+          <Total
+            label={pot.closes === 0 ? 'Komt uit op' : pot.closes > 0 ? 'Blijft over' : 'Moet er nog bij'}
+            cents={Math.abs(pot.closes)}
+            tone="credit"
+          />
+        </div>
+        <div className="hint" style={{ marginTop: -4 }}>
+          {pot.closes === 0
+            ? 'Stort iedereen wat hierboven staat, dan gaat er precies zoveel af als erop komt. Deze rekening houdt niets van zichzelf.'
+            : 'Dit hoort nul te zijn. Staat er iets anders, dan is er een post waarvan niet iedereen zijn deel draagt.'}
+        </div>
+      </>
+    );
+  }
+
   // Not only the posts: an account can also be settling with another account —
   // fronting for it, or being paid back. That is money leaving here too, and
   // calling the sum "the posts of this account" made it a figure you could hold

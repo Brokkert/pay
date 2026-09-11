@@ -1060,9 +1060,12 @@ describe('what is left, on its own tab', () => {
     expect(within(mine).getByText('Houd je over').closest('.total').textContent)
       .toContain('4.878,50');
 
-    // A pot you share has the same shape as an account of your own, so its
-    // absence has to be said out loud or it reads as something missing.
-    expect(document.body.textContent).toMatch(/Vaste lasten.*deels van jou en deels van iemand anders/s);
+    // And the pots you pay into are the last link of that same chain: your
+    // share in, the bills off, nothing of its own left over.
+    const pot = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Vaste lasten').nextElementSibling;
+    expect(within(pot).getByText('Ik stort')).toBeTruthy();
+    expect(within(pot).getByText('Komt uit op').closest('.total').textContent).toContain('0,00');
 
     // Top to bottom, one chain: the account the money comes in on, then the
     // person it pays a salary to, with the link between them named.
