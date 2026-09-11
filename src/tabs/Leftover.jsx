@@ -55,6 +55,7 @@ export default function Leftover({ store, month }) {
       // the list above and in every total — but not one their income paid for,
       // so it goes back on before the bottom line.
       const fronted = result.fronted[person.id] || 0;
+      const advanced = result.advanced[person.id] || 0;
       return {
         person,
         income: Number(person.income),
@@ -62,7 +63,10 @@ export default function Leftover({ store, month }) {
         fronted,
         // Part of those same fixed costs, and not spending at all.
         saved: result.saved[person.id] || 0,
-        left: Number(person.income) - borne + fronted,
+        // Paid out of their own pocket for an account of theirs, and owed back.
+        // Not a cost, but it does leave their account this month.
+        advanced,
+        left: Number(person.income) - borne + fronted - advanced,
       };
     })
     .sort((a, b) => Number(b.person.isMe) - Number(a.person.isMe) || b.left - a.left);
@@ -174,7 +178,7 @@ const Flows = ({ cents, label }) => (
   </div>
 );
 
-function PersonBlock({ person, income, borne, fronted, saved, left, from, onOpen }) {
+function PersonBlock({ person, income, borne, fronted, saved, advanced, left, from, onOpen }) {
   return (
     <>
       {from && <Flows {...from} />}
@@ -199,6 +203,13 @@ function PersonBlock({ person, income, borne, fronted, saved, left, from, onOpen
                 onClick={() => onOpen('fronted', fronted)}
               />
             )}
+            {advanced > 0 && (
+              <Line
+                what="Schiet je voor de zaak voor"
+                sub="haar deel van posten die van een andere rekening af gaan, en dat betaal jij"
+                cents={-advanced}
+              />
+            )}
             <Total
               label="Houd je over"
               cents={left}
@@ -208,6 +219,13 @@ function PersonBlock({ person, income, borne, fronted, saved, left, from, onOpen
           {/* The bottom line is what is free to spend, and that is the number
               you want most months. It is not the same as what you are worse off
               by: a part of those fixed costs is still yours the day after. */}
+          {advanced > 0 && (
+            <div className="hint" style={{ marginTop: -4 }}>
+              Die <strong>{formatMoney(advanced)}</strong> is geen kost van jou — de zaak is het je
+              schuldig. Over een jaar is dat <strong>{formatMoney(advanced * 12)}</strong>, en dat
+              is wat je als rekening-courant terugboekt.
+            </div>
+          )}
           {saved > 0 && (
             <div className="hint" style={{ marginTop: -4 }}>
               <strong>{formatMoney(saved)}</strong> van die vaste lasten is sparen of beleggen — dat

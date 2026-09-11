@@ -30,8 +30,15 @@ export const partyId = (party) => String(party || '').split(':').slice(1).join('
  * it. That is exactly the difference: such a share is not a personal cost, and
  * what you fronted for it is yours to claim back from that account.
  */
-export const bearerParty = (key) =>
-  isAccountBearer(key) ? accountParty(accountOfBearer(key)) : personParty(key);
+export const bearerParty = (key, accounts = []) => {
+  if (!isAccountBearer(key)) return personParty(key);
+  const account = accounts.find((a) => a.id === accountOfBearer(key));
+  // An account whose owner fronts what it owes: the bill stays that account's,
+  // but the money comes out of that person's pocket and is squared up with the
+  // company later. So the cost is the account's and the payment is theirs.
+  if (account?.frontedByOwner && account.ownerId) return personParty(account.ownerId);
+  return accountParty(accountOfBearer(key));
+};
 
 /** The party that fronted the money. */
 export function payerParty(expense, accounts) {
@@ -94,6 +101,10 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
   // belongs in the fixed costs — it is what you have to be able to miss every
   // month — but you still have it afterwards, and no total says so.
   const saved = Object.fromEntries(people.map((p) => [p.id, 0]));
+  // And what someone pays out of their own pocket for an account of theirs that
+  // is fronted: not a cost of theirs, but money they are out until the books
+  // are squared up.
+  const advanced = Object.fromEntries(people.map((p) => [p.id, 0]));
   const perAccount = Object.fromEntries(accounts.map((a) => [a.id, 0]));
   const perCategory = {};
   const charges = {};
@@ -173,7 +184,14 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
       if (isBusiness(expense, accounts) && key in fronted) fronted[key] += part;
       if (expense.savings && key in saved) saved[key] += part;
       if (paidItsOwnShare(key, expense)) continue;
-      book(raw, bearerParty(key), party, part);
+      // Where an account's owner fronts what it owes, the payment is theirs —
+      // and worth counting apart, because it is money they are out without it
+      // being a cost of theirs.
+      const from = bearerParty(key, accounts);
+      if (isAccountBearer(key) && !isAccountParty(from)) {
+        advanced[partyId(from)] = (advanced[partyId(from)] || 0) + part;
+      }
+      book(raw, from, party, part);
     }
 
     const line = { expense, amount, party, shares, remainder };
@@ -194,6 +212,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
     borne,
     fronted,
     saved,
+    advanced,
     unassigned,
     perAccount,
     perCategory,
@@ -528,7 +547,7 @@ export function openSettlements(expenses, accounts) {
     const shares = withRemainder(parts, remainder, party);
     for (const [key, part] of Object.entries(shares)) {
       if (paidItsOwnShare(key, expense)) continue;
-      book(raw, bearerParty(key), party, part);
+      book(raw, bearerParty(key, accounts), party, part);
     }
     lines.push({ expense, party, shares });
   }
@@ -553,12 +572,12 @@ export function positionOf(lines, personId, accounts, keep = () => true) {
 
     // What they bear themselves. Paying it from their own account cancels out.
     const own = line.shares[personId] || 0;
-    if (own && bearerParty(personId) !== party) cents -= own;
+    if (own && bearerParty(personId, accounts) !== party) cents -= own;
 
     // And, when they are the one paying, what everybody else bears.
     if (party === personParty(personId)) {
       for (const [key, part] of Object.entries(line.shares)) {
-        if (bearerParty(key) !== party) cents += part;
+        if (bearerParty(key, accounts) !== party) cents += part;
       }
     }
 

@@ -1026,3 +1026,51 @@ describe('a pot that people pay into', () => {
     expect(result.unassigned).toBe(1000);
   });
 });
+
+describe('an account whose owner fronts what it owes', () => {
+  // Bank charges off the shared account, a quarter of which is the company's.
+  // You pay the whole invoice yourself and square it with the company once a
+  // year, so the money never moves between the two accounts.
+  const charges = expense({
+    id: 'bank', name: 'Bankkosten', amount: 1600,
+    payer: { kind: 'account', id: 'a-bills' },
+    split: { kind: 'shares', weights: { [ME]: 1, [PARTNER]: 1, 'account:a-business': 1, [FRIEND]: 1 } },
+  });
+  const fronting = accounts.map((a) =>
+    a.id === 'a-business' ? { ...a, frontedByOwner: true } : a
+  );
+
+  it('leaves the cost with the company and the payment with you', () => {
+    const result = forMonth({ people, accounts: fronting, expenses: [charges] }, '2026-09');
+
+    // Still the company's cost: it is in what that account bears, and in
+    // nobody's personal share.
+    expect(result.borne['account:a-business']).toBe(400);
+    expect(result.borne[ME]).toBe(400);
+    // But the company transfers nothing — you put in its quarter as well.
+    expect(flow(result, 'account:a-business', 'account:a-bills')).toBe(0);
+    expect(flow(result, `person:${ME}`, 'account:a-bills')).toBe(800);
+    // And that second quarter is money you are out without owing it.
+    expect(result.advanced[ME]).toBe(400);
+  });
+
+  it('changes nothing when it is switched off', () => {
+    const result = forMonth({ people, accounts, expenses: [charges] }, '2026-09');
+    expect(flow(result, 'account:a-business', 'account:a-bills')).toBe(400);
+    expect(flow(result, `person:${ME}`, 'account:a-bills')).toBe(400);
+    expect(result.advanced[ME]).toBe(0);
+  });
+
+  it('leaves what really comes off that account alone', () => {
+    const result = forMonth({
+      people, accounts: fronting,
+      expenses: [expense({ id: 'own', name: 'Internet', amount: 5000,
+        payer: { kind: 'account', id: 'a-business' },
+        split: { kind: 'equal', participants: [ME] } })],
+    }, '2026-09');
+    // A post paid by that account is untouched by the flag: it comes off it,
+    // and its owner carries it as before.
+    expect(result.pots.find((p) => p.account.id === 'a-business').out).toBe(5000);
+    expect(result.advanced[ME]).toBe(0);
+  });
+});

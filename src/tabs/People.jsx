@@ -340,6 +340,8 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
         // an answer you cannot correct.
         overhead: shared ? 0 : Number(draft.overhead) || 0,
         fundedBy: shared ? '' : draft.fundedBy || '',
+        frontedByOwner:
+          !shared && draft.kind === 'business' && Boolean(draft.frontedByOwner),
       });
       onClose();
     } catch (err) {
@@ -476,6 +478,33 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
           hint="Alleen voor een rekening waar geld binnenkomt dat verder niet in Pay staat — omzet op je holding bijvoorbeeld. Daarmee kan Pay zeggen wat er na de vaste lasten en het salaris op blijft staan."
         >
           <AmountInput cents={draft.income || 0} onChange={(c) => set({ income: c })} />
+        </Field>
+      )}
+
+      {/* Only a business account can bear a share of something another account
+          paid, so only there is there anything to front. */}
+      {!shared && draft.kind === 'business' && draft.ownerId && (
+        <Field
+          label="Meebetalen aan posten van een andere rekening"
+          hint="Draagt deze rekening een deel van iets dat van een andere rekening af gaat, dan moet dat geld daarheen. Doe je dat niet en betaal je het zelf, zet dit dan aan — dan klopt wat jij overmaakt, en houdt Pay bij wat de zaak je schuldig is."
+        >
+          <label className="option" style={{ cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={Boolean(draft.frontedByOwner)}
+              onChange={(e) => set({ frontedByOwner: e.target.checked })}
+              style={{ marginTop: 3 }}
+            />
+            <span>
+              <span className="t" style={{ display: 'block' }}>
+                Dat schiet ik privé voor
+              </span>
+              <span className="b" style={{ display: 'block' }}>
+                Je stort het zelf en verrekent het later met de zaak. De kost blijft van deze
+                rekening; alleen de betaling is van jou.
+              </span>
+            </span>
+          </label>
         </Field>
       )}
 
