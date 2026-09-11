@@ -1067,7 +1067,9 @@ describe('what is left, on its own tab', () => {
     // Everyone who pays into it, by name and in their own colour.
     expect(within(pot).getAllByText('stort erop').length).toBeGreaterThan(1);
     expect(within(pot).getByText('Ik')).toBeTruthy();
-    expect(within(pot).getByText('Komt uit op').closest('.total').textContent).toContain('0,00');
+    // It comes out even, and a row of nought under every block is a row you
+    // learn to skip — so there is none.
+    expect(within(pot).queryByText(/Blijft over|Moet er nog bij/)).toBe(null);
 
     // Top to bottom, one chain: the account the money comes in on, then the
     // person it pays a salary to, with the link between them named.
@@ -1122,10 +1124,8 @@ describe('what is left, on its own tab', () => {
       .find((el) => el.textContent === 'Privé').nextElementSibling;
     expect(within(prive).getByText('Komt van Zaak').closest('.line').textContent)
       .toContain('45,00');
-    // Nought here means it balances, not that nothing stays — the words for
-    // those two are not the same.
-    expect(within(prive).getByText('Komt uit op').closest('.total').textContent)
-      .toContain('0,00');
+    // It comes out even, so the block has no closing row at all.
+    expect(within(prive).queryByText(/Blijft staan|Moet er nog bij/)).toBe(null);
 
     // The posts on that account open too, at their full amount.
     await user.click(within(prive).getByText('Vaste lasten eraf').closest('.line'));
