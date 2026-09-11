@@ -1073,6 +1073,9 @@ describe('what is left, on its own tab', () => {
     // person it pays a salary to, with the link between them named.
     const headings = [...document.querySelectorAll('.section')].map((el) => el.textContent);
     expect(headings.indexOf('Zaak')).toBeLessThan(headings.indexOf('Ik'));
+    // And the salary comes directly under the account that pays it, before the
+    // accounts that same account fills.
+    expect(headings.indexOf('Ik')).toBe(headings.indexOf('Zaak') + 1);
     const link = [...document.querySelectorAll('.flows')].map((el) => el.textContent);
     expect(link.some((t) => /5\.000,00 salaris vanaf Zaak/.test(t))).toBe(true);
 

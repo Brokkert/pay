@@ -81,10 +81,25 @@ export default function Leftover({ store, month }) {
     const items = [];
     const seen = new Set();
 
+    const placed = new Set();
+
     const visit = (pot, from) => {
       if (!pot || seen.has(pot.account.id)) return;
       seen.add(pot.account.id);
       items.push({ key: `a-${pot.account.id}`, kind: 'account', pot, from });
+      // Whoever draws a salary out of it first. It is the bigger stream and the
+      // one the rest of the tab is about, so it belongs directly under the
+      // account it comes from; the accounts that same account fills follow.
+      for (const row of persons) {
+        if (row.person.incomeFrom !== pot.account.id || placed.has(row.person.id)) continue;
+        placed.add(row.person.id);
+        items.push({
+          key: `p-${row.person.id}`,
+          kind: 'person',
+          row,
+          from: { cents: row.income, label: `salaris vanaf ${pot.account.name}` },
+        });
+      }
       for (const feed of pot.feeds) {
         visit(byId.get(feed.account.id), {
           cents: feed.cents,
@@ -98,14 +113,10 @@ export default function Leftover({ store, month }) {
     for (const pot of chains) if (!pot.fedBy) visit(pot, null);
     for (const pot of chains) visit(pot, null);
 
+    // Anyone whose income comes from outside Pay has no account to hang under.
     for (const row of persons) {
-      const source = row.person.incomeFrom && byId.get(row.person.incomeFrom);
-      items.push({
-        key: `p-${row.person.id}`,
-        kind: 'person',
-        row,
-        from: source ? { cents: row.income, label: `salaris vanaf ${source.account.name}` } : null,
-      });
+      if (placed.has(row.person.id)) continue;
+      items.push({ key: `p-${row.person.id}`, kind: 'person', row, from: null });
     }
 
     // And then what you pay into out of that.
