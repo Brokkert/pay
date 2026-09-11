@@ -206,19 +206,19 @@ function PersonBlock({ person, income, borne, fronted, saved, advanced, left, fr
               cents={-borne}
               onClick={() => onOpen('borne', borne)}
             />
+            {advanced > 0 && (
+              <Line
+                what="Schiet je voor de zaak voor"
+                sub="wat de zaak draagt van posten elders, en jij betaalt"
+                cents={-advanced}
+              />
+            )}
             {fronted > 0 && (
               <Line
                 what="Betaalt je zaak voor je"
                 sub="posten hierboven die van een zakelijke rekening af gaan — die komen niet van je salaris"
                 cents={fronted}
                 onClick={() => onOpen('fronted', fronted)}
-              />
-            )}
-            {advanced > 0 && (
-              <Line
-                what="Schiet je voor de zaak voor"
-                sub="wat de zaak draagt van posten elders, en jij betaalt"
-                cents={-advanced}
               />
             )}
             <Total
