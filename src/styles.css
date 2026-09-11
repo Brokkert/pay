@@ -752,7 +752,10 @@ button.line-open:active { background: var(--sunk); }
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin: -6px 0 12px;
+  /* Room of its own. It used to be pulled up tight against the block above,
+     which made it read as the last line of that block's explanation rather
+     than as the step down to the next one. */
+  margin: 20px 0 0;
   font-size: 12px;
   color: var(--text-3);
   text-align: center;
