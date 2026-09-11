@@ -451,14 +451,9 @@ function Checks({ findings }) {
   const wrong = findings.filter((f) => f.tone === 'warn');
   const rest = findings.filter((f) => f.tone !== 'warn');
 
-  if (!findings.length) {
-    return (
-      <div className="checks ok">
-        <Icon name="check" size={15} /> Alles klopt — elke rekening komt uit en elke post heeft
-        een drager.
-      </div>
-    );
-  }
+  // Saying so when nothing is wrong reads as a badge rather than as
+  // information, and it is the state you are in almost every month.
+  if (!findings.length) return null;
 
   return (
     <>
@@ -468,8 +463,6 @@ function Checks({ findings }) {
       {rest.length > 0 && (
         <div className="checks">
           <button type="button" className="bare" onClick={() => setOpen((v) => !v)}>
-            {wrong.length === 0 && <Icon name="check" size={15} />}{' '}
-            {wrong.length === 0 ? 'De sommen kloppen. ' : ''}
             {count(rest.length, 'punt', 'punten')} om een keer naar te kijken
             <span className="chev"> {open ? '▴' : '▾'}</span>
           </button>

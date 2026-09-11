@@ -308,24 +308,17 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
           {Object.entries(pot.toAccounts).map(([id, cents]) => (
             <Line key={`ta-${id}`} what="Gaat naar een andere rekening" cents={-cents} />
           ))}
-          {/* An account that comes out even has nothing to report, and a row of
-              nought under every block is a row you learn to skip. Only where
-              something is left over, or still has to go on, is there anything
-              to say. */}
-          {pot.closes !== 0 && (
-            <Total
-              label={pot.closes > 0 ? 'Blijft over' : 'Moet er nog bij'}
-              cents={Math.abs(pot.closes)}
-              tone="credit"
-            />
-          )}
+          <Total
+            label={pot.closes === 0 ? 'Komt uit op' : pot.closes > 0 ? 'Blijft over' : 'Moet er nog bij'}
+            cents={Math.abs(pot.closes)}
+            tone="credit"
+          />
         </div>
-        {pot.closes !== 0 && (
-          <div className="hint" style={{ marginTop: -4 }}>
-            Dit hoort nul te zijn. Staat er iets anders, dan is er een post waarvan niet iedereen
-            zijn deel draagt.
-          </div>
-        )}
+        <div className="hint" style={{ marginTop: -4 }}>
+          {pot.closes === 0
+            ? 'Stort iedereen wat hierboven staat, dan gaat er precies zoveel af als erop komt. Deze rekening houdt niets van zichzelf.'
+            : 'Dit hoort nul te zijn. Staat er iets anders, dan is er een post waarvan niet iedereen zijn deel draagt.'}
+        </div>
       </>
     );
   }
@@ -415,16 +408,21 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
             onClick={() => onOpenFeed(row)}
           />
         ))}
-        {/* Same here: an account that comes out even says nothing worth a row.
-            Below nought is not a shortfall either — it is money that still has
-            to go on there, which is something you do rather than worry about. */}
-        {pot.difference !== 0 && (
-          <Total
-            label={pot.difference > 0 ? 'Blijft staan' : 'Moet er nog bij'}
-            cents={Math.abs(pot.difference)}
-            tone="credit"
-          />
-        )}
+        {/* Nought is not "nothing stays" but "it balances", and that is the
+            answer this whole block is asked for. And below nought is not a
+            shortfall you have — it is money that still has to go on there,
+            which is something you do rather than something to worry about. */}
+        <Total
+          label={
+            pot.difference === 0
+              ? 'Komt uit op'
+              : pot.difference > 0
+                ? 'Blijft staan'
+                : 'Moet er nog bij'
+          }
+          cents={Math.abs(pot.difference)}
+          tone="credit"
+        />
       </div>
       {/* The blocks are each about one account, and they overlap: an expense the
           business pays but you carry half of comes off here in full and off
