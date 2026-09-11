@@ -230,9 +230,9 @@ function PersonBlock({ person, income, borne, fronted, saved, advanced, left, fr
           {/* The bottom line is what is free to spend, and that is the number
               you want most months. It is not the same as what you are worse off
               by: a part of those fixed costs is still yours the day after. */}
+          {/* The fact, and no further. How you settle it with the company is
+              your bookkeeper's word for it, not this app's. */}
           {advanced > 0 && (
-            {/* The fact, and no further. How you settle it with the company is
-                your bookkeeper's word for it, not this app's. */}
             <div className="hint">
               Geen kost van jou — de zaak is het je schuldig. Per jaar{' '}
               <strong>{formatMoney(advanced * 12)}</strong>.
