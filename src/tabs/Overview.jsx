@@ -286,8 +286,7 @@ export default function Overview({ store, month, onMonth }) {
             ))}
           </div>
           <div className="hint" style={{ marginTop: -4 }}>
-            Posten die samen als één afschrijving van je rekening gaan. Tik erop voor wat erin zit
-            en wat de bank deze maand echt weghaalt.
+            Posten die als één afschrijving van je rekening gaan. Tik erop voor wat erin zit.
           </div>
         </>
       )}
@@ -415,8 +414,7 @@ export default function Overview({ store, month, onMonth }) {
         <Total label="Samen" cents={result.monthlyTotal} />
       </div>
       <div className="hint">
-        Wat ieder draagt na verdeling, van wiens rekening het ook af ging. Samen precies de
-        maandlast: er raakt geen cent zoek en er komt er geen bij.
+        Wat ieder draagt, van welke rekening het ook af ging. Samen precies de maandlast.
         {result.unassigned !== 0 && (
           <>
             {' '}Staat er iets bij <strong>nog niet verdeeld</strong>, dan heeft een post met vaste
@@ -889,32 +887,28 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
       </div>
       {cycling.length > 0 && (
         <div className="hint" style={{ marginTop: -4 }}>
-          {count(cycling.length, 'post gaat', 'posten gaan')} hier vaker dan maandelijks af. Over
-          een jaar klopt dat precies, maar één maand per jaar vallen er twee afschrijvingen in
-          dezelfde maand. Houd daarvoor <strong>{formatMoney(cushion)}</strong> als bodem aan.
-          Welke maand dat is valt niet te zeggen: zo'n cyclus van 28 dagen loopt niet met de
-          kalender mee.
+          {count(cycling.length, 'post gaat', 'posten gaan')} hier vaker dan maandelijks af. Eén
+          maand per jaar vallen er twee afschrijvingen samen — welke valt niet te zeggen. Houd
+          daarvoor <strong>{formatMoney(cushion)}</strong> als bodem aan.
         </div>
       )}
       {shared && !hasContributions && (
         <div className="hint" style={{ marginTop: -4 }}>
           {pot.closes === 0
-            ? 'Nul, en dat hoort: stort iedereen wat hierboven staat, dan gaat er precies zoveel af als erop komt. Deze rekening houdt niets van zichzelf.'
-            : 'Dit hoort nul te zijn. Staat er iets anders, dan is er een post waarvan niet iedereen zijn deel draagt, of gaat er iets af dat nergens is toegewezen.'}
+            ? 'Erop en eraf zijn gelijk: deze rekening houdt niets van zichzelf.'
+            : 'Dit hoort nul te zijn. Er gaat iets af dat niemand draagt.'}
         </div>
       )}
       {isHub && (
         <div className="hint" style={{ marginTop: -4 }}>
-          Alle onderlinge schulden lopen hierlangs. Schoot je iets voor van een eigen of zakelijke
-          rekening, dan komt dat hier binnen en gaat het er weer uit. Daarom hoef jij zelf minder
-          te storten.
+          Alle onderlinge schulden lopen hierlangs. Wat jij voorschoot komt hier binnen en gaat
+          er weer uit, dus hoef je zelf minder te storten.
         </div>
       )}
       {hasContributions && mine.length === 0 && (
         <div className="hint" style={{ marginTop: -4 }}>
-          Er staan geen posten op deze rekening, dus valt er niets te controleren: Pay weet niet
-          waar dit geld heen gaat. Voor een pot waar je wisselende uitgaven van doet, zoals
-          boodschappen, is dat ook goed — de inleg is daar een afspraak, geen som.
+          Geen posten op deze rekening, dus valt er niets te controleren. Voor een pot met
+          wisselende uitgaven, zoals boodschappen, is dat prima — de inleg is daar een afspraak.
         </div>
       )}
       {shared && !hasContributions && !isHub && (

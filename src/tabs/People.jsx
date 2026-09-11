@@ -151,7 +151,7 @@ function PersonForm({ person, people, accounts = [], cloud, onClaim, onSave, onR
           with it, one line per person. */}
       <Field
         label="Inkomen per maand"
-        hint="Wat er netto binnenkomt. Alleen om te zien wat er na de vaste lasten overblijft — aan de verdeling verandert het niets. Leeg laten mag."
+        hint="Netto, wat er binnenkomt. Alleen voor je overhouden; aan de verdeling verandert het niets. Leeg mag."
       >
         <AmountInput cents={draft.income || 0} onChange={(c) => set({ income: c })} />
         {draft.income > 0 && accounts.length > 0 && (
@@ -189,7 +189,7 @@ function PersonForm({ person, people, accounts = [], cloud, onClaim, onSave, onR
       {draft.income > 0 && draft.incomeFrom && (
         <Field
           label="Ingehouden op dat salaris"
-          hint="Loonbelasting plus de ingehouden Zvw-bijdrage — de bedragen die op je loonstrook van je brutoloon af gaan. Die draagt de rekening hierboven af aan de Belastingdienst."
+          hint="Loonbelasting plus Zvw, zoals op je loonstrook. Die rekening draagt het af aan de Belastingdienst."
         >
           <AmountInput cents={draft.withheld || 0} onChange={(c) => set({ withheld: c })} />
           {draft.withheld > 0 && (
@@ -425,7 +425,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
           {members.length > 0 && (
             <Field
               label="Vaste inleg per maand"
-              hint="Wat er bij de bank als vaste overboeking staat. Alleen om naast het aandeel te leggen — het verandert de verdeling niet. Leeg laten mag."
+              hint="Je vaste overboeking bij de bank. Alleen om naast het aandeel te leggen. Leeg mag."
             >
               <div className="panel" style={{ marginBottom: 0 }}>
                 {members.map((id) => {
@@ -475,7 +475,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
       {!shared && (
         <Field
           label="Komt er maandelijks op"
-          hint="Alleen voor een rekening waar geld binnenkomt dat verder niet in Pay staat — omzet op je holding bijvoorbeeld. Daarmee kan Pay zeggen wat er na de vaste lasten en het salaris op blijft staan."
+          hint="Geld dat van buiten Pay binnenkomt, zoals omzet. Daarmee kan Pay zeggen wat er op deze rekening blijft staan."
         >
           <AmountInput cents={draft.income || 0} onChange={(c) => set({ income: c })} />
         </Field>
@@ -486,7 +486,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
       {!shared && draft.kind === 'business' && draft.ownerId && (
         <Field
           label="Meebetalen aan posten van een andere rekening"
-          hint="Draagt deze rekening een deel van iets dat van een andere rekening af gaat, dan moet dat geld daarheen. Doe je dat niet en betaal je het zelf, zet dit dan aan — dan klopt wat jij overmaakt, en houdt Pay bij wat de zaak je schuldig is."
+          hint="Betaalt deze rekening mee aan een post van elders, dan moet dat geld daarheen. Doe jij dat zelf, zet dit dan aan."
         >
           <label className="option" style={{ cursor: 'pointer' }}>
             <input
@@ -511,7 +511,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
       {!shared && (
         <Field
           label="Gaat er maandelijks af, buiten je posten om"
-          hint="Kosten van de zaak die je met niemand deelt — loonheffing bijvoorbeeld. Ze horen niet tussen je posten en tellen dus niet mee in je maandlast; ze staan alleen bij Overhouden, waar de vraag is wat er op deze rekening blijft."
+          hint="Kosten van deze rekening die je met niemand deelt. Tellen niet mee in je maandlast, alleen bij Overhouden."
         >
           <AmountInput cents={draft.overhead || 0} onChange={(c) => set({ overhead: c })} />
         </Field>
@@ -520,7 +520,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
       {!shared && draft.ownerId && (
         <Field
           label="Vaste inleg per maand"
-          hint="Zet je hier maandelijks zelf een vast bedrag op? Vul dat in, dan zet Pay het naast wat er af gaat. Laat leeg als je dat niet doet."
+          hint="Zet je hier maandelijks een vast bedrag op? Dan legt Pay het naast wat er af gaat. Leeg mag."
         >
           <div className="panel" style={{ marginBottom: 0 }}>
             <div className="line">

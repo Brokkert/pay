@@ -145,8 +145,8 @@ export default function Leftover({ store, month }) {
   return (
     <>
       <Notice tone="info">
-        Deze bedragen vul je zelf in. Alleen je vaste lasten komen uit je posten. Het is dus een
-        plan — leg het één keer per maand naast je bankapp.
+        Inkomen en omzet vul je zelf in; je vaste lasten komen uit je posten. Een plan dus —
+        leg het maandelijks naast je bankapp.
       </Notice>
 
       {chain.map((item) =>
@@ -217,7 +217,7 @@ function PersonBlock({ person, income, borne, fronted, saved, advanced, left, fr
             {advanced > 0 && (
               <Line
                 what="Schiet je voor de zaak voor"
-                sub="haar deel van posten die van een andere rekening af gaan, en dat betaal jij"
+                sub="wat de zaak draagt van posten elders, en jij betaalt"
                 cents={-advanced}
               />
             )}
@@ -231,17 +231,15 @@ function PersonBlock({ person, income, borne, fronted, saved, advanced, left, fr
               you want most months. It is not the same as what you are worse off
               by: a part of those fixed costs is still yours the day after. */}
           {advanced > 0 && (
-            <div className="hint" style={{ marginTop: -4 }}>
-              Die <strong>{formatMoney(advanced)}</strong> is geen kost van jou — de zaak is het je
-              schuldig. Over een jaar is dat <strong>{formatMoney(advanced * 12)}</strong>, en dat
-              is wat je als rekening-courant terugboekt.
+            <div className="hint">
+              Geen kost van jou: de zaak is het je schuldig. Per jaar{' '}
+              <strong>{formatMoney(advanced * 12)}</strong> — je rekening-courant.
             </div>
           )}
           {saved > 0 && (
-            <div className="hint" style={{ marginTop: -4 }}>
-              <strong>{formatMoney(saved)}</strong> van die vaste lasten is sparen of beleggen — dat
-              geld ben je niet kwijt. Je zet dat elke maand opzij en houdt daarnaast{' '}
-              {formatMoney(left)} over.
+            <div className="hint">
+              Hiervan is <strong>{formatMoney(saved)}</strong> sparen of beleggen. Dat ben je niet
+              kwijt — je houdt dus {formatMoney(left)} vrij én zet {formatMoney(saved)} opzij.
             </div>
           )}
       </div>
@@ -343,10 +341,10 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
             tone="credit"
           />
         </div>
-        <div className="hint" style={{ marginTop: -4 }}>
+        <div className="hint">
           {pot.closes === 0
-            ? 'Stort iedereen wat hierboven staat, dan gaat er precies zoveel af als erop komt. Deze rekening houdt niets van zichzelf.'
-            : 'Dit hoort nul te zijn. Staat er iets anders, dan is er een post waarvan niet iedereen zijn deel draagt.'}
+            ? 'Erop en eraf zijn gelijk: deze rekening houdt niets van zichzelf.'
+            : 'Dit hoort nul te zijn. Er is een post waarvan niet iedereen zijn deel draagt.'}
         </div>
       </>
     );
@@ -457,15 +455,13 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
           business pays but you carry half of comes off here in full and off
           your own income by half. Adding them up counts that half twice, so
           say what each block is before someone reaches for a calculator. */}
-      <div className="hint" style={{ marginTop: -4 }}>
-        Dit is wat er op deze rekening gebeurt. Wat anderen van deze posten dragen komt bij jou
-        privé terug via de verrekening, niet op deze rekening — tel de blokken hieronder dus niet
-        bij elkaar op.
+      <div className="hint">
+        Wat anderen hiervan dragen krijg je privé terug, niet op deze rekening. Tel de blokken dus
+        niet bij elkaar op.
       </div>
       {pot.aside > 0 && (
-        <div className="hint" style={{ marginTop: -4 }}>
-          Daar bovenop hoort <strong>{formatMoney(pot.aside)}</strong> op deze rekening te blijven
-          staan voor posten die niet elke maand worden afgeschreven.
+        <div className="hint">
+          Houd er <strong>{formatMoney(pot.aside)}</strong> op staan voor de jaarposten.
         </div>
       )}
     </>

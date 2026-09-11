@@ -184,7 +184,7 @@ export default function ExpenseForm({
 
       <Field
         label="Waar gaat het vanaf"
-        hint="De rekening waar de bank het weghaalt. Pay zet hieronder meteen goed wie het draagt; doet er iemand mee, dan vink je die er zelf bij."
+        hint="De rekening waar de bank het weghaalt. Wie het draagt vult Pay hieronder zelf in."
       >
         <div className="chips">
           {accounts.map((a) => (
@@ -231,7 +231,7 @@ export default function ExpenseForm({
 
       <LabelPicker
         label="Categorie"
-        hint="Wát het is. Op het overzicht opgeteld per categorie, zodat je ziet waar je geld heen gaat."
+        hint="Waar je geld heen gaat, opgeteld per categorie op het overzicht."
         icon="overview"
         known={knownCategories}
         suggestions={suggestions}
@@ -243,7 +243,7 @@ export default function ExpenseForm({
 
       <LabelPicker
         label="Incasso"
-        hint="Gaat deze post samen met andere als één afschrijving van je rekening? Geef die afschrijving dan een naam, dan vind je het bedrag terug op je afschrift."
+        hint="Gaat deze post samen met andere als één afschrijving? Geef die een naam, dan vind je hem terug op je afschrift."
         icon="receipt"
         known={knownCharges}
         value={draft.charge || ''}

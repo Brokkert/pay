@@ -79,7 +79,7 @@ export default function SplitPicker({
         hint={
           !taking.length
             ? 'Kies minstens één drager, anders telt deze post nergens mee.'
-            : 'Niet wie het overmaakt, maar wiens geld het uiteindelijk is. Staat iemand hier die de rekening niet betaalt, dan komt dat bij Verrekenen te staan.'
+            : 'Wiens geld het uiteindelijk is — niet wie het overmaakt. Wie hier staat maar niet betaalt, komt bij Verrekenen terug.'
         }
         warn={!taking.length}
       >
@@ -101,9 +101,8 @@ export default function SplitPicker({
             yourself — so it says which one it just did. */}
         {taking.some((key) => key.startsWith(ACCOUNT_PREFIX)) && (
           <div className="hint">
-            Dit deel telt niet mee in iemands vaste lasten — het is een kost van de zaak zelf.
-            Gebruik je het ook privé, zet het dan op jezelf; van welke rekening het af gaat staat
-            hierboven al.
+            Dit deel is een kost van de zaak zelf en telt in niemands vaste lasten mee. Gebruik
+            je het ook privé, zet het dan op jezelf.
           </div>
         )}
       </Field>

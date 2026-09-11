@@ -470,7 +470,7 @@ describe('money you put away rather than spend', () => {
 
     // And the bottom line says what part of it you still have.
     await user.click(screen.getByRole('button', { name: /Overhouden/ }));
-    expect(document.body.textContent).toMatch(/€ 25,00 van die vaste lasten is sparen/);
+    expect(document.body.textContent).toMatch(/Hiervan is € 25,00 sparen of beleggen/);
   }, 30000);
 });
 
@@ -486,7 +486,7 @@ describe('a cost your own company account pays', () => {
     const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
     const bearers = within(sheet).getByText('Wie draagt het').closest('.field');
     // The two questions read as one until the second says what it decides.
-    expect(bearers.textContent).toContain('wiens geld het uiteindelijk is');
+    expect(bearers.textContent).toContain('Wiens geld het uiteindelijk is');
 
     // Let the business pay it. Which pocket it comes out of is the question
     // above; this is still your sport, so it stays on you.
@@ -519,7 +519,7 @@ describe('a cost your own company account pays', () => {
     // and it says so rather than leaving you to notice.
     await user.click(within(bearers).getByText('Zaak').closest('button'));
     await user.click(within(bearers).getByText('Ik').closest('button'));
-    expect(bearers.textContent).toContain('telt niet mee in iemands vaste lasten');
+    expect(bearers.textContent).toContain('in niemands vaste lasten mee');
     await user.click(within(sheet).getByRole('button', { name: 'Bewaren' }));
 
     await user.click(screen.getByRole('button', { name: 'Mijn deel' }));
@@ -1154,7 +1154,7 @@ describe('what is left, on its own tab', () => {
     await withData(set);
     const user = await start();
     await go(user);
-    expect(screen.getByText(/Deze bedragen vul je zelf in/)).toBeTruthy();
+    expect(screen.getByText(/Inkomen en omzet vul je zelf in/)).toBeTruthy();
   }, 30000);
 
   it('stays empty until something is filled in', async () => {
@@ -1292,7 +1292,7 @@ describe('an account people pay into but nothing runs off', () => {
       .toContain('500,00');
     // ...but nothing claims that 500,00 is left over every month.
     expect(within(pot).queryByText('Blijft over')).toBe(null);
-    expect(pot.nextElementSibling.textContent).toContain('geen posten op deze rekening');
+    expect(pot.nextElementSibling.textContent).toContain('Geen posten op deze rekening');
   }, 30000);
 });
 

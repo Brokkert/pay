@@ -115,9 +115,8 @@ export default function Settle({ store, month }) {
             />
           </div>
           <div className="hint">
-            Storten is geen kostenpost: je zet geld klaar waar de gedeelde lasten van afgaan. Wat
-            ieder werkelijk draagt staat op het overzicht. Tik op een naam voor de posten erachter,
-            of op een bedrag om het te kopiëren — dan zet je het zo in je incasso.
+            Storten is geen kostenpost: je zet geld klaar waar de gedeelde lasten van afgaan. Tik op een
+            naam voor de posten erachter, of op een bedrag om het te kopiëren.
           </div>
         </>
       )}
@@ -243,10 +242,8 @@ function Breakdown({ person, me, result, loose, accounts, hub, onClose }) {
         />
       </div>
       <div className="hint">
-        Elke post staat hier voor zijn volle bedrag; onderaan staat wat er ná wegstrepen
-        overblijft. Staat er "via" bij, dan loopt de betaling langs die rekening in plaats van
-        rechtstreeks. Eenmalige posten tellen voor hun hele bedrag, de rest per maand. Tik op het
-        bedrag onderaan om het te kopiëren.
+        Elke post voor zijn volle bedrag; onderaan wat er ná wegstrepen overblijft — tik erop om het
+        te kopiëren. Staat er "via" bij, dan loopt de betaling langs die rekening.
       </div>
     </Sheet>
   );
