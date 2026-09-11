@@ -13,7 +13,7 @@
 // right to the cent, an estimate reads as if it were one too.
 
 import { Fragment, useMemo, useState } from 'react';
-import { Line, Total, Empty, Notice } from '../components/ui.jsx';
+import { Line, Total, Empty, Notice, Avatar } from '../components/ui.jsx';
 import Breakdown from '../components/Breakdown.jsx';
 import { forMonth } from '../lib/ledger.js';
 import { formatMoney } from '../lib/money.js';
@@ -261,7 +261,8 @@ function Sheets({ open, setOpen, result, accounts, people, me }) {
 
 /** One account, top to bottom: what comes in, what goes out, what stays. */
 function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
-  const nameOf = (id) => people.find((p) => p.id === id)?.name || 'iemand';
+  const personOf = (id) => people.find((p) => p.id === id) || null;
+  const nameOf = (id) => personOf(id)?.name || 'iemand';
 
   // A pot holds nothing of its own: everyone's share goes in, the bills go off,
   // and what someone fronted goes back out to them. So it is the same block as
@@ -276,8 +277,9 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
             .map(([id, cents]) => (
               <Line
                 key={`in-${id}`}
-                what={`${nameOf(id)} stort`}
-                sub="zijn of haar deel van de posten hieronder"
+                left={<Avatar person={personOf(id)} size="sm" />}
+                what={nameOf(id)}
+                sub="stort erop"
                 cents={cents}
               />
             ))}
@@ -297,10 +299,10 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
             .map(([id, cents]) => (
               <Line
                 key={`out-${id}`}
-                what={`Terug naar ${nameOf(id)}`}
-                sub="wat diegene heeft voorgeschoten en hiervandaan terugkrijgt"
+                left={<Avatar person={personOf(id)} size="sm" />}
+                what={nameOf(id)}
+                sub="krijgt hiervandaan terug wat er is voorgeschoten"
                 cents={-cents}
-                tone="credit"
               />
             ))}
           {Object.entries(pot.toAccounts).map(([id, cents]) => (
@@ -309,7 +311,7 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
           <Total
             label={pot.closes === 0 ? 'Komt uit op' : pot.closes > 0 ? 'Blijft over' : 'Moet er nog bij'}
             cents={Math.abs(pot.closes)}
-            tone="credit"
+            tone={pot.closes === 0 ? '' : 'credit'}
           />
         </div>
         <div className="hint" style={{ marginTop: -4 }}>
@@ -419,7 +421,7 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
                 : 'Moet er nog bij'
           }
           cents={Math.abs(pot.difference)}
-          tone="credit"
+          tone={pot.difference === 0 ? '' : 'credit'}
         />
       </div>
       {/* The blocks are each about one account, and they overlap: an expense the
