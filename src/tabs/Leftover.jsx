@@ -199,13 +199,9 @@ function PersonBlock({ person, income, borne, fronted, saved, left, from, onOpen
                 onClick={() => onOpen('fronted', fronted)}
               />
             )}
-            {/* Here below nought is not an account waiting to be filled: it is
-                your income not covering what you carry, which is worth saying
-                plainly rather than as a minus in front of "what you keep". The
-                red stays for the one case that has earned it. */}
             <Total
-              label={left < 0 ? 'Kom je tekort' : 'Houd je over'}
-              cents={Math.abs(left)}
+              label="Houd je over"
+              cents={left}
               tone={left < 0 ? 'debt' : 'credit'}
             />
           </div>
@@ -215,10 +211,8 @@ function PersonBlock({ person, income, borne, fronted, saved, left, from, onOpen
           {saved > 0 && (
             <div className="hint" style={{ marginTop: -4 }}>
               <strong>{formatMoney(saved)}</strong> van die vaste lasten is sparen of beleggen — dat
-              geld ben je niet kwijt. Je zet dat elke maand opzij en{' '}
-              {left < 0
-                ? `komt daarnaast ${formatMoney(-left)} tekort`
-                : `houdt daarnaast ${formatMoney(left)} over`}.
+              geld ben je niet kwijt. Je zet dat elke maand opzij en houdt daarnaast{' '}
+              {formatMoney(left)} over.
             </div>
           )}
       </div>
