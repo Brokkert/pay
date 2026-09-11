@@ -1064,7 +1064,9 @@ describe('what is left, on its own tab', () => {
     // share in, the bills off, nothing of its own left over.
     const pot = [...document.querySelectorAll('.section')]
       .find((el) => el.textContent === 'Vaste lasten').nextElementSibling;
-    expect(within(pot).getByText('stort erop')).toBeTruthy();
+    // Everyone who pays into it, by name and in their own colour.
+    expect(within(pot).getAllByText('stort erop').length).toBeGreaterThan(1);
+    expect(within(pot).getByText('Ik')).toBeTruthy();
     expect(within(pot).getByText('Komt uit op').closest('.total').textContent).toContain('0,00');
 
     // Top to bottom, one chain: the account the money comes in on, then the
