@@ -486,7 +486,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
       {!shared && draft.kind === 'business' && draft.ownerId && (
         <Field
           label="Meebetalen aan posten van een andere rekening"
-          hint="Betaalt deze rekening mee aan een post van elders, dan moet dat geld daarheen. Doe jij dat zelf, zet dit dan aan."
+          hint="Betaalt deze rekening mee aan een post van elders, dan moet dat geld daarheen. Doe jij dat zelf, zet dit dan aan — Pay houdt bij hoeveel."
         >
           <label className="option" style={{ cursor: 'pointer' }}>
             <input
@@ -500,8 +500,8 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
                 Dat schiet ik privé voor
               </span>
               <span className="b" style={{ display: 'block' }}>
-                Je stort het zelf en verrekent het later met de zaak. De kost blijft van deze
-                rekening; alleen de betaling is van jou.
+                De kost blijft van deze rekening, alleen de betaling is van jou. Wanneer je het
+                met de zaak rechttrekt is aan jou.
               </span>
             </span>
           </label>
