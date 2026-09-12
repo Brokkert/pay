@@ -544,7 +544,12 @@ describe('money you put away rather than spend', () => {
 
     // And the bottom line says what part of it you still have.
     await user.click(screen.getByRole('button', { name: /Overhouden/ }));
-    expect(document.body.textContent).toMatch(/Hiervan is € 25,00 sparen of beleggen/);
+    // A figure of its own rather than grey small print, and it opens.
+    const saved = (await screen.findByText('Waarvan sparen')).closest('.line');
+    expect(saved.textContent).toContain('25,00');
+    await user.click(saved);
+    const opened = screen.getByRole('heading', { name: /Wat Ik opzij zet/ }).closest('.sheet');
+    expect(within(opened).getByText('Sportclub')).toBeTruthy();
   }, 30000);
 });
 

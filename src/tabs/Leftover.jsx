@@ -338,10 +338,17 @@ function PersonBlock({ person, income, borne, fronted, saved, advanced, left, fr
               <strong>{formatMoney(advanced * 12)}</strong>.
             </div>
           )}
+          {/* Part of the fixed costs above, so not a term in that sum — but a
+              figure in its own right, and grey small print is where a figure
+              goes to be skipped. */}
           {saved > 0 && (
-            <div className="hint">
-              Hiervan is <strong>{formatMoney(saved)}</strong> sparen of beleggen. Dat ben je niet
-              kwijt — je houdt dus {formatMoney(left)} vrij én zet {formatMoney(saved)} opzij.
+            <div className="panel">
+              <Line
+                what="Waarvan sparen"
+                sub="zit in je vaste lasten hierboven — dat geld ben je niet kwijt"
+                cents={saved}
+                onClick={() => onOpen('saved', saved)}
+              />
             </div>
           )}
       </div>
@@ -386,7 +393,7 @@ function Sheets({ open, setOpen, result, accounts, people, me, month }) {
         />
       )}
 
-      {(open?.kind === 'borne' || open?.kind === 'fronted') && (
+      {(open?.kind === 'borne' || open?.kind === 'fronted' || open?.kind === 'saved') && (
         <BorneBreakdown
           person={open.person}
           cents={open.cents}
@@ -394,6 +401,7 @@ function Sheets({ open, setOpen, result, accounts, people, me, month }) {
           people={people}
           accounts={accounts}
           onlyBusiness={open.kind === 'fronted'}
+          onlySaving={open.kind === 'saved'}
           onClose={() => setOpen(null)}
         />
       )}
@@ -692,7 +700,16 @@ function AccountCosts({ pot, lines, accounts, me, onClose }) {
  * Their share per post, not the post — the block above is about what is left of
  * their income, and only their own part of a bill comes off that.
  */
-function BorneBreakdown({ person, cents, lines, people, accounts, onlyBusiness = false, onClose }) {
+function BorneBreakdown({
+  person,
+  cents,
+  lines,
+  people,
+  accounts,
+  onlyBusiness = false,
+  onlySaving = false,
+  onClose,
+}) {
   const payerName = (expense) =>
     expense.payer?.kind === 'account'
       ? accounts.find((a) => a.id === expense.payer.id)?.name
@@ -704,6 +721,7 @@ function BorneBreakdown({ person, cents, lines, people, accounts, onlyBusiness =
   const rows = lines
     .filter((line) => line.shares[person.id])
     .filter((line) => !onlyBusiness || fromBusiness(line.expense))
+    .filter((line) => !onlySaving || line.expense.savings)
     // What it is a share of, and off whose account it goes — the two things
     // that make a share you did not set yourself explainable.
     .map((line) => postRow(line, { showing: 'share', me: person, from: payerName(line.expense) }))
@@ -712,18 +730,28 @@ function BorneBreakdown({ person, cents, lines, people, accounts, onlyBusiness =
   return (
     <Breakdown
       title={
-        onlyBusiness ? `Wat de zaak voor ${person.name} betaalt` : `Vaste lasten van ${person.name}`
+        onlySaving
+          ? `Wat ${person.name} opzij zet`
+          : onlyBusiness
+            ? `Wat de zaak voor ${person.name} betaalt`
+            : `Vaste lasten van ${person.name}`
       }
-      label={onlyBusiness ? 'Gaat niet van het salaris af' : 'Draagt per maand'}
+      label={
+        onlySaving ? 'Spaart per maand' : onlyBusiness ? 'Gaat niet van het salaris af' : 'Draagt per maand'
+      }
       cents={cents}
       rows={rows}
       empty={
-        onlyBusiness
-          ? 'Geen enkele post van een zakelijke rekening staat op deze persoon.'
-          : `${person.name} draagt van geen enkele post een deel.`
+        onlySaving
+          ? 'Geen enkele spaarpost staat op deze persoon.'
+          : onlyBusiness
+            ? 'Geen enkele post van een zakelijke rekening staat op deze persoon.'
+            : `${person.name} draagt van geen enkele post een deel.`
       }
       note={
-        onlyBusiness
+        onlySaving
+          ? 'Deze posten staan gewoon tussen je vaste lasten, want het gaat wel van je rekening af. Je bent het alleen niet kwijt.'
+          : onlyBusiness
           ? 'Deze posten staan gewoon in de lijst hierboven — het zijn kosten van jou. Alleen komen ze van een zakelijke rekening en niet van je salaris, dus tellen ze niet mee in wat je van je inkomen overhoudt.'
           : 'Groot staat jouw deel, want dat is wat je van deze post draagt; klein waar het een deel van is. Bij een rekening staat het andersom. Tel de twee dus niet bij elkaar op — dan telt hetzelfde bedrag dubbel.'
       }
