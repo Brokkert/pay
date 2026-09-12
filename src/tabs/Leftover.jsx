@@ -306,6 +306,17 @@ function PersonBlock({ person, income, borne, fronted, saved, advanced, left, fr
               cents={-borne}
               onClick={() => onOpen('borne', borne)}
             />
+            {/* A part of the line above, not a term of its own: it sits
+                straight under what it qualifies, so "waarvan" has something to
+                point at. */}
+            {saved > 0 && (
+              <Line
+                what="Waarvan sparen"
+                sub="dat geld ben je niet kwijt"
+                cents={saved}
+                onClick={() => onOpen('saved', saved)}
+              />
+            )}
             {advanced > 0 && (
               <Line
                 what="Schiet je voor de zaak voor"
@@ -336,19 +347,6 @@ function PersonBlock({ person, income, borne, fronted, saved, advanced, left, fr
             <div className="hint">
               Geen kost van jou — de zaak is het je schuldig. Per jaar{' '}
               <strong>{formatMoney(advanced * 12)}</strong>.
-            </div>
-          )}
-          {/* Part of the fixed costs above, so not a term in that sum — but a
-              figure in its own right, and grey small print is where a figure
-              goes to be skipped. */}
-          {saved > 0 && (
-            <div className="panel">
-              <Line
-                what="Waarvan sparen"
-                sub="zit in je vaste lasten hierboven — dat geld ben je niet kwijt"
-                cents={saved}
-                onClick={() => onOpen('saved', saved)}
-              />
             </div>
           )}
       </div>
