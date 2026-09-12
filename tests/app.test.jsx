@@ -877,10 +877,14 @@ describe('saving up for a yearly expense', () => {
     const pot = [...document.querySelectorAll('.section')]
       .find((s) => s.textContent === 'Vaste lasten').nextElementSibling;
     expect(within(pot).getByText('Maandlast').closest('.line').textContent).toContain('171,00');
-    expect(within(pot).getByText(/echt af/).closest('.line').textContent).toContain('141,00');
-    // Two instalments in since July: 60,00.
-    expect(within(pot).getByText(/Hoort er nu op te staan/).closest('.line').textContent)
+    // Held against the month rather than part of it, so in the panel beside it.
+    const checks = pot.nextElementSibling;
+    expect(within(checks).getByText(/echt af/).closest('.line').textContent).toContain('141,00');
+    // Two instalments in since July: 60,00 — on the tab about the account.
+    await user.click(screen.getByRole('button', { name: /Overhouden/ }));
+    expect(screen.getByText('Hoort er nu op te staan').closest('.line').textContent)
       .toContain('60,00');
+    await user.click(screen.getByRole('button', { name: /Overzicht/ }));
 
     // And the expense itself says when it goes out and what is put by.
     await user.click(screen.getByRole('button', { name: /Lasten/ }));
@@ -1032,9 +1036,8 @@ describe('taking the overview apart', () => {
     const user = await start();
 
     await screen.findByText(/Elke maand overmaken/);
-    const pot = [...document.querySelectorAll('.section')]
-      .find((el) => el.textContent === 'Vaste lasten').nextElementSibling;
-    await user.click(within(pot).getByText('Hoort er nu op te staan'));
+    await user.click(screen.getByRole('button', { name: /Overhouden/ }));
+    await user.click(await screen.findByText('Hoort er nu op te staan'));
     const sheet = screen
       .getByRole('heading', { name: 'Hoort er nu op te staan' })
       .closest('.sheet');
@@ -1206,7 +1209,13 @@ describe('what is left, on its own tab', () => {
   }, 30000);
 
   it('stays empty until something is filled in', async () => {
-    await withData(exampleHousehold());
+    const set = exampleHousehold();
+    // Not even a pot to show: the tab is about accounts and people, and with
+    // neither there is nothing to say.
+    set.accounts = set.accounts.filter((a) => a.kind !== 'shared');
+    set.expenses = set.expenses.filter((e) => e.payer?.kind !== 'account'
+      || set.accounts.some((a) => a.id === e.payer.id));
+    await withData(set);
     const user = await start();
     await go(user);
     expect(screen.getByText(/Nog niets ingevuld/)).toBeTruthy();
@@ -1282,8 +1291,10 @@ describe('twelve instalments against a year', () => {
     expect(sheet.textContent).toContain('€ 0,04 per jaar tekort');
     await user.click(within(sheet).getByRole('button', { name: 'Sluiten' }));
 
-    // And it is an amount you can act on: one transfer a year.
-    const row = within(pot).getByText('Eén keer per jaar bijstorten').closest('.line');
+    // And it is an amount you can act on: one transfer a year, on the tab
+    // where what has to be on an account lives.
+    await user.click(screen.getByRole('button', { name: /Overhouden/ }));
+    const row = (await screen.findByText('Eén keer per jaar bijstorten')).closest('.line');
     expect(row.textContent).toContain('0,04');
     await user.click(row);
     const why = screen.getByRole('heading', { name: 'Rondingsverschil per jaar' }).closest('.sheet');
@@ -1336,11 +1347,12 @@ describe('an account people pay into but nothing runs off', () => {
     const pot = [...document.querySelectorAll('.section')]
       .find((el) => el.textContent === 'Boodschappen').nextElementSibling;
     // The deposit is there...
-    expect(within(pot).getByText('Staat als vaste inleg ingesteld').closest('.line').textContent)
+    const checks = pot.nextElementSibling;
+    expect(within(checks).getByText('Staat als vaste inleg ingesteld').closest('.line').textContent)
       .toContain('500,00');
     // ...but nothing claims that 500,00 is left over every month.
-    expect(within(pot).queryByText('Blijft over')).toBe(null);
-    expect(pot.nextElementSibling.textContent).toContain('Geen posten op deze rekening');
+    expect(within(checks).queryByText('Blijft over')).toBe(null);
+    expect(checks.nextElementSibling.textContent).toContain('Geen posten op deze rekening');
   }, 30000);
 
   it('does not call everyone\'s deposit a shortfall on the account it lands on', async () => {

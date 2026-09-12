@@ -17,7 +17,7 @@ import { Line, Total, Empty, Notice, Avatar } from '../components/ui.jsx';
 import Breakdown from '../components/Breakdown.jsx';
 import { forMonth } from '../lib/ledger.js';
 import { formatMoney } from '../lib/money.js';
-import { cadenceOf } from '../lib/cadence.js';
+import { cadenceOf, formatMonth, nextCharge, setAside, perMonth, perYear } from '../lib/cadence.js';
 import { categoryOf } from '../data/categories.js';
 
 export default function Leftover({ store, month }) {
@@ -132,7 +132,9 @@ export default function Leftover({ store, month }) {
     return items;
   }, [chains, persons, shared, me]);
 
-  if (!chains.length && !persons.length) {
+  // Pots people pay into count too: they are blocks on this tab now, so a
+  // household with nothing but those was being told it had filled in nothing.
+  if (!chains.length && !persons.length && !shared.length) {
     return (
       <Empty icon="settle" title="Nog niets ingevuld">
         Vul bij <strong>Mensen</strong> je inkomen in, en bij een eigen rekening wat er maandelijks
@@ -158,6 +160,7 @@ export default function Leftover({ store, month }) {
               people={people}
               onOpenFeed={(feed) => setOpen({ kind: 'feed', feed })}
               onOpenCosts={() => setOpen({ kind: 'costs', pot: item.pot })}
+              onOpenExtra={(kind, pot) => setOpen({ kind, pot })}
             />
           </Fragment>
         ) : (
@@ -177,6 +180,7 @@ export default function Leftover({ store, month }) {
         accounts={accounts}
         people={people}
         me={me}
+        month={month}
       />
     </>
   );
@@ -191,7 +195,7 @@ export default function Leftover({ store, month }) {
  * another tab, folded away. So the answer to "how much should be on here" was
  * three screens and a disclosure triangle from the account it was about.
  */
-function Extras({ pot }) {
+function Extras({ pot, onOpen }) {
   if (!pot.aside && !pot.drift) return null;
   return (
     <div className="panel">
@@ -200,6 +204,7 @@ function Extras({ pot }) {
           what="Hoort er nu op te staan"
           sub="gespaard voor posten die niet elke maand afgaan"
           cents={pot.aside}
+          onClick={() => onOpen('aside', pot)}
         />
       )}
       {pot.drift !== 0 && (
@@ -207,9 +212,73 @@ function Extras({ pot }) {
           what={pot.drift < 0 ? 'Eén keer per jaar bijstorten' : 'Houd je per jaar over'}
           sub="twaalf maandlasten dekken het jaar net niet precies"
           cents={Math.abs(pot.drift)}
+          onClick={() => onOpen('drift', pot)}
         />
       )}
     </div>
+  );
+}
+
+/** The posts an account is saving up for, and how far along each one is. */
+function AsideBreakdown({ pot, lines, month, onClose }) {
+  const saving = lines.filter(
+    (l) =>
+      l.expense.payer?.kind === 'account' &&
+      l.expense.payer.id === pot.account.id &&
+      cadenceOf(l.expense.cadence).perYear < 12
+  );
+  return (
+    <Breakdown
+      title="Hoort er nu op te staan"
+      label={`Na de afschrijvingen van ${formatMonth(month).split(' ')[0]}`}
+      cents={pot.aside}
+      rows={saving.map((l) => {
+        const c = cadenceOf(l.expense.cadence);
+        const due = nextCharge(l.expense, month);
+        return {
+          key: l.expense.id,
+          left: dot(l.expense),
+          what: l.expense.name,
+          sub: l.expense.chargeMonth || l.expense.from
+            ? `${formatMoney(l.expense.amount)} ${c.short} · volgende keer ${formatMonth(due).split(' ')[0]}`
+            : `${formatMoney(l.expense.amount)} ${c.short} · afschrijfmaand onbekend`,
+          cents: setAside(l.expense, month),
+        };
+      })}
+      empty="Alles op deze rekening gaat maandelijks af, dus er hoeft niets op te blijven staan."
+      note="Zet dit bedrag erop en stort daarna elke maand de maandlast. Dan is er genoeg als een jaarpost wordt afgeschreven, en is de rekening daarna weer leeg."
+      onClose={onClose}
+    />
+  );
+}
+
+/** Where the cents that twelve instalments cannot cover come from. */
+function DriftBreakdown({ pot, lines, onClose }) {
+  const mine = lines.filter(
+    (l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === pot.account.id
+  );
+  return (
+    <Breakdown
+      title="Rondingsverschil per jaar"
+      label={pot.drift < 0 ? 'Bijstorten' : 'Over'}
+      cents={Math.abs(pot.drift)}
+      rows={mine
+        .map((l) => {
+          const c = cadenceOf(l.expense.cadence);
+          const off = 12 * perMonth(l.expense.amount, l.expense.cadence) - perYear(l.expense.amount, l.expense.cadence);
+          return {
+            key: l.expense.id,
+            left: dot(l.expense),
+            what: l.expense.name,
+            sub: `${formatMoney(l.expense.amount)} ${c.short}`,
+            cents: pot.drift < 0 ? -off : off,
+          };
+        })
+        .filter((r) => r.cents !== 0)}
+      empty="Hier valt niets bij te storten."
+      note="Een jaarbedrag dat niet door twaalf deelt past niet in twaalf gelijke maandbedragen: € 100,00 per jaar is € 8,33 per maand, en twaalf daarvan is € 99,96."
+      onClose={onClose}
+    />
   );
 }
 
@@ -280,7 +349,7 @@ function PersonBlock({ person, income, borne, fronted, saved, advanced, left, fr
   );
 }
 
-function Sheets({ open, setOpen, result, accounts, people, me }) {
+function Sheets({ open, setOpen, result, accounts, people, me, month }) {
   return (
     <>
       {open?.kind === 'feed' && (
@@ -292,6 +361,19 @@ function Sheets({ open, setOpen, result, accounts, people, me }) {
           me={me}
           onClose={() => setOpen(null)}
         />
+      )}
+
+      {open?.kind === 'aside' && (
+        <AsideBreakdown
+          pot={open.pot}
+          lines={result.lines}
+          month={month}
+          onClose={() => setOpen(null)}
+        />
+      )}
+
+      {open?.kind === 'drift' && (
+        <DriftBreakdown pot={open.pot} lines={result.lines} onClose={() => setOpen(null)} />
       )}
 
       {open?.kind === 'costs' && (
@@ -320,7 +402,7 @@ function Sheets({ open, setOpen, result, accounts, people, me }) {
 }
 
 /** One account, top to bottom: what comes in, what goes out, what stays. */
-function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
+function Chain({ pot, people, onOpenFeed, onOpenCosts, onOpenExtra }) {
   const personOf = (id) => people.find((p) => p.id === id) || null;
   const nameOf = (id) => personOf(id)?.name || 'iemand';
 
@@ -374,7 +456,7 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
             tone="credit"
           />
         </div>
-        <Extras pot={pot} />
+        <Extras pot={pot} onOpen={onOpenExtra} />
         <div className="hint">
           {pot.closes === 0
             ? 'Erop en eraf zijn gelijk: deze rekening houdt niets van zichzelf.'
@@ -493,7 +575,7 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
         Wat anderen hiervan dragen krijg je privé terug, niet op deze rekening. Tel de blokken dus
         niet bij elkaar op.
       </div>
-      <Extras pot={pot} />
+      <Extras pot={pot} onOpen={onOpenExtra} />
     </>
   );
 }

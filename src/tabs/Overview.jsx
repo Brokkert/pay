@@ -669,10 +669,24 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
     <>
       <div className="section">{pot.account.name}</div>
       <div className="panel">
+        {/* In and out, each biggest first, whether the money comes from a
+            person or from another account. Two lists sorted apart put a
+            business paying 7,25 underneath a friend paying 4,13, which reads
+            as a sorting fault rather than as two kinds of row. */}
+        {flows.map((row) => (
+          <Line
+            key={row.key}
+            left={row.left}
+            what={row.what}
+            sub={row.sub}
+            cents={row.cents}
+            onClick={row.onClick}
+          />
+        ))}
         <Line
           what="Maandlast"
           sub="jaarposten staan hierin op een twaalfde van hun bedrag"
-          cents={pot.out}
+          cents={-pot.out}
           onClick={() =>
             onDetail({
               title: pot.account.name,
@@ -692,7 +706,21 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
             })
           }
         />
-        {(pot.charged !== pot.out || pot.aside > 0) && !pot.chargeUnknown && (
+        {/* Everything above it, added up. A pot holds nothing of its own, so
+            this is nought whenever nothing is missing — and it is the only row
+            here you cannot work out for yourself. */}
+        <Total
+          label={pot.closes === 0 ? 'Komt uit op' : pot.closes > 0 ? 'Blijft over' : 'Moet er nog bij'}
+          cents={Math.abs(pot.closes)}
+          tone={pot.closes === 0 ? '' : 'credit'}
+        />
+      </div>
+
+      {/* Held against this month rather than part of it: what the bank really
+          takes now, what everyone together has to put in, and the standing
+          order you set up against that. */}
+      <div className="panel">
+          {(pot.charged !== pot.out || pot.aside > 0) && !pot.chargeUnknown && (
           <Line
             what={`Gaat er in ${formatMonth(month).split(' ')[0]} echt af`}
             cents={pot.charged}
@@ -710,185 +738,86 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
               })
             }
           />
-        )}
-        {/* Only where something is actually being saved up for. On an account
-            with nothing but monthly posts there is nothing to hold, and on a
-            savings account — where the money is meant to stay — a nought here
-            reads as a claim about the balance, which it is not. */}
-        {saving.length > 0 && (
-        <Line
-          what="Hoort er nu op te staan"
-          sub="gespaard voor posten die niet elke maand worden afgeschreven"
-          cents={pot.aside}
-          onClick={() =>
-            onDetail({
-              title: 'Hoort er nu op te staan',
-              label: `Na de afschrijvingen van ${formatMonth(month).split(' ')[0]}`,
-              cents: pot.aside,
-              rows: saving.map((l) => {
-                const due = nextCharge(l.expense, month);
-                const c = cadenceOf(l.expense.cadence);
-                return {
-                  key: l.expense.id,
-                  what: l.expense.name,
-                  sub: l.expense.from
-                    ? `${formatMoney(l.expense.amount)} ${c.short} · volgende keer ${formatMonth(due).split(' ')[0]}`
-                    : `${formatMoney(l.expense.amount)} ${c.short} · afschrijfmaand onbekend`,
-                  cents: setAside(l.expense, month),
-                };
-              }),
-              empty: 'Alles op deze rekening wordt maandelijks afgeschreven, dus er hoeft niets op te blijven staan.',
-              note: 'Zet dit bedrag op de rekening en stort daarna elke maand de maandlast. Dan is er genoeg als een jaarpost wordt afgeschreven, en is de rekening daarna weer leeg. Mist bij een post de afschrijfmaand, dan telt die hier voor niets mee.',
-            })
-          }
-        />
-        )}
-        {/* One transfer a year settles what twelve equal instalments cannot.
-            Naming the amount is what makes it doable — "a few cents" is not
-            something you can put in a banking app. */}
-        {drift !== 0 && (
+          )}
+          {shared && pot.needed !== pot.out && (
+            <Line
+              what="Moeten jullie samen storten"
+              sub="de maandlast plus wat er weer uit gaat naar wie iets voorschoot"
+              cents={pot.needed}
+              onClick={() =>
+                onDetail({
+                  title: 'Moeten jullie samen storten',
+                  label: 'Per maand',
+                  cents: pot.needed,
+                  rows: Object.entries(pot.incoming).map(([id, cents]) => ({
+                    key: id,
+                    left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
+                    what: nameOf(id),
+                    cents,
+                  })),
+                  note: 'Wat jullie samen op deze rekening moeten storten: de maandlast plus wat er weer uit gaat naar wie iets voorschoot. Dat laatste geld gaat er alleen doorheen. Wat een andere rekening zelf bijdraagt staat hier niet in — dat komt daarvandaan.',
+                })
+              }
+            />
+            )}
+          {hasContributions && (
           <Line
-            what={drift < 0 ? 'Eén keer per jaar bijstorten' : 'Houd je per jaar over'}
-            sub="twaalf maandlasten dekken het jaar net niet precies"
-            cents={Math.abs(drift)}
-            tone={drift < 0 ? 'debt' : 'credit'}
+            what="Staat als vaste inleg ingesteld"
+            cents={pot.paidIn}
             onClick={() =>
               onDetail({
-                title: 'Rondingsverschil per jaar',
-                label: drift < 0 ? 'Bijstorten' : 'Over',
-                cents: Math.abs(drift),
-                rows: mine
-                  .map((l) => ({
-                    key: l.expense.id,
-                    what: l.expense.name,
-                    sub: postSub(l.expense),
-                    cents:
-                      12 * perMonth(l.expense.amount, l.expense.cadence) -
-                      perYear(l.expense.amount, l.expense.cadence),
-                  }))
-                  .filter((r) => r.cents !== 0)
-                  .map((r) => ({ ...r, cents: drift < 0 ? -r.cents : r.cents }))
-                  .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents)),
-                note:
-                  (drift < 0
-                    ? 'Maak dit bedrag één keer per jaar extra over en de rekening komt exact op nul uit, zonder dat je maandbedrag hoeft te wiebelen. '
-                    : 'Dit blijft er per jaar op staan. Haal het er één keer per jaar af en de rekening komt exact op nul uit, zonder dat je maandbedrag hoeft te wiebelen. ') +
-                  'Het komt van posten waarvan het jaarbedrag niet in twaalf gelijke maandbedragen past: € 100,00 per jaar is € 8,33 per maand, en twaalf daarvan is € 99,96.',
+                title: 'Vaste inleg',
+                label: 'Per maand',
+                cents: pot.paidIn,
+                rows: Object.entries(pot.contributions)
+                  .filter(([, cents]) => Number(cents))
+                  .map(([id, cents]) => ({
+                    key: id,
+                    left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
+                    what: nameOf(id),
+                    sub: `hoort ${formatMoney(pot.incoming[id] || 0)} te zijn`,
+                    cents: Number(cents),
+                  })),
+                note: 'Wat er bij de bank als vaste overboeking staat. Dit verandert niets aan de verdeling; het staat ernaast zodat je ziet of de rekening uitkomt.',
               })
             }
           />
-        )}
-        {/* In and out, each biggest first, whether the money comes from a
-            person or from another account. Two lists sorted apart put a
-            business paying 7,25 underneath a friend paying 4,13, which reads
-            as a sorting fault rather than as two kinds of row. */}
-        {flows.map((row) => (
-          <Line
-            key={row.key}
-            left={row.left}
-            what={row.what}
-            sub={row.sub}
-            cents={row.cents}
-            onClick={row.onClick}
+            )}
+          {/* Nothing is booked on this account, so there is nothing to hold
+              the standing orders against. Calling the whole deposit a
+              surplus would be a claim about money Pay knows nothing about —
+              a groceries pot is emptied by groceries it has never seen. */}
+          {/* Two things have to be there before this means anything: a
+              standing order to hold against, and posts to hold it against.
+              Without an order it calls the whole deposit a shortfall, right
+              under the line saying the account comes out even; without posts
+              it calls the whole deposit a surplus. */}
+          {(!hasContributions && !pot.income && !pot.drawn) ||
+          (mine.length === 0 && !pot.income && !pot.drawn) ? null : (
+          <Total
+            label={pot.difference >= 0 ? 'Blijft over' : 'Komt tekort'}
+            cents={Math.abs(pot.difference)}
+            tone={pot.difference >= 0 ? 'credit' : 'debt'}
+            onClick={() =>
+              onDetail({
+                title: pot.difference >= 0 ? 'Blijft over' : 'Komt tekort',
+                label: 'Per maand',
+                cents: pot.difference,
+                rows: Object.entries(pot.contributions)
+                  .filter(([id, cents]) => Number(cents) || pot.incoming[id])
+                  .map(([id, cents]) => ({
+                    key: id,
+                    left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
+                    what: nameOf(id),
+                    sub: `${formatMoney(Number(cents) || 0)} ingesteld, ${formatMoney(pot.incoming[id] || 0)} nodig`,
+                    cents: (Number(cents) || 0) - (pot.incoming[id] || 0),
+                    tone: (Number(cents) || 0) - (pot.incoming[id] || 0) < 0 ? 'debt' : 'credit',
+                  })),
+                note: 'Per persoon het verschil tussen de vaste overboeking en wat er op moet komen. Staat hier iets, dan loopt de rekening op den duur vol of leeg.',
+              })
+            }
           />
-        ))}
-        {/* What everyone together has to put on it is worked out from the
-            posts, so it can be said whether or not anybody typed a standing
-            order. Only the comparison below it needs one. */}
-        {(hasContributions || pot.income > 0 || pot.drawn > 0 || (shared && pot.needed !== 0)) && (
-          <>
-            {shared && pot.needed !== pot.out && (
-              <Line
-                what="Moeten jullie samen storten"
-                sub="de maandlast plus wat er weer uit gaat naar wie iets voorschoot"
-                cents={pot.needed}
-                onClick={() =>
-                  onDetail({
-                    title: 'Moeten jullie samen storten',
-                    label: 'Per maand',
-                    cents: pot.needed,
-                    rows: Object.entries(pot.incoming).map(([id, cents]) => ({
-                      key: id,
-                      left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
-                      what: nameOf(id),
-                      cents,
-                    })),
-                    note: 'Wat jullie samen op deze rekening moeten storten: de maandlast plus wat er weer uit gaat naar wie iets voorschoot. Dat laatste geld gaat er alleen doorheen. Wat een andere rekening zelf bijdraagt staat hier niet in — dat komt daarvandaan.',
-                  })
-                }
-              />
             )}
-            {/* Without a standing order there is nothing to hold against, but
-                there is still something worth saying: that everything arriving
-                here leaves again. Nought is the answer, and it being anything
-                else is the whole reason to print it. */}
-            {shared && !hasContributions && (
-              <Total
-                label="Komt uit op"
-                cents={pot.closes}
-                tone={pot.closes === 0 ? 'credit' : 'debt'}
-              />
-            )}
-            {hasContributions && (
-            <Line
-              what="Staat als vaste inleg ingesteld"
-              cents={pot.paidIn}
-              onClick={() =>
-                onDetail({
-                  title: 'Vaste inleg',
-                  label: 'Per maand',
-                  cents: pot.paidIn,
-                  rows: Object.entries(pot.contributions)
-                    .filter(([, cents]) => Number(cents))
-                    .map(([id, cents]) => ({
-                      key: id,
-                      left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
-                      what: nameOf(id),
-                      sub: `hoort ${formatMoney(pot.incoming[id] || 0)} te zijn`,
-                      cents: Number(cents),
-                    })),
-                  note: 'Wat er bij de bank als vaste overboeking staat. Dit verandert niets aan de verdeling; het staat ernaast zodat je ziet of de rekening uitkomt.',
-                })
-              }
-            />
-            )}
-            {/* Nothing is booked on this account, so there is nothing to hold
-                the standing orders against. Calling the whole deposit a
-                surplus would be a claim about money Pay knows nothing about —
-                a groceries pot is emptied by groceries it has never seen. */}
-            {/* Two things have to be there before this means anything: a
-                standing order to hold against, and posts to hold it against.
-                Without an order it calls the whole deposit a shortfall, right
-                under the line saying the account comes out even; without posts
-                it calls the whole deposit a surplus. */}
-            {(!hasContributions && !pot.income && !pot.drawn) ||
-            (mine.length === 0 && !pot.income && !pot.drawn) ? null : (
-            <Total
-              label={pot.difference >= 0 ? 'Blijft over' : 'Komt tekort'}
-              cents={Math.abs(pot.difference)}
-              tone={pot.difference >= 0 ? 'credit' : 'debt'}
-              onClick={() =>
-                onDetail({
-                  title: pot.difference >= 0 ? 'Blijft over' : 'Komt tekort',
-                  label: 'Per maand',
-                  cents: pot.difference,
-                  rows: Object.entries(pot.contributions)
-                    .filter(([id, cents]) => Number(cents) || pot.incoming[id])
-                    .map(([id, cents]) => ({
-                      key: id,
-                      left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
-                      what: nameOf(id),
-                      sub: `${formatMoney(Number(cents) || 0)} ingesteld, ${formatMoney(pot.incoming[id] || 0)} nodig`,
-                      cents: (Number(cents) || 0) - (pot.incoming[id] || 0),
-                      tone: (Number(cents) || 0) - (pot.incoming[id] || 0) < 0 ? 'debt' : 'credit',
-                    })),
-                  note: 'Per persoon het verschil tussen de vaste overboeking en wat er op moet komen. Staat hier iets, dan loopt de rekening op den duur vol of leeg.',
-                })
-              }
-            />
-            )}
-          </>
-        )}
       </div>
       {cycling.length > 0 && (
         <div className="hint" style={{ marginTop: -4 }}>
