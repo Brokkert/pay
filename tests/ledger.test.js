@@ -1074,3 +1074,47 @@ describe('an account whose owner fronts what it owes', () => {
     expect(result.advanced[ME]).toBe(0);
   });
 });
+
+describe('rounding a deposit up', () => {
+  const pot = { id: 'a-pot', name: 'RABO', kind: 'shared', members: [ME, PARTNER], roundTo: 500 };
+  const expenses = [
+    expense({ id: 'r1', name: 'Energie', amount: 17903,
+      payer: { kind: 'account', id: 'a-pot' },
+      split: { kind: 'equal', participants: [ME, PARTNER] } }),
+    // A friend who is not on the account: asked for what is owed, to the cent.
+    expense({ id: 'r2', name: 'Tuinman', amount: 1200,
+      payer: { kind: 'account', id: 'a-pot' },
+      split: { kind: 'equal', participants: [FRIEND] } }),
+  ];
+  const run = (accounts) => forMonth({ people, accounts, expenses }, '2026-09').pots[0];
+
+  it('rounds what the people on the account transfer, and nobody else', () => {
+    const p = run([pot]);
+    // 179,03 over two is 89,52 and 89,51; rounded up to the next five euro.
+    expect(p.incoming[ME]).toBe(8952);
+    expect(p.rounded[ME]).toBe(9000);
+    expect(p.rounded[PARTNER]).toBe(9000);
+    expect(p.rounded[FRIEND]).toBeUndefined();
+    expect(p.incoming[FRIEND]).toBe(1200);
+  });
+
+  it('leaves the difference standing on the account', () => {
+    const p = run([pot]);
+    // 48 + 49 cents that nobody owed and nobody takes back.
+    expect(p.roundingExtra).toBe(97);
+    expect(p.closes).toBe(97);
+  });
+
+  it('does nothing at all when it is switched off', () => {
+    const p = run([{ ...pot, roundTo: 0 }]);
+    expect(p.rounded).toEqual({});
+    expect(p.roundingExtra).toBe(0);
+    expect(p.closes).toBe(0);
+  });
+
+  it('leaves an amount that is already round alone', () => {
+    const p = run([{ ...pot, roundTo: 1 }]);
+    expect(p.rounded).toEqual({});
+    expect(p.closes).toBe(0);
+  });
+});

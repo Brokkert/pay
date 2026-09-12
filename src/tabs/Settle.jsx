@@ -92,6 +92,13 @@ export default function Settle({ store, month }) {
               const inbound = !isAccountParty(t.from);
               const person = people.find((p) => p.id === partyId(inbound ? t.from : t.to));
               const accountName = partyName(inbound ? t.to : t.from, { people, accounts });
+              // Where an account rounds its members' deposits up, the figure to
+              // transfer is the rounded one — that is the whole point of it, and
+              // this is the list you copy from.
+              const pot = result.pots.find(
+                (p) => p.account.id === partyId(inbound ? t.to : t.from)
+              );
+              const up = inbound && person ? pot?.rounded[person.id] : 0;
               // Neither direction gets a colour. Green reads as "coming your
               // way", and an amount leaving the account is the opposite: you
               // fill that account, so you are the one paying it. The minus and
@@ -101,8 +108,14 @@ export default function Settle({ store, month }) {
                   key={`${t.from}-${t.to}`}
                   left={<Avatar person={person} size="sm" />}
                   what={person?.name || '?'}
-                  sub={inbound ? `stort op ${accountName}` : `krijgt terug van ${accountName}`}
-                  cents={inbound ? t.cents : -t.cents}
+                  sub={
+                    up
+                      ? `stort op ${accountName} · ${formatMoney(t.cents)} nodig`
+                      : inbound
+                        ? `stort op ${accountName}`
+                        : `krijgt terug van ${accountName}`
+                  }
+                  cents={up || (inbound ? t.cents : -t.cents)}
                   onClick={person ? () => setOpen(person) : null}
                   copy
                 />
@@ -110,7 +123,11 @@ export default function Settle({ store, month }) {
             })}
             <Total
               label={`Per maand · ${formatMonth(month)}`}
-              cents={withAccounts.reduce((s, t) => s + (isAccountParty(t.from) ? -t.cents : t.cents), 0)}
+              cents={withAccounts.reduce((sum, t) => {
+                if (isAccountParty(t.from)) return sum - t.cents;
+                const pot = result.pots.find((p) => p.account.id === partyId(t.to));
+                return sum + (pot?.rounded[partyId(t.from)] || t.cents);
+              }, 0)}
               copy
             />
           </div>

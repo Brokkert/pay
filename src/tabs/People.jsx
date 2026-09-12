@@ -342,6 +342,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
         fundedBy: shared ? '' : draft.fundedBy || '',
         frontedByOwner:
           !shared && draft.kind === 'business' && Boolean(draft.frontedByOwner),
+        roundTo: shared ? Number(draft.roundTo) || 0 : 0,
       });
       onClose();
     } catch (err) {
@@ -505,6 +506,30 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
               </span>
             </span>
           </label>
+        </Field>
+      )}
+
+      {/* A standing order is easier to live with as a round number, and what
+          the rounding adds stays on the account instead of going anywhere. Only
+          for the people on the account: someone paying a one-off share is asked
+          for what they owe, not for a tidy figure. */}
+      {shared && (
+        <Field
+          label="Stortingen afronden naar boven"
+          hint="Geldt voor de deelnemers hierboven. Wat de afronding erbij doet blijft op de rekening staan."
+        >
+          <div className="chips">
+            {[0, 100, 500, 1000, 2500, 5000].map((cents) => (
+              <button
+                key={cents}
+                type="button"
+                className={`chip${(Number(draft.roundTo) || 0) === cents ? ' on' : ''}`}
+                onClick={() => set({ roundTo: cents })}
+              >
+                {cents === 0 ? 'Niet afronden' : formatMoney(cents, { decimals: 0 })}
+              </button>
+            ))}
+          </div>
         </Field>
       )}
 

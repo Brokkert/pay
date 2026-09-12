@@ -616,7 +616,11 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
       key: `in-${id}`,
       left: <Avatar person={people.find((p) => p.id === id)} size="sm" />,
       what: `${nameOf(id)} stort`,
-      cents,
+      // What they really transfer, which is the rounded figure where this
+      // account rounds. The difference is what stays behind, and the total at
+      // the foot of the column is where it turns up.
+      sub: pot.rounded[id] ? `${formatMoney(cents)} nodig, naar boven afgerond` : undefined,
+      cents: pot.rounded[id] || cents,
       onClick: opens(`person:${id}`, here),
     })),
     ...Object.entries(pot.fromAccounts).map(([id, cents]) => ({

@@ -366,6 +366,23 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
           else outgoing[partyId(t.to)] = t.cents;
         }
       }
+      // Rounding a deposit up is a choice about the transfer, not about the
+      // bill: everyone still carries exactly what they carry. What the rounding
+      // adds simply stays on the account and piles up — which is the point.
+      const roundTo = Number(account.roundTo) || 0;
+      const members = account.members || [];
+      const rounded = {};
+      let roundingExtra = 0;
+      if (roundTo > 0) {
+        for (const [id, cents] of Object.entries(incoming)) {
+          if (!members.includes(id) || cents <= 0) continue;
+          const up = Math.ceil(cents / roundTo) * roundTo;
+          if (up === cents) continue;
+          rounded[id] = up;
+          roundingExtra += up - cents;
+        }
+      }
+
       const contributions = account.contributions || {};
       const paidIn = Object.values(contributions).reduce((sum, c) => sum + (Number(c) || 0), 0);
       const out = perAccount[account.id] || 0;
@@ -439,6 +456,7 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
       // passes what everyone puts in on to the bills.
       const closes =
         total(incoming) +
+        roundingExtra +
         total(fromAccounts) -
         out -
         total(outgoing) -
@@ -453,6 +471,11 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
         fromAccounts,
         toAccounts,
         contributions,
+        // Per member, what they transfer once it is rounded up, and what that
+        // adds to the account over the exact amount owed.
+        roundTo,
+        rounded,
+        roundingExtra,
         paidIn,
         income,
         overhead,

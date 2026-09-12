@@ -405,6 +405,31 @@ describe('the list of posts', () => {
   }, 30000);
 });
 
+describe('rounding a deposit up', () => {
+  it('asks for the round figure and leaves the rest standing', async () => {
+    const set = exampleHousehold();
+    set.accounts = set.accounts.map((a) =>
+      a.name === 'Vaste lasten' ? { ...a, contributions: {}, roundTo: 500 } : a
+    );
+    await withData(set);
+    const user = await start();
+
+    // On the list you copy from, the figure is the one you transfer.
+    await user.click(await screen.findByRole('button', { name: /Verrekenen/ }));
+    const row = (await screen.findAllByText('Ik'))
+      .map((n) => n.closest('.line'))
+      .find((l) => l && /Vaste lasten/.test(l.textContent));
+    expect(row.textContent).toMatch(/nodig/);
+
+    // And what the rounding adds is not lost: it stands on the account.
+    await user.click(screen.getByRole('button', { name: /Overzicht/ }));
+    const pot = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Vaste lasten').nextElementSibling;
+    expect(within(pot).getAllByText(/naar boven afgerond/).length).toBeGreaterThan(0);
+    expect(within(pot).getByText('Blijft over')).toBeTruthy();
+  }, 30000);
+});
+
 describe('what has to be on an account, and the cents that will not fit', () => {
   it('says both on the account itself, whoever it belongs to', async () => {
     const set = exampleHousehold();

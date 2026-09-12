@@ -122,6 +122,7 @@ export function readBackup(source) {
       ...(Number.isInteger(a.overhead) && a.overhead !== 0 ? { overhead: a.overhead } : {}),
       ...(text(a.fundedBy) ? { fundedBy: text(a.fundedBy) } : {}),
       ...(a.frontedByOwner === true ? { frontedByOwner: true } : {}),
+      ...(Number.isInteger(a.roundTo) && a.roundTo > 0 ? { roundTo: a.roundTo } : {}),
     };
   });
 
