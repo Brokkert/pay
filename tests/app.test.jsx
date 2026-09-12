@@ -405,6 +405,28 @@ describe('the list of posts', () => {
   }, 30000);
 });
 
+describe('the month a charge falls in', () => {
+  it('names them all, not just the one you picked', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    // Gemeentelijke heffingen: quarterly.
+    await user.click(await screen.findByText('Gemeentelijke heffingen'));
+    await user.click(await screen.findByRole('button', { name: 'Wijzigen' }));
+
+    const sheet = screen.getByRole('heading', { name: 'Post wijzigen' }).closest('.sheet');
+    const field = within(sheet).getByText('Wordt afgeschreven in').closest('.field');
+    await user.selectOptions(within(field).getByRole('combobox'), '10');
+    // Picking October on a quarterly post means four months, not one a year.
+    expect(field.textContent).toContain('oktober, januari, april, juli');
+
+    // A yearly one really is the same month every year.
+    const how = within(sheet).getByText('Hoe vaak').closest('.field');
+    await user.selectOptions(within(how).getByRole('combobox'), 'year');
+    expect(field.textContent).toContain('Elk jaar dezelfde');
+  }, 30000);
+});
+
 describe('whether it all adds up', () => {
   it('says so in one line, and says what does not', async () => {
     await withData(exampleHousehold());

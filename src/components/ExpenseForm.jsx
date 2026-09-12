@@ -8,6 +8,23 @@ import { SUGGESTED, categoryName } from '../data/categories.js';
 import LabelPicker from './LabelPicker.jsx';
 import { defaultBearers } from '../lib/split.js';
 
+/**
+ * Which months a charge actually falls in, named.
+ *
+ * "Every year the same" is only true once a year. A quarterly post entered as
+ * October comes off in October, January, April and July — the field was right
+ * and the sentence under it was not, which is the kind of thing you only catch
+ * by reading it against a bank statement.
+ */
+function chargeMonths(draft) {
+  const perYear = cadenceOf(draft.cadence).perYear;
+  const step = 12 / perYear;
+  if (step === 12) return 'De maand waarin de bank het weghaalt. Elk jaar dezelfde.';
+  const first = Number(draft.chargeMonth) - 1;
+  const months = Array.from({ length: perYear }, (_, i) => MONTH_NAMES[(first + i * step) % 12]);
+  return `Gaat eraf in ${months.join(', ')}.`;
+}
+
 const blank = (meId) => ({
   name: '',
   amount: 0,
@@ -165,7 +182,7 @@ export default function ExpenseForm({
           warn={!draft.chargeMonth}
           hint={
             draft.chargeMonth
-              ? 'De maand waarin de bank het weghaalt. Elk jaar dezelfde.'
+              ? chargeMonths(draft)
               : 'Vul in welke maand het eraf gaat. Zonder dat weet Pay niet hoeveel je ervoor opzij moet hebben staan.'
           }
         >
