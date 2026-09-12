@@ -486,8 +486,9 @@ describe('whether it all adds up', () => {
     // What Pay already knew but only said on the account's own panel: a yearly
     // post here has no charge month, so what should be on that account is wrong.
     expect(await screen.findByText(/niet ingevuld in welke maand/)).toBeTruthy();
-    // And the rest, folded away until you want it.
-    expect(screen.getByText(/om een keer naar te kijken/)).toBeTruthy();
+    // And nothing else: what merely asks something of you is on the account it
+    // is about, not in a list here.
+    expect(screen.queryByText(/om een keer naar te kijken/)).toBe(null);
 
     // Now give a post fixed amounts that fall short: ten euro nobody carries.
     await user.click(await screen.findByRole('button', { name: /Lasten/ }));

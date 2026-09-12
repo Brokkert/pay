@@ -577,7 +577,9 @@ button.line-open:active { background: var(--sunk); }
   padding-left: 11px;
   border-left: 2px solid var(--line);
 }
-.hint + .hint { margin-top: 8px; }
+/* Two of them under one panel are two separate things to read, not one
+   paragraph with a break in it. */
+.hint + .hint { margin-top: 14px; }
 .hint.warn { color: var(--warn); }
 
 .input, .select, .textarea {

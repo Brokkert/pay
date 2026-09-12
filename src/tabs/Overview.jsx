@@ -437,41 +437,19 @@ export default function Overview({ store, month, onMonth }) {
 }
 
 /**
- * Does it add up — in one line when it does, and in a list when it does not.
+ * What does not add up, and nothing else.
  *
- * Silence would be cheaper, but "nothing is wrong" is the thing you actually
- * came to find out, and a screen that only speaks up on trouble never tells you
- * that.
+ * It used to fold the rest away behind "three points to look at some time",
+ * which is a thing you open once. Everything that was in there is on the
+ * account it belongs to anyway; only what is actually wrong is worth
+ * interrupting the first screen for.
  */
 function Checks({ findings }) {
-  const [open, setOpen] = useState(false);
-  const wrong = findings.filter((f) => f.tone === 'warn');
-  const rest = findings.filter((f) => f.tone !== 'warn');
-
-  // Saying so when nothing is wrong reads as a badge rather than as
-  // information, and it is the state you are in almost every month.
-  if (!findings.length) return null;
-
-  return (
-    <>
-      {wrong.map((f) => (
-        <Notice key={f.id} tone="warn">{f.text}</Notice>
-      ))}
-      {rest.length > 0 && (
-        <div className="checks">
-          <button type="button" className="bare" onClick={() => setOpen((v) => !v)}>
-            {count(rest.length, 'punt', 'punten')} om een keer naar te kijken
-            <span className="chev"> {open ? '▴' : '▾'}</span>
-          </button>
-          {open && (
-            <ul>
-              {rest.map((f) => <li key={f.id}>{f.text}</li>)}
-            </ul>
-          )}
-        </div>
-      )}
-    </>
-  );
+  return findings
+    .filter((f) => f.tone === 'warn')
+    .map((f) => (
+      <Notice key={f.id} tone="warn">{f.text}</Notice>
+    ));
 }
 
 function MonthPicker({ month, onMonth }) {

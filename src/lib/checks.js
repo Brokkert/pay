@@ -10,15 +10,13 @@
 
 import { formatMoney } from './money.js';
 
-/** A finding, in the order you would want to act on it. */
-const RANK = { warn: 0, todo: 1, info: 2 };
-
 /**
  * Runs every check over one worked-out month.
  *
- * `warn` is something wrong: a figure elsewhere in the app is not to be trusted
- * until you fix it. `todo` is right but asks something of you once. `info` is
- * worth knowing and needs nothing.
+ * Only what is wrong: a figure elsewhere in the app is not to be trusted until
+ * you fix it. Everything that merely asks something of you is on the account it
+ * is about — a list of those at the top of the first screen is a list nobody
+ * opens twice.
  */
 export function runChecks({ accounts = [] }, result) {
   const found = [];
@@ -53,49 +51,7 @@ export function runChecks({ accounts = [] }, result) {
       );
     }
 
-    // A standing order you set against what the posts actually need.
-    if (pot.paidIn > 0 && pot.account.kind === 'shared' && pot.paidIn !== pot.needed) {
-      const over = pot.paidIn > pot.needed;
-      add(
-        `order-${pot.account.id}`,
-        'todo',
-        `Op ${name} staat ${formatMoney(pot.paidIn)} als vaste inleg, terwijl er ${formatMoney(pot.needed)} per maand nodig is. Zo loopt die rekening langzaam ${over ? 'vol' : 'leeg'}.`
-      );
-    }
-
-    for (const feed of pot.feeds) {
-      if (feed.order && feed.order !== feed.needed) {
-        const over = feed.order > feed.needed;
-        add(
-          `feed-${feed.account.id}`,
-          'todo',
-          `Je stort ${formatMoney(feed.order)} van ${name} naar ${feed.account.name}, terwijl daar ${formatMoney(feed.needed)} per maand nodig is. Zo loopt die rekening langzaam ${over ? 'vol' : 'leeg'}.`
-        );
-      }
-    }
-
-    // Twelve equal instalments against a year that does not divide by twelve.
-    if (pot.drift !== 0) {
-      add(
-        `drift-${pot.account.id}`,
-        'info',
-        pot.drift < 0
-          ? `Op ${name} dekken twaalf maandlasten het jaar net niet. Stort er één keer per jaar ${formatMoney(-pot.drift)} bij, dan komt die rekening precies op nul uit.`
-          : `Op ${name} blijft ${formatMoney(pot.drift)} per jaar staan omdat twaalf maandlasten iets meer zijn dan het jaar kost. Haal dat er één keer per jaar af.`
-      );
-    }
   }
 
-  // An account nobody can reach: it is in the list and nothing runs on it.
-  for (const account of accounts) {
-    if (result.pots.some((p) => p.account.id === account.id)) continue;
-    if (account.kind === 'shared') continue;
-    add(
-      `idle-${account.id}`,
-      'info',
-      `Op ${account.name} staat geen enkele post, dus Pay heeft er niets over te zeggen.`
-    );
-  }
-
-  return found.sort((a, b) => RANK[a.tone] - RANK[b.tone]);
+  return found;
 }
