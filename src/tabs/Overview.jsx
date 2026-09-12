@@ -745,6 +745,13 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
           {hasContributions && (
           <Line
             what="Staat als vaste inleg ingesteld"
+            sub={
+              pot.difference === 0
+                ? 'precies wat er binnen moet komen'
+                : pot.difference > 0
+                  ? 'meer dan er binnen moet komen'
+                  : 'minder dan er binnen moet komen'
+            }
             cents={pot.paidIn}
             onClick={() =>
               onDetail({
@@ -775,7 +782,8 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
               under the line saying the account comes out even; without posts
               it calls the whole deposit a surplus. */}
           {(!hasContributions && !pot.income && !pot.drawn) ||
-          (mine.length === 0 && !pot.income && !pot.drawn) ? null : (
+          (mine.length === 0 && !pot.income && !pot.drawn) ||
+          pot.difference === 0 ? null : (
           <Total
             label={pot.difference >= 0 ? 'Blijft over' : 'Komt tekort'}
             cents={Math.abs(pot.difference)}
