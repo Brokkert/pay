@@ -405,6 +405,32 @@ describe('the list of posts', () => {
   }, 30000);
 });
 
+describe('what has to be on an account, and the cents that will not fit', () => {
+  it('says both on the account itself, whoever it belongs to', async () => {
+    const set = exampleHousehold();
+    // A quarterly bill on a pot you share: 868,00 a year is 72,33 a month, and
+    // twelve of those is four cents short.
+    set.expenses = [
+      ...set.expenses,
+      { id: 'q1', name: 'Wegenbelasting', amount: 21700, cadence: 'quarter', chargeMonth: 1,
+        category: 'Vervoer', from: '2020-01',
+        payer: { kind: 'account', id: set.accounts[0].id },
+        split: { kind: 'equal', participants: [set.people.find((p) => p.isMe).id], weights: {} } },
+    ];
+    // An income, so the tab has something to build its chain from.
+    set.people = set.people.map((p) => (p.isMe ? { ...p, income: 300000 } : p));
+    await withData(set);
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Overhouden/ }));
+
+    const block = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Vaste lasten').parentElement;
+    expect(within(block).getByText('Hoort er nu op te staan')).toBeTruthy();
+    expect(within(block).getByText('Eén keer per jaar bijstorten').closest('.line').textContent)
+      .toContain('0,04');
+  }, 30000);
+});
+
 describe('the month a charge falls in', () => {
   it('names them all, not just the one you picked', async () => {
     await withData(exampleHousehold());

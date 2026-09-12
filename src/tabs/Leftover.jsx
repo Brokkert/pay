@@ -182,6 +182,37 @@ export default function Leftover({ store, month }) {
   );
 }
 
+/**
+ * The two things about an account that are not part of its monthly sum.
+ *
+ * What has to be sitting on it for the bills that do not come every month, and
+ * the cents twelve equal instalments cannot cover. Both were somewhere else —
+ * one only on accounts of your own, the other only in a list at the top of
+ * another tab, folded away. So the answer to "how much should be on here" was
+ * three screens and a disclosure triangle from the account it was about.
+ */
+function Extras({ pot }) {
+  if (!pot.aside && !pot.drift) return null;
+  return (
+    <div className="panel">
+      {pot.aside > 0 && (
+        <Line
+          what="Hoort er nu op te staan"
+          sub="gespaard voor posten die niet elke maand afgaan"
+          cents={pot.aside}
+        />
+      )}
+      {pot.drift !== 0 && (
+        <Line
+          what={pot.drift < 0 ? 'Eén keer per jaar bijstorten' : 'Houd je per jaar over'}
+          sub="twaalf maandlasten dekken het jaar net niet precies"
+          cents={Math.abs(pot.drift)}
+        />
+      )}
+    </div>
+  );
+}
+
 /** The link between two blocks: what leaves the one above and lands below. */
 const Flows = ({ cents, label }) => (
   <div className="flows">
@@ -343,6 +374,7 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
             tone="credit"
           />
         </div>
+        <Extras pot={pot} />
         <div className="hint">
           {pot.closes === 0
             ? 'Erop en eraf zijn gelijk: deze rekening houdt niets van zichzelf.'
@@ -461,11 +493,7 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts }) {
         Wat anderen hiervan dragen krijg je privé terug, niet op deze rekening. Tel de blokken dus
         niet bij elkaar op.
       </div>
-      {pot.aside > 0 && (
-        <div className="hint">
-          Houd er <strong>{formatMoney(pot.aside)}</strong> op staan voor de jaarposten.
-        </div>
-      )}
+      <Extras pot={pot} />
     </>
   );
 }
