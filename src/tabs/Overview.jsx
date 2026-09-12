@@ -104,21 +104,20 @@ export default function Overview({ store, month, onMonth }) {
     note: 'Alles wat er loopt, ook de delen die anderen dragen. Jaarposten staan op een twaalfde van hun bedrag.',
   };
 
-  // What ran on the business this month: exactly what came off the business
-  // accounts, which the panel further down lists per account anyway.
-  const business = accounts
-    .filter((a) => a.kind === 'business')
-    .reduce((sum, a) => sum + (result.perAccount[a.id] || 0), 0);
-
-  // What of the monthly load is not spending: saving and investing, at their
-  // full amount the way every other figure on this card is.
   // Everything Pay can say about itself, in one place instead of a hint on
   // whichever screen the account happened to be on.
   const findings = runChecks({ people, accounts, expenses }, result);
 
-  const putAway = result.lines
-    .filter((l) => l.expense.savings)
-    .reduce((sum, l) => sum + l.amount, 0);
+  // Both of these are written as "waarvan", so they have to be part of the
+  // figure above them — which is your share. At their full amount they were
+  // larger than the number they claimed to be inside: the internet the business
+  // pays is 24,79, of which your half is 12,40, and the other half is nowhere in
+  // "jouw deel".
+  const share = (line) => (me ? line.shares[me.id] || 0 : line.amount);
+  const businessLines = result.lines.filter((l) => isBusiness(l.expense, accounts));
+  const savingLines = result.lines.filter((l) => l.expense.savings);
+  const business = businessLines.reduce((sum, l) => sum + share(l), 0);
+  const putAway = savingLines.reduce((sum, l) => sum + share(l), 0);
 
   return (
     <>
@@ -178,10 +177,10 @@ export default function Overview({ store, month, onMonth }) {
             onClick={() =>
               setDetail({
                 title: 'Zakelijk geboekt',
-                label: 'Per maand',
+                label: 'Jouw deel per maand',
                 cents: business,
-                rows: postRows(result.lines.filter((l) => isBusiness(l.expense, accounts))),
-                note: 'Wat er van een zakelijke rekening af gaat. Wie het draagt staat verderop, bij "Wat ieder uiteindelijk draagt".',
+                rows: postRows(businessLines, share),
+                note: 'Jouw deel van de posten die van een zakelijke rekening af gaan. Wat die rekeningen in totaal kwijt zijn staat verderop, per rekening.',
               })
             }
           >
@@ -198,10 +197,10 @@ export default function Overview({ store, month, onMonth }) {
             onClick={() =>
               setDetail({
                 title: 'Opzij gezet',
-                label: 'Per maand',
+                label: 'Jouw deel per maand',
                 cents: putAway,
-                rows: postRows(result.lines.filter((l) => l.expense.savings)),
-                note: 'Sparen en beleggen. Het gaat wel van je rekening af, dus het staat gewoon tussen je vaste lasten — maar je bent het niet kwijt. Jouw eigen deel ervan staat bij Overhouden.',
+                rows: postRows(savingLines, share),
+                note: 'Sparen en beleggen. Het gaat wel van je rekening af en staat dus tussen je vaste lasten — maar je bent het niet kwijt.',
               })
             }
           >
