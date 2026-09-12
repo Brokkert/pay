@@ -1294,6 +1294,27 @@ describe('an account people pay into but nothing runs off', () => {
     expect(within(pot).queryByText('Blijft over')).toBe(null);
     expect(pot.nextElementSibling.textContent).toContain('Geen posten op deze rekening');
   }, 30000);
+
+  it('does not call everyone\'s deposit a shortfall on the account it lands on', async () => {
+    const set = exampleHousehold();
+    // No standing order typed here: the amount moves every month, which is the
+    // normal state for the account everything settles through.
+    set.accounts = set.accounts.map((a) =>
+      a.name === 'Vaste lasten' ? { ...a, contributions: {} } : a
+    );
+    await withData(set);
+    await start();
+
+    await screen.findByText('Jouw deel');
+    const pot = [...document.querySelectorAll('.section')]
+      .find((el) => el.textContent === 'Vaste lasten').nextElementSibling;
+    // Nobody typed a standing order here, so there is nothing to hold what has
+    // to come in against — and saying it comes up short by the whole of it,
+    // right under the line saying it comes out even, is two answers to one
+    // question.
+    expect(within(pot).queryByText('Komt tekort')).toBe(null);
+    expect(within(pot).getByText('Komt uit op').closest('.total').textContent).toContain('0,00');
+  }, 30000);
 });
 
 describe('what one charge is made of', () => {

@@ -856,7 +856,13 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
                 the standing orders against. Calling the whole deposit a
                 surplus would be a claim about money Pay knows nothing about —
                 a groceries pot is emptied by groceries it has never seen. */}
-            {mine.length === 0 && !pot.income && !pot.drawn ? null : (
+            {/* Two things have to be there before this means anything: a
+                standing order to hold against, and posts to hold it against.
+                Without an order it calls the whole deposit a shortfall, right
+                under the line saying the account comes out even; without posts
+                it calls the whole deposit a surplus. */}
+            {(!hasContributions && !pot.income && !pot.drawn) ||
+            (mine.length === 0 && !pot.income && !pot.drawn) ? null : (
             <Total
               label={pot.difference >= 0 ? 'Blijft over' : 'Komt tekort'}
               cents={Math.abs(pot.difference)}
