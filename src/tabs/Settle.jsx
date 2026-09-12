@@ -207,6 +207,16 @@ export default function Settle({ store, month }) {
   );
 }
 
+/**
+ * Big to small, but everything that pulls the other way underneath.
+ *
+ * On size alone a minus lands in the middle of the list, where it reads as one
+ * more post you pay until you notice the sign. Kept together at the bottom they
+ * are what they are: the ones that make the amount smaller.
+ */
+const bySizeMinusLast = (a, b) =>
+  (a.cents < 0) - (b.cents < 0) || Math.abs(b.cents) - Math.abs(a.cents);
+
 /** Where the amount comes from: every expense that plays between the two of you. */
 function BetweenTwo({ person, me, result, loose, accounts, hub, onClose }) {
   const between = (line, viaHub) => {
@@ -235,7 +245,7 @@ function BetweenTwo({ person, me, result, loose, accounts, hub, onClose }) {
     ...loose.lines.map((line) => between(line, false)),
   ]
     .filter(Boolean)
-    .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
+    .sort(bySizeMinusLast);
 
   const total = rows.reduce((sum, r) => sum + r.cents, 0);
 
@@ -287,7 +297,7 @@ function TransferBreakdown({ transfer, context, onClose }) {
       cents,
       tone: cents < 0 ? 'credit' : '',
     }))
-    .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
+    .sort(bySizeMinusLast);
 
   return (
     <Breakdown
