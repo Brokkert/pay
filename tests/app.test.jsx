@@ -340,15 +340,15 @@ describe('a friend who settles through the bills account', () => {
     expect(row.querySelector('.credit')).toBe(null);
     expect(screen.queryByText(/8,49/)).toBe(null);
 
-    // And tapping him shows where that 3,50 comes from, at full value.
+    // And tapping the row shows what that one payment is made of, at full
+    // value — the question the row itself raises, which "you and you" could
+    // never answer on your own row.
     await user.click(row.querySelector('.line-open'));
-    const sheet = screen.getByRole('heading', { name: /Jij en Frans/ }).closest('.sheet');
+    const sheet = screen.getByRole('heading', { name: /BUNQ → Frans/ }).closest('.sheet');
     expect(within(sheet).getByText('YouTube Family')).toBeTruthy();
     expect(within(sheet).getByText(/4,99/)).toBeTruthy();
     expect(within(sheet).getByText('Tidal')).toBeTruthy();
     expect(within(sheet).getByText(/8,49/)).toBeTruthy();
-    // Named as running through the account, because that is where it comes from.
-    expect(within(sheet).getByText(/via BUNQ/)).toBeTruthy();
   }, 30000);
 
   it('hands you the bare amount, ready to paste into a direct debit', async () => {
@@ -402,6 +402,24 @@ describe('the list of posts', () => {
     await user.click(screen.getByRole('button', { name: 'Volledig' }));
     expect(within(row()).getByText(/20,00/)).toBeTruthy();
     expect(localStorage.getItem('pay:view:expenses')).toBe('full');
+  }, 30000);
+});
+
+describe('tapping your own deposit', () => {
+  it('opens what that deposit is made of, not you against yourself', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Verrekenen/ }));
+
+    const mine = (await screen.findAllByText('Ik'))
+      .map((n) => n.closest('.line'))
+      .find((l) => l && /stort op/.test(l.textContent));
+    await user.click(mine.querySelector('.line-open'));
+
+    // Not "Jij en Ik": that sheet is about two people, and there is only one.
+    expect(screen.queryByRole('heading', { name: /Jij en Ik/ })).toBe(null);
+    const sheet = screen.getByRole('heading', { name: /→/ }).closest('.sheet');
+    expect(within(sheet).getByText('Samen')).toBeTruthy();
   }, 30000);
 });
 

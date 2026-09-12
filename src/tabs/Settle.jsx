@@ -5,11 +5,13 @@
 
 import { useMemo, useState } from 'react';
 import { Line, Total, CopyMoney, Avatar, Empty, Sheet, Notice } from '../components/ui.jsx';
+import Breakdown from '../components/Breakdown.jsx';
 import {
   forMonth,
   openSettlements,
   mineFirst,
   payerParty,
+  explainTransfer,
   isAccountParty,
   partyId,
   partyName,
@@ -116,7 +118,7 @@ export default function Settle({ store, month }) {
                         : `krijgt terug van ${accountName}`
                   }
                   cents={up || (inbound ? t.cents : -t.cents)}
-                  onClick={person ? () => setOpen(person) : null}
+                  onClick={() => setOpen({ transfer: t })}
                   copy
                 />
               );
@@ -182,8 +184,16 @@ export default function Settle({ store, month }) {
         </div>
       )}
 
-      {open && (
-        <Breakdown
+      {open?.transfer && (
+        <TransferBreakdown
+          transfer={open.transfer}
+          context={{ people, accounts, lines: result.lines }}
+          onClose={() => setOpen(null)}
+        />
+      )}
+
+      {open && !open.transfer && (
+        <BetweenTwo
           person={open}
           me={me}
           result={result}
@@ -198,7 +208,7 @@ export default function Settle({ store, month }) {
 }
 
 /** Where the amount comes from: every expense that plays between the two of you. */
-function Breakdown({ person, me, result, loose, accounts, hub, onClose }) {
+function BetweenTwo({ person, me, result, loose, accounts, hub, onClose }) {
   const between = (line, viaHub) => {
     const party = line.party ?? payerParty(line.expense, accounts);
     const payer = isAccountParty(party) ? null : partyId(party);
@@ -263,5 +273,31 @@ function Breakdown({ person, me, result, loose, accounts, hub, onClose }) {
         te kopiëren. Staat er "via" bij, dan loopt de betaling langs die rekening.
       </div>
     </Sheet>
+  );
+}
+
+/** One deposit, taken apart: every post that is netted into it. */
+function TransferBreakdown({ transfer, context, onClose }) {
+  const rows = explainTransfer(transfer, context)
+    .map(({ expense, cents }) => ({
+      key: expense.id,
+      left: <span className="cat-dot" style={{ background: categoryOf(expense.category).colour }} />,
+      what: expense.name,
+      sub: cents < 0 ? 'trekt de andere kant op' : undefined,
+      cents,
+      tone: cents < 0 ? 'credit' : '',
+    }))
+    .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
+
+  return (
+    <Breakdown
+      title={`${partyName(transfer.from, context)} → ${partyName(transfer.to, context)}`}
+      label="Per maand"
+      cents={transfer.cents}
+      rows={rows}
+      empty="Hier zit niets in."
+      note="De posten die in dit ene bedrag zijn weggestreept. Groen trekt de andere kant op en maakt het bedrag dus kleiner."
+      onClose={onClose}
+    />
   );
 }
