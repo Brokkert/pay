@@ -423,6 +423,30 @@ describe('tapping your own deposit', () => {
   }, 30000);
 });
 
+describe('a transfer between two of your own accounts', () => {
+  it('stands on the settle list, with what it has to cover behind it', async () => {
+    const set = exampleHousehold();
+    const zaak = set.accounts.find((a) => a.name === 'Zaak');
+    set.accounts = [
+      ...set.accounts.map((a) => (a.id === zaak.id ? { ...a, fundedBy: 'a-holding' } : a)),
+      { id: 'a-holding', name: 'Holding', kind: 'business', ownerId: set.people.find((p) => p.isMe).id },
+    ];
+    await withData(set);
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Verrekenen/ }));
+
+    // Nobody owes anybody for it, so it is not "onderling" — but it is money
+    // that has to move this month, and this is the list of those.
+    const row = [...document.querySelectorAll('.line')]
+      .find((l) => /Holding → Zaak/.test(l.textContent));
+    expect(row).toBeTruthy();
+
+    // And it opens the bill it exists to cover.
+    await user.click(row.querySelector('.line-open'));
+    expect(screen.getByRole('heading', { name: /Naar Zaak/ })).toBeTruthy();
+  }, 30000);
+});
+
 describe('rounding a deposit up', () => {
   it('asks for the round figure and leaves the rest standing', async () => {
     const set = exampleHousehold();

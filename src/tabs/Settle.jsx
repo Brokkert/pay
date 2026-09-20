@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import { Line, Total, CopyMoney, Avatar, Empty, Sheet, Notice } from '../components/ui.jsx';
 import Breakdown from '../components/Breakdown.jsx';
+import FeedBreakdown from '../components/FeedBreakdown.jsx';
 import {
   forMonth,
   openSettlements,
@@ -67,6 +68,24 @@ export default function Settle({ store, month }) {
     me?.id
   );
 
+  // Money that moves between two of your own accounts: a holding filling the
+  // account its fixed costs come off. Nobody owes anybody anything for it — it
+  // is your own money changing places — but it is still a transfer that has to
+  // happen every month, and that is what this tab is a list of.
+  const feeds = useMemo(
+    () =>
+      result.pots.flatMap((pot) =>
+        pot.feeds.map((feed) => ({
+          feed,
+          from: pot.account,
+          // The account being fed, for the sheet: what it has to cover is the
+          // sum this transfer exists for.
+          to: result.pots.find((p) => p.account.id === feed.account.id) || null,
+        }))
+      ),
+    [result.pots]
+  );
+
   if (!me) {
     return (
       <Notice tone="warn">
@@ -76,7 +95,7 @@ export default function Settle({ store, month }) {
     );
   }
 
-  if (!rows.length && !withAccounts.length) {
+  if (!rows.length && !withAccounts.length && !feeds.length) {
     return (
       <Empty icon="settle" title="Niets te verrekenen">
         Zodra iemand meedoet aan een post die jij betaalt — of jij aan een van hen — staat het hier.
@@ -86,6 +105,50 @@ export default function Settle({ store, month }) {
 
   return (
     <>
+      {rows.length > 0 && <div className="section">Onderling</div>}
+      {rows.length > 0 && (
+        <div className="panel">
+          {rows.map((r) => (
+            /* The name opens the reasoning, the amount goes to the clipboard.
+               Two separate controls, because one cannot do both. */
+            <div key={r.person.id} className="item has-copy">
+              <button type="button" className="item-open" onClick={() => setOpen(r.person)}>
+                <Avatar person={r.person} size="lg" />
+                <span className="mid">
+                  <span className="title truncate" style={{ display: 'block' }}>{r.person.name}</span>
+                  <span className="sub" style={{ display: 'block' }}>
+                    {r.monthly === 0
+                      ? 'alleen iets losstaands'
+                      : r.monthly > 0
+                        ? 'staat bij jou in het krijt'
+                        : 'daar sta jij in het krijt'}
+                  </span>
+                </span>
+              </button>
+              <span className="right">
+                <CopyMoney
+                  cents={Math.abs(r.monthly)}
+                  size="mid"
+                  tone={r.monthly === 0 ? '' : r.monthly > 0 ? 'credit' : 'debt'}
+                  label={r.person.name}
+                />
+                <span className="sub" style={{ display: 'block' }}>
+                  {r.monthly >= 0 ? 'krijg je' : 'betaal je'} /mnd
+                </span>
+                {r.once !== 0 && (
+                  <span
+                    className="sub"
+                    style={{ display: 'block', color: r.once > 0 ? 'var(--credit)' : 'var(--debt)' }}
+                  >
+                    {formatMoney(Math.abs(r.once))} los
+                  </span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {withAccounts.length > 0 && (
         <>
           <div className="section">Met de gezamenlijke rekeningen</div>
@@ -140,48 +203,33 @@ export default function Settle({ store, month }) {
         </>
       )}
 
-      {rows.length > 0 && <div className="section">Onderling</div>}
-      {rows.length > 0 && (
-        <div className="panel">
-          {rows.map((r) => (
-            /* The name opens the reasoning, the amount goes to the clipboard.
-               Two separate controls, because one cannot do both. */
-            <div key={r.person.id} className="item has-copy">
-              <button type="button" className="item-open" onClick={() => setOpen(r.person)}>
-                <Avatar person={r.person} size="lg" />
-                <span className="mid">
-                  <span className="title truncate" style={{ display: 'block' }}>{r.person.name}</span>
-                  <span className="sub" style={{ display: 'block' }}>
-                    {r.monthly === 0
-                      ? 'alleen iets losstaands'
-                      : r.monthly > 0
-                        ? 'staat bij jou in het krijt'
-                        : 'daar sta jij in het krijt'}
-                  </span>
-                </span>
-              </button>
-              <span className="right">
-                <CopyMoney
-                  cents={Math.abs(r.monthly)}
-                  size="mid"
-                  tone={r.monthly === 0 ? '' : r.monthly > 0 ? 'credit' : 'debt'}
-                  label={r.person.name}
-                />
-                <span className="sub" style={{ display: 'block' }}>
-                  {r.monthly >= 0 ? 'krijg je' : 'betaal je'} /mnd
-                </span>
-                {r.once !== 0 && (
-                  <span
-                    className="sub"
-                    style={{ display: 'block', color: r.once > 0 ? 'var(--credit)' : 'var(--debt)' }}
-                  >
-                    {formatMoney(Math.abs(r.once))} los
-                  </span>
-                )}
-              </span>
-            </div>
-          ))}
-        </div>
+      {feeds.length > 0 && (
+        <>
+          <div className="section">Tussen je eigen rekeningen</div>
+          <div className="panel">
+            {feeds.map(({ feed, from, to }) => (
+              <Line
+                key={`${from.id}-${feed.account.id}`}
+                what={`${from.name} → ${feed.account.name}`}
+                sub={
+                  !feed.order
+                    ? 'nog geen vaste overboeking ingesteld'
+                    : feed.order === feed.needed
+                      ? 'loopt automatisch'
+                      : `vaste overboeking · de posten kosten ${formatMoney(feed.needed)}`
+                }
+                cents={feed.cents}
+                onClick={to ? () => setOpen({ feed, pot: to }) : null}
+                copy
+              />
+            ))}
+          </div>
+          <div className="hint">
+            Je eigen geld dat van plek verandert, geen schuld aan iemand. Staat er een vaste
+            overboeking, dan gebeurt dit vanzelf — alleen als het bedrag niet meer klopt met wat
+            de posten kosten, hoef je er iets mee.
+          </div>
+        </>
       )}
 
       {open?.transfer && (
@@ -192,7 +240,18 @@ export default function Settle({ store, month }) {
         />
       )}
 
-      {open && !open.transfer && (
+      {open?.feed && (
+        <FeedBreakdown
+          feed={open.feed}
+          pot={open.pot}
+          lines={result.lines}
+          accounts={accounts}
+          me={me}
+          onClose={() => setOpen(null)}
+        />
+      )}
+
+      {open && !open.transfer && !open.feed && (
         <BetweenTwo
           person={open}
           me={me}
