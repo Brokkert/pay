@@ -627,7 +627,15 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
     const depositDay = dayOf(account.depositDay);
     for (const [id, cents] of Object.entries(row.incoming)) {
       const person = people.find((p) => p.id === id);
-      add(`in-${id}`, `${person?.name || 'iemand'} stort`, row.rounded[id] || cents, depositDay);
+      // Someone who transfers it themselves has their own day; everyone in one
+      // direct debit batch falls back to the day of the account.
+      const own = dayOf(account.depositDays?.[id]);
+      add(
+        `in-${id}`,
+        `${person?.name || 'iemand'} stort`,
+        row.rounded[id] || cents,
+        own ?? depositDay
+      );
     }
     for (const [id, cents] of Object.entries(row.fromAccounts)) {
       add(`from-${id}`, `Terug van ${accounts.find((a) => a.id === id)?.name || 'een rekening'}`, cents, null);

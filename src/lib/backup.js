@@ -25,6 +25,13 @@ const fail = (message) => {
 const text = (value) => (typeof value === 'string' ? value.trim() : '');
 /** A day of the month, or nothing — anything else is not a day. */
 const day = (value) => (Number(value) >= 1 && Number(value) <= 31 ? Number(value) : 0);
+/** The days per member a shared account's deposits land on, the sound ones only. */
+const depositDays = (account) =>
+  Object.fromEntries(
+    Object.entries(account?.depositDays || {})
+      .map(([id, value]) => [text(id), day(value)])
+      .filter(([id, value]) => id && value)
+  );
 
 /**
  * Whole cents only: a backup that carries 12.5 is a backup we do not trust.
@@ -130,6 +137,7 @@ export function readBackup(source) {
       ...(day(a.incomeDay) ? { incomeDay: day(a.incomeDay) } : {}),
       ...(day(a.overheadDay) ? { overheadDay: day(a.overheadDay) } : {}),
       ...(day(a.depositDay) ? { depositDay: day(a.depositDay) } : {}),
+      ...(Object.keys(depositDays(a)).length ? { depositDays: depositDays(a) } : {}),
       ...(day(a.feedDay) ? { feedDay: day(a.feedDay) } : {}),
     };
   });

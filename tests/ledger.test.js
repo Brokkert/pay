@@ -1231,3 +1231,31 @@ describe('a day past the end of the month, and a tax office paid on its own one'
     expect(pot.movements.find((m) => m.key === `salary-${me}`).cents).toBe(-400000);
   });
 });
+
+
+describe('a deposit that lands on its own day', () => {
+  const me = 'p-me';
+  const mate = 'p-mate';
+  const people = [{ id: me, name: 'Ik', isMe: true }, { id: mate, name: 'Frans' }];
+  const together = { kind: 'equal', participants: [me, mate], weights: {} };
+  const expenses = [
+    { id: 'e-1', name: 'Streaming', amount: 2000, cadence: 'month', chargeDay: 28,
+      payer: { kind: 'account', id: 'a-bills' }, split: together },
+  ];
+  const potOn = (account, today) =>
+    forMonth({ people, accounts: [account], expenses }, '2026-03', today).pots[0];
+
+  it('falls back to the day of the account, and takes its own where there is one', () => {
+    const batch = { id: 'a-bills', name: 'Pot', kind: 'shared', members: [me, mate], depositDay: 5 };
+    // One direct debit batch: both land on the 5th.
+    expect(potOn(batch, '2026-03-04').standToday).toBe(0);
+    expect(potOn(batch, '2026-03-05').standToday).toBe(2000);
+
+    // Frans transfers it himself, late.
+    const own = { ...batch, depositDays: { [mate]: 20 } };
+    expect(potOn(own, '2026-03-05').standToday).toBe(1000);
+    expect(potOn(own, '2026-03-20').standToday).toBe(2000);
+    // And the bill still empties it on the 28th.
+    expect(potOn(own, '2026-03-28').standToday).toBe(0);
+  });
+});

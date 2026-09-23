@@ -353,6 +353,13 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
         // On an account of your own the standing order is the owner's, and
         // there are no members to filter it against — the members filter above
         // would throw it away every time you saved.
+        depositDays: shared
+          ? Object.fromEntries(
+              Object.entries(draft.depositDays || {}).filter(
+                ([id, day]) => members.includes(id) && Number(day) >= 1 && Number(day) <= 31
+              )
+            )
+          : {},
         contributions: shared
           ? contributions
           : draft.ownerId && Number(draft.contributions?.[draft.ownerId])
@@ -459,7 +466,24 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
                   return (
                     <div key={id} className="line">
                       <Avatar person={p} size="sm" />
-                      <div className="what"><div className="n">{p?.name}</div></div>
+                      <div className="what">
+                        <div className="n">{p?.name}</div>
+                        {/* Whose money lands when. Empty means the day set for
+                            the account as a whole — which is the answer for
+                            everyone in one direct debit batch, and wrong only
+                            for whoever transfers it themselves. */}
+                        <div style={{ marginTop: 6 }}>
+                          <DayPicker
+                            value={draft.depositDays?.[id]}
+                            onChange={(day) =>
+                              set({ depositDays: { ...(draft.depositDays || {}), [id]: day } })
+                            }
+                            empty={
+                              draft.depositDay ? `de ${draft.depositDay}e, zoals de rekening` : 'Dag onbekend'
+                            }
+                          />
+                        </div>
+                      </div>
                       <span style={{ width: 132 }}>
                         <AmountInput
                           cents={draft.contributions?.[id] || 0}
