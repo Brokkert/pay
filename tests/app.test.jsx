@@ -436,7 +436,8 @@ describe('someone who pays into a pot without being a member of it', () => {
     );
     await withData(set);
     const user = await start();
-    await user.click(await screen.findByRole('button', { name: /Mensen/ }));
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+    await user.click(await screen.findByRole('button', { name: /Mensen en rekeningen/ }));
 
     const row = [...document.querySelectorAll('.item')]
       .find((el) => /Vaste lasten/.test(el.textContent));
@@ -456,7 +457,8 @@ describe('someone who settles over the pot for a bill charged elsewhere', () => 
     set.accounts = set.accounts.map((a) => (a.id === hub.id ? { ...a, settlement: true } : a));
     await withData(set);
     const user = await start();
-    await user.click(await screen.findByRole('button', { name: /Mensen/ }));
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+    await user.click(await screen.findByRole('button', { name: /Mensen en rekeningen/ }));
 
     const row = [...document.querySelectorAll('.item')]
       .find((el) => new RegExp(hub.name).test(el.textContent));
@@ -619,7 +621,8 @@ describe('money you put away rather than spend', () => {
     const user = await start();
 
     // An income, so there is a bottom line to say it about.
-    await user.click(await screen.findByRole('button', { name: /Mensen/ }));
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+    await user.click(await screen.findByRole('button', { name: /Mensen en rekeningen/ }));
     await user.click(await screen.findByText('Ik'));
     let sheet = screen.getByRole('heading', { name: 'Persoon wijzigen' }).closest('.sheet');
     let field = within(sheet).getByText('Inkomen per maand').closest('.field');
@@ -1212,7 +1215,8 @@ describe('what is left, on its own tab', () => {
     const user = await start();
 
     // Turnover on the business account, and a salary paid out of it.
-    await user.click(await screen.findByRole('button', { name: /Mensen/ }));
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+    await user.click(await screen.findByRole('button', { name: /Mensen en rekeningen/ }));
     await user.click(await screen.findByText('Zaak'));
     let sheet = screen.getByRole('heading', { name: 'Rekening wijzigen' }).closest('.sheet');
     let field = within(sheet).getByText('Komt er maandelijks op').closest('.field');
@@ -1285,7 +1289,8 @@ describe('what is left, on its own tab', () => {
 
     // Privé is filled from Zaak. No standing order typed — that is the point:
     // the question used to be hidden until you had already answered it.
-    await user.click(await screen.findByRole('button', { name: /Mensen/ }));
+    await user.click(await screen.findByRole('button', { name: /Meer/ }));
+    await user.click(await screen.findByRole('button', { name: /Mensen en rekeningen/ }));
     await user.click(await screen.findByText('Privé'));
     const sheet = screen.getByRole('heading', { name: 'Rekening wijzigen' }).closest('.sheet');
     const field = within(sheet).getByText('Wordt gevuld vanaf').closest('.field');

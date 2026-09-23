@@ -14,7 +14,7 @@ import { CADENCES } from '../lib/cadence.js';
 import { SUGGESTED, categoryName } from '../data/categories.js';
 import { count } from '../lib/words.js';
 
-export default function Settings({ user, store, keyring, theme, onTheme, onSignIn }) {
+export default function Settings({ user, store, keyring, theme, onTheme, onPeople, onSignIn }) {
   const [panel, setPanel] = useState(null);
   const [message, setMessage] = useState(null);
   const config = readConfig();
@@ -55,6 +55,22 @@ export default function Settings({ user, store, keyring, theme, onTheme, onSignI
   return (
     <>
       {message && <Notice tone="info">{message}</Notice>}
+
+      {/* Who is in it and where the money sits. Not a setting, but it moved
+          here from a tab of its own, so it comes first and looks like a
+          screen you go to rather than a switch you flip. */}
+      <div className="section">Mensen</div>
+      <div className="panel">
+        <button className="item" onClick={onPeople}>
+          <span className="mid">
+            <span className="title" style={{ display: 'block' }}>Mensen en rekeningen</span>
+            <span className="sub" style={{ display: 'block' }}>
+              {count(store.people.length, 'persoon', 'personen')} · {count(store.accounts.length, 'rekening', 'rekeningen')}
+            </span>
+          </span>
+          <span className="chev"><Icon name="right" size={16} /></span>
+        </button>
+      </div>
 
       <div className="section">Weergave</div>
       <div className="panel">

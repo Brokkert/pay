@@ -22,7 +22,6 @@ const TABS = [
   { id: 'expenses', label: 'Lasten' },
   { id: 'settle', label: 'Verrekenen' },
   { id: 'leftover', label: 'Overhouden' },
-  { id: 'people', label: 'Mensen' },
   { id: 'more', label: 'Meer' },
 ];
 
@@ -130,7 +129,7 @@ export default function App() {
 
         {tab === 'leftover' && <Leftover store={store} month={month} />}
 
-        {tab === 'people' && <People store={store} />}
+        {tab === 'people' && <People store={store} onBack={() => setTab('more')} />}
 
         {tab === 'more' && (
           <Settings
@@ -139,6 +138,7 @@ export default function App() {
             keyring={keyring}
             theme={theme}
             onTheme={setTheme}
+            onPeople={() => setTab('people')}
             onSignIn={() => {
               localStorage.removeItem('pay:local');
               setWithoutAccount(false);
@@ -149,7 +149,14 @@ export default function App() {
 
       <nav className="tabbar">
         {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
+          /* People and accounts live under "Meer" now — one tab fewer in a
+             strip that had six names touching — so that tab stays lit while
+             you are in there. */
+          <button
+            key={t.id}
+            className={tab === t.id || (t.id === 'more' && tab === 'people') ? 'on' : ''}
+            onClick={() => setTab(t.id)}
+          >
             <Icon name={t.id} size={20} />
             {t.label}
           </button>

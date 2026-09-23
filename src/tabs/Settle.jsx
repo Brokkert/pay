@@ -89,7 +89,7 @@ export default function Settle({ store, month }) {
   if (!me) {
     return (
       <Notice tone="warn">
-        Geef bij <strong>Mensen</strong> eerst aan wie van de personen jij bent. Zonder dat weet Pay
+        Geef bij <strong>Meer → Mensen</strong> eerst aan wie van de personen jij bent. Zonder dat weet Pay
         niet vanuit wie het moet rekenen.
       </Notice>
     );

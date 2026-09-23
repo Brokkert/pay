@@ -854,13 +854,13 @@ function Pot({ pot, people, hub, month, lines, transfers, live, context, onDetai
       )}
       {shared && !hasContributions && !isHub && (
         <div className="hint" style={{ marginTop: -4 }}>
-          Vul bij <strong>Mensen</strong> in wat ieder maandelijks stort, dan zie je hier of deze
+          Vul bij <strong>Meer → Mensen</strong> in wat ieder maandelijks stort, dan zie je hier of deze
           rekening uitkomt.
         </div>
       )}
       {!shared && !hasContributions && (
         <div className="hint" style={{ marginTop: -4 }}>
-          Zet je hier zelf maandelijks een vast bedrag op? Vul dat bij <strong>Mensen</strong> in
+          Zet je hier zelf maandelijks een vast bedrag op? Vul dat bij <strong>Meer → Mensen</strong> in
           als vaste inleg, dan zegt Pay of het nog klopt met wat eraf gaat.
         </div>
       )}

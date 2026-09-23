@@ -137,7 +137,7 @@ export default function Leftover({ store, month }) {
   if (!chains.length && !persons.length && !shared.length) {
     return (
       <Empty icon="settle" title="Nog niets ingevuld">
-        Vul bij <strong>Mensen</strong> je inkomen in, en bij een eigen rekening wat er maandelijks
+        Vul bij <strong>Meer → Mensen</strong> je inkomen in, en bij een eigen rekening wat er maandelijks
         op binnenkomt. Dan staat hier van boven naar beneden waar je geld heen gaat en wat er
         overblijft.
       </Empty>

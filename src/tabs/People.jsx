@@ -6,13 +6,18 @@ import { ACCOUNT_KINDS, accountKindOf, COLOURS } from '../data/categories.js';
 import { count } from '../lib/words.js';
 import { formatMoney } from '../lib/money.js';
 
-export default function People({ store }) {
+export default function People({ store, onBack = null }) {
   const { people, accounts, expenses, save, remove, claim, cloud } = store;
   const [person, setPerson] = useState(null);
   const [account, setAccount] = useState(null);
 
   return (
     <>
+      {onBack && (
+        <button className="btn quiet sm" style={{ margin: '4px 0 6px -8px' }} onClick={onBack}>
+          <Icon name="left" size={16} /> Meer
+        </button>
+      )}
       <div className="section">Personen</div>
       {!people.length && (
         <Notice tone="info">
