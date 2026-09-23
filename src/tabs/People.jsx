@@ -201,10 +201,13 @@ function PersonForm({ person, people, accounts = [], cloud, onClaim, onSave, onR
         </Field>
       )}
 
-      {draft.income > 0 && (
+      {/* Only where the salary comes off an account in Pay. Paid from outside,
+          there is no balance the day could move, and asking for it would be
+          asking for something to do with nothing. */}
+      {draft.income > 0 && draft.incomeFrom && (
         <Field
           label="Salaris komt binnen op"
-          hint="Mag leeg. Vul je hem in, dan weet Pay of het salaris deze maand al is geweest — en klopt wat er vandaag op de rekening hoort te staan."
+          hint="Mag leeg. Vul je hem in, dan weet Pay of het salaris deze maand al van die rekening af is — en klopt wat er vandaag op hoort te staan."
         >
           <DayPicker value={draft.incomeDay} onChange={(day) => set({ incomeDay: day })} />
         </Field>
