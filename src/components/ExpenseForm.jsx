@@ -209,7 +209,10 @@ export default function ExpenseForm({
         </Field>
       )}
 
-      {draft.cadence !== 'once' && (
+      {/* Only where the bill comes off an account in Pay. Paid by a person, the
+          bank takes it from their account, which Pay does not follow — so the
+          day would sit there promising something it cannot do. */}
+      {draft.cadence !== 'once' && draft.payer?.kind === 'account' && (
         <Field
           label="Op welke dag"
           hint={
