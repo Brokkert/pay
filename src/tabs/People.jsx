@@ -7,7 +7,7 @@ import { count } from '../lib/words.js';
 import { formatMoney } from '../lib/money.js';
 
 export default function People({ store }) {
-  const { people, accounts, save, remove, claim, cloud } = store;
+  const { people, accounts, expenses, save, remove, claim, cloud } = store;
   const [person, setPerson] = useState(null);
   const [account, setAccount] = useState(null);
 
@@ -97,6 +97,7 @@ export default function People({ store }) {
           account={account}
           people={people}
           accounts={accounts}
+          expenses={expenses}
           onSave={(record) => save('accounts', record)}
           onRemove={(id) => remove('accounts', id)}
           onClose={() => setAccount(null)}
@@ -315,7 +316,7 @@ function PersonForm({ person, people, accounts = [], cloud, onClaim, onSave, onR
   );
 }
 
-function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
+function AccountForm({ account, people, accounts, expenses = [], onSave, onRemove, onClose }) {
   const [draft, setDraft] = useState(() => ({
     name: '', kind: 'shared', ownerId: null, members: [], contributions: {},
     iban: '', settlement: false, ...account,
@@ -326,6 +327,23 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
 
   const shared = draft.kind === 'shared';
   const members = draft.members || [];
+  // Everyone whose money lands on this account: the members, plus anyone who
+  // carries a share of something it pays. Being a member is only about who is
+  // proposed on a new post and whose deposit gets rounded up — it was never a
+  // list of who transfers, and asking only members when their deposit arrives
+  // left out exactly the people who transfer it by hand.
+  const depositors = [
+    ...new Set([
+      ...members,
+      ...expenses
+        .filter((e) => e.payer?.kind === 'account' && e.payer.id === draft.id)
+        .flatMap((e) => [
+          ...(e.split?.participants || []),
+          ...Object.keys(e.split?.weights || {}),
+        ])
+        .filter((key) => !String(key).startsWith('account:')),
+    ]),
+  ].filter((id) => people.some((p) => p.id === id));
   const paidIn = Object.values(draft.contributions || {}).reduce((s, c) => s + (Number(c) || 0), 0);
 
   const toggleMember = (id) =>
@@ -356,7 +374,7 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
         depositDays: shared
           ? Object.fromEntries(
               Object.entries(draft.depositDays || {}).filter(
-                ([id, day]) => members.includes(id) && Number(day) >= 1 && Number(day) <= 31
+                ([id, day]) => depositors.includes(id) && Number(day) >= 1 && Number(day) <= 31
               )
             )
           : {},
@@ -455,13 +473,13 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
             </label>
           </Field>
 
-          {members.length > 0 && (
+          {depositors.length > 0 && (
             <Field
-              label="Vaste inleg per maand"
-              hint="Je vaste overboeking bij de bank. Alleen om naast het aandeel te leggen. Leeg mag."
+              label="Wie stort, en wanneer"
+              hint="Het bedrag is je vaste overboeking bij de bank, alleen om naast het aandeel te leggen. De dag is wanneer het binnenkomt. Allebei leeg mag."
             >
               <div className="panel" style={{ marginBottom: 0 }}>
-                {members.map((id) => {
+                {depositors.map((id) => {
                   const p = people.find((x) => x.id === id);
                   return (
                     <div key={id} className="line">
@@ -484,12 +502,16 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
                           />
                         </div>
                       </div>
-                      <span style={{ width: 132 }}>
-                        <AmountInput
-                          cents={draft.contributions?.[id] || 0}
-                          onChange={(c) => set({ contributions: { ...(draft.contributions || {}), [id]: c } })}
-                        />
-                      </span>
+                      {/* Only a member has a standing order to hold against the
+                          share; anyone else simply transfers what they owe. */}
+                      {members.includes(id) && (
+                        <span style={{ width: 132 }}>
+                          <AmountInput
+                            cents={draft.contributions?.[id] || 0}
+                            onChange={(c) => set({ contributions: { ...(draft.contributions || {}), [id]: c } })}
+                          />
+                        </span>
+                      )}
                     </div>
                   );
                 })}

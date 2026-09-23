@@ -423,6 +423,32 @@ describe('tapping your own deposit', () => {
   }, 30000);
 });
 
+describe('someone who pays into a pot without being a member of it', () => {
+  it('is still asked when their money lands', async () => {
+    const set = exampleHousehold();
+    const bills = set.accounts.find((a) => a.name === 'Vaste lasten');
+    const neighbour = set.people.find((p) => p.name === 'Buur');
+    // Carries a share of something the pot pays, but is not one of its members.
+    set.expenses = set.expenses.map((e) =>
+      e.payer?.kind === 'account' && e.payer.id === bills.id && e.split?.participants?.length
+        ? { ...e, split: { ...e.split, participants: [...e.split.participants, neighbour.id] } }
+        : e
+    );
+    await withData(set);
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Mensen/ }));
+
+    const row = [...document.querySelectorAll('.item')]
+      .find((el) => /Vaste lasten/.test(el.textContent));
+    await user.click(row);
+
+    const panel = [...document.querySelectorAll('.field')]
+      .find((f) => /Wie stort, en wanneer/.test(f.textContent));
+    expect(panel).toBeTruthy();
+    expect(within(panel).getByText('Buur')).toBeTruthy();
+  }, 30000);
+});
+
 describe('what should be on an account today', () => {
   it('stands on the leftover tab, with the month behind it day by day', async () => {
     await withData(exampleHousehold());
