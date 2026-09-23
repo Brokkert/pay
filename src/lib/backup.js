@@ -195,6 +195,7 @@ export function readBackup(source) {
       ...(Number(e.chargeDay) >= 1 && Number(e.chargeDay) <= 31
         ? { chargeDay: Number(e.chargeDay) }
         : {}),
+      ...(day(e.settleDay) ? { settleDay: day(e.settleDay) } : {}),
       ...(text(e.from) ? { from: text(e.from) } : {}),
       ...(text(e.until) ? { until: text(e.until) } : {}),
       payer,

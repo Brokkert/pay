@@ -35,6 +35,7 @@ const blank = (meId) => ({
   split: { kind: 'equal', participants: meId ? [meId] : [], weights: {} },
   chargeMonth: '',
   chargeDay: '',
+  settleDay: '',
   from: '',
   until: '',
   paused: false,
@@ -81,6 +82,14 @@ export default function ExpenseForm({
    * simply never moved. It follows along now, and stops the moment you tick a
    * bearer yourself — from then on it is your answer, not a default.
    */
+  // How many carry a share. Asking when the others pay only means something
+  // once there are others.
+  const bearers = (
+    draft.split?.kind === 'equal'
+      ? draft.split.participants || []
+      : Object.keys(draft.split?.weights || {})
+  ).length;
+
   const choosePayer = (payer) => {
     const current =
       draft.split?.kind === 'equal'
@@ -210,6 +219,23 @@ export default function ExpenseForm({
           }
         >
           <DayPicker value={draft.chargeDay} onChange={(day) => set({ chargeDay: day })} />
+        </Field>
+      )}
+
+      {/* Two different days, and they are different money. The one above is the
+          bank taking the bill off the account; this one is what the others pay
+          in for it. Collect in two rounds and the same person's money lands on
+          two days, which one figure per person cannot say. */}
+      {bearers > 1 && draft.cadence !== 'once' && (
+        <Field
+          label="Anderen betalen hiervoor op"
+          hint={
+            draft.settleDay
+              ? `Op de ${draft.settleDay}e komt het geld van de anderen voor deze post binnen. Los van wanneer de bank de post zelf weghaalt.`
+              : 'Mag leeg. Incasseer je deze post apart van de rest, zet dan hier die dag — anders rekent Pay met de dag die bij de persoon of de rekening staat.'
+          }
+        >
+          <DayPicker value={draft.settleDay} onChange={(day) => set({ settleDay: day })} />
         </Field>
       )}
 

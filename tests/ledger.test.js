@@ -9,6 +9,7 @@ import {
   mineFirst,
   isAccountParty,
 } from '../src/lib/ledger.js';
+import { exampleHousehold } from '../src/data/example.js';
 
 // A household with everything in it that makes this hard: two people with a
 // household bills account, a business account that also pays for shared things,
@@ -1279,11 +1280,82 @@ describe('a month that nets to you paying someone back', () => {
   const potOn = (today) => forMonth({ people, accounts: [pot], expenses }, '2026-03', today).pots[0];
 
   it('pays them on the day set for them, not silently at the start of the month', () => {
-    const move = potOn('2026-03-20').movements.find((m) => m.key === `out-${frans}`);
-    expect(move.cents).toBeLessThan(0);
-    expect(move.day).toBe(12);
-    expect(move.done).toBe(true);
+    const his = (today) =>
+      potOn(today).movements.find((m) => m.key === `in-${frans}-12`);
+    // His share of the streaming against what the pot owes him for the sport:
+    // one transfer on his day, and this month it runs his way.
+    expect(his('2026-03-20').cents).toBe(-2000);
+    expect(his('2026-03-20').done).toBe(true);
     // Before that day the money is still on the account.
-    expect(potOn('2026-03-11').movements.find((m) => m.key === `out-${frans}`).done).toBe(false);
+    expect(his('2026-03-11').done).toBe(false);
+  });
+});
+
+
+describe('the timeline against the settlement it is made of', () => {
+  it('adds up to the same month, however finely it is split', () => {
+    const set = exampleHousehold();
+    for (const month of ['2026-01', '2026-03', '2026-07']) {
+      const result = forMonth(set, month, `${month}-15`);
+      for (const pot of result.pots) {
+        const party = `account:${pot.account.id}`;
+        // Everything this account settles with people, as the transfers say.
+        const netted = result.transfers.reduce((sum, t) => {
+          if (t.to === party && !t.from.startsWith('account:')) return sum + t.cents;
+          if (t.from === party && !t.to.startsWith('account:')) return sum - t.cents;
+          return sum;
+        }, 0);
+        // And as the day-by-day movements say.
+        const laidOut = pot.movements
+          .filter((m) => m.key.startsWith('in-') || m.key.startsWith('round-'))
+          .reduce((sum, m) => sum + m.cents, 0);
+        const rounding = Object.entries(pot.rounded).reduce(
+          (sum, [id, cents]) => sum + cents - (pot.incoming[id] || 0),
+          0
+        );
+        expect([month, pot.account.name, laidOut]).toEqual([
+          month,
+          pot.account.name,
+          netted + rounding,
+        ]);
+      }
+    }
+  });
+});
+
+
+describe('two direct debit rounds from the same person', () => {
+  const me = 'p-me';
+  const frans = 'p-frans';
+  const people = [{ id: me, name: 'Ik', isMe: true }, { id: frans, name: 'Frans' }];
+  const pot = { id: 'a-pot', name: 'Pot', kind: 'shared', members: [me], depositDay: 1 };
+  const both = { kind: 'equal', participants: [me, frans], weights: {} };
+  const expenses = [
+    { id: 'e-1', name: 'Streaming', amount: 1000, cadence: 'month', chargeDay: 28, settleDay: 3,
+      payer: { kind: 'account', id: 'a-pot' }, split: both },
+    { id: 'e-2', name: 'Sport', amount: 3000, cadence: 'month', chargeDay: 28, settleDay: 20,
+      payer: { kind: 'account', id: 'a-pot' }, split: both },
+  ];
+  const potOn = (today) => forMonth({ people, accounts: [pot], expenses }, '2026-03', today).pots[0];
+
+  it('lands on two days, and each round is named after its own post', () => {
+    const his = (today) =>
+      potOn(today).movements.filter((m) => m.what.startsWith('Frans') && m.done);
+    expect(his('2026-03-02')).toHaveLength(0);
+    // The third: his half of the streaming, and nothing else yet.
+    expect(his('2026-03-03').map((m) => [m.what, m.cents])).toEqual([
+      ['Frans · Streaming', 500],
+    ]);
+    // The twentieth: the sport as well.
+    expect(his('2026-03-20').map((m) => m.cents)).toEqual([500, 1500]);
+  });
+
+  it('still adds up to the one figure the settle tab shows', () => {
+    const result = forMonth({ people, accounts: [pot], expenses }, '2026-03', '2026-03-20');
+    const owed = result.transfers.find((t) => t.from === `person:${frans}`).cents;
+    const laidOut = result.pots[0].movements
+      .filter((m) => m.what.startsWith('Frans'))
+      .reduce((sum, m) => sum + m.cents, 0);
+    expect(laidOut).toBe(owed);
   });
 });

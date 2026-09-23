@@ -99,6 +99,8 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
   const lines = [];
   const warnings = [];
   const raw = {};
+  // Every booking as it was made, before summing and netting.
+  const bookings = [];
   // What each bearer ends up carrying, keyed by the key from the split — so
   // accounts that bear a share of their own are in here too.
   const borne = Object.fromEntries(people.map((p) => [p.id, 0]));
@@ -226,6 +228,10 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
         advanced[partyId(from)] = (advanced[partyId(from)] || 0) + part;
       }
       book(raw, from, party, part);
+      // The same booking, kept per expense. The matrix above is summed and then
+      // netted, which is right for "who owes whom" but loses which post the
+      // money belonged to — and that is exactly what a day hangs on.
+      bookings.push({ expense, from, to: party, cents: part });
     }
 
     const line = { expense, amount, party, shares, remainder };
@@ -235,6 +241,20 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
 
   const hub = settlementAccount(accounts);
   if (hub) routeThrough(raw, accountParty(hub.id), hub);
+  // And the same detour for the per-expense record, booking by booking: what
+  // one person owes another goes over the settlement account, so that account
+  // sees both halves of it.
+  const routed = [];
+  for (const b of bookings) {
+    if (hub && !isAccountParty(b.from) && !isAccountParty(b.to)) {
+      const via = accountParty(hub.id);
+      if (b.from !== via && b.to !== via) {
+        routed.push({ ...b, to: via }, { ...b, from: via });
+        continue;
+      }
+    }
+    routed.push(b);
+  }
 
   const transfers = net(raw);
 
@@ -269,7 +289,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
       },
       lines,
       people,
-      { month, today: live ? today : null }
+      { month, today: live ? today : null, bookings: routed }
     ),
     hub,
     // Whether the figures in here are held against a day inside the month.
@@ -594,7 +614,7 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
   // A movement with no day counts as done. That is what every figure meant
   // before there were days at all, so an account with nothing filled in reads
   // exactly as it did.
-  const { month, today } = when;
+  const { month, today, bookings = [] } = when;
   const onDay = today ? Number(String(today).slice(8, 10)) : null;
   // The 31st in a thirty-day month is the 30th: a day past the end of the
   // month would otherwise sit as "still to come" and never arrive.
@@ -605,6 +625,7 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
   };
   for (const row of rows) {
     const account = row.account;
+    const party = accountParty(account.id);
     const moves = [];
     const add = (key, what, cents, day) => {
       if (!cents) return;
@@ -625,16 +646,42 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
     }
     // What arrives: deposits, turnover, a standing order from another account.
     const depositDay = dayOf(account.depositDay);
-    for (const [id, cents] of Object.entries(row.incoming)) {
+    // Money between this account and a person, post by post rather than as one
+    // netted figure. Collected in two direct debit rounds it really is two
+    // transfers on two days, and a single netted number cannot say that. The
+    // month still adds up to the same amount — this only says when.
+    const perPerson = new Map();
+    for (const b of bookings) {
+      const inbound = b.to === party && !isAccountParty(b.from);
+      const outbound = b.from === party && !isAccountParty(b.to);
+      if (!inbound && !outbound) continue;
+      const id = partyId(inbound ? b.from : b.to);
+      const day = dayOf(b.expense.settleDay) ?? dayOf(account.depositDays?.[id]) ?? depositDay;
+      const key = `${id}|${day ?? ''}`;
+      const seen = perPerson.get(key) || { id, day, cents: 0, names: new Set() };
+      seen.cents += inbound ? b.cents : -b.cents;
+      seen.names.add(b.expense.name);
+      perPerson.set(key, seen);
+    }
+    for (const { id, day, cents, names } of perPerson.values()) {
       const person = people.find((p) => p.id === id);
-      // Someone who transfers it themselves has their own day; everyone in one
-      // direct debit batch falls back to the day of the account.
-      const own = dayOf(account.depositDays?.[id]);
+      const name = person?.name || 'iemand';
+      add(`in-${id}-${day ?? 'x'}`, `${name} ${cents < 0 ? 'krijgt terug' : 'stort'}`, cents, day);
+      const move = moves[moves.length - 1];
+      if (move && move.key === `in-${id}-${day ?? 'x'}` && names.size === 1) {
+        move.what = `${name} · ${[...names][0]}`;
+      }
+    }
+    // Rounding a deposit up is a choice about the transfer, not about any one
+    // post, so it travels with the person rather than with a post.
+    for (const [id, cents] of Object.entries(row.rounded)) {
+      const extra = cents - (row.incoming[id] || 0);
+      const person = people.find((p) => p.id === id);
       add(
-        `in-${id}`,
-        `${person?.name || 'iemand'} stort`,
-        row.rounded[id] || cents,
-        own ?? depositDay
+        `round-${id}`,
+        `${person?.name || 'iemand'} rondt af`,
+        extra,
+        dayOf(account.depositDays?.[id]) ?? depositDay
       );
     }
     for (const [id, cents] of Object.entries(row.fromAccounts)) {
@@ -667,18 +714,6 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
       add(`feed-${feed.account.id}`, `Naar ${feed.account.name}`, -feed.cents, dayOf(feed.account.feedDay));
     }
     add('overhead', 'Kosten buiten je posten om', -row.overhead, dayOf(account.overheadDay));
-    for (const [id, cents] of Object.entries(row.outgoing)) {
-      const person = people.find((p) => p.id === id);
-      // The same day, both directions. Whether the month nets to you paying
-      // them or them paying you, it is one transfer between this account and
-      // that person — so it happens on the day that transfer is made.
-      add(
-        `out-${id}`,
-        `Terug naar ${person?.name || 'iemand'}`,
-        -cents,
-        dayOf(account.depositDays?.[id]) ?? depositDay
-      );
-    }
     for (const [id, cents] of Object.entries(row.toAccounts)) {
       add(`to-${id}`, `Naar ${accounts.find((a) => a.id === id)?.name || 'een rekening'}`, -cents, null);
     }
