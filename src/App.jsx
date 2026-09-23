@@ -150,7 +150,7 @@ export default function App() {
       <nav className="tabbar">
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
-            <Icon name={t.id} size={21} />
+            <Icon name={t.id} size={20} />
             {t.label}
           </button>
         ))}

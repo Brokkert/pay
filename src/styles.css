@@ -151,31 +151,33 @@ svg { display: block; }
   right: 0;
   z-index: 40;
   display: flex;
-  gap: 2px;
+  gap: 0;
   max-width: 720px;
   margin: 0 auto;
-  padding: 8px 10px calc(8px + var(--safe-b));
+  padding: 6px 6px calc(6px + var(--safe-b));
   background: color-mix(in srgb, var(--surface) 88%, transparent);
   backdrop-filter: saturate(1.6) blur(18px);
   border-top: 1px solid var(--line-soft);
 }
 .tabbar button {
   flex: 1;
-  padding: 8px 2px 7px;
+  min-width: 0;
+  padding: 7px 0 6px;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
+  gap: 3px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.1px;
+  letter-spacing: -0.1px;
   color: var(--text-3);
   transition: color 0.15s, background 0.15s;
 }
-/* An active tab gets a shape of its own, not just a different colour: at a
-   glance you see where you are without having to read. */
-.tabbar button.on { color: var(--accent); background: var(--accent-soft); }
+/* Six names in one row on a phone: the two long ones were touching. No pill
+   behind the active one either — the colour and the weight already say where
+   you are, and the pill was one more shape in a strip that had too many. */
+.tabbar button.on { color: var(--accent); font-weight: 600; }
 
 /* ---------- surfaces ---------- */
 
