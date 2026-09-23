@@ -1530,3 +1530,35 @@ describe('VAT on a business account', () => {
     expect(row.movements.find((m) => m.key === 'income').cents).toBe(400000);
   });
 });
+
+
+describe('sharing a business bill that has VAT in it', () => {
+  const me = 'p-me';
+  const mau = 'p-mau';
+  const people = [{ id: me, name: 'Ik', isMe: true }, { id: mau, name: 'Mau' }];
+  const biz = { id: 'a-biz', name: 'Zaak', kind: 'business', ownerId: me };
+  const both = { kind: 'equal', participants: [me, mau], weights: {} };
+  const bill = { id: 'e-1', name: 'Internet', amount: 12100, cadence: 'month', vatRate: 21,
+    payer: { kind: 'account', id: 'a-biz' }, split: both };
+
+  it('splits what it costs without the VAT, and leaves the VAT with the business', () => {
+    const r = forMonth({ people, accounts: [biz], expenses: [bill] }, '2026-03');
+    // € 121 with € 21 VAT in it costs € 100: fifty each, and the business
+    // carries the € 21 it gets back.
+    expect(r.borne[me]).toBe(5000);
+    expect(r.borne[mau]).toBe(5000);
+    expect(r.lines[0].shares['account:a-biz']).toBe(2100);
+    // Mau owes her fifty and not a cent of the VAT; the business's slice is
+    // its own and settles nothing.
+    expect(r.transfers).toEqual([{ from: `person:${mau}`, to: `person:${me}`, cents: 5000 }]);
+    // The bank still takes the whole amount off the account.
+    expect(r.pots[0].out).toBe(12100);
+  });
+
+  it('shares the whole amount where no rate is set, as it always did', () => {
+    const plain = { ...bill, vatRate: 0 };
+    const r = forMonth({ people, accounts: [biz], expenses: [plain] }, '2026-03');
+    expect(r.borne[mau]).toBe(6050);
+    expect(r.lines[0].shares['account:a-biz']).toBeUndefined();
+  });
+});

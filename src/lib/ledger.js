@@ -147,7 +147,16 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
       continue;
     }
 
-    const { parts, remainder } = split(amount, expense.split);
+    // On a bill the business pays with VAT in it, the VAT is not a cost to
+    // anybody: it comes back on the return. So what people share is the amount
+    // without it, and the VAT is the business account's own slice — carried
+    // and refunded. The bank still takes the whole amount, and every sum that
+    // is about the account keeps seeing that.
+    const vat = isBusiness(expense, accounts) ? vatInside(amount, Number(expense.vatRate) || 0) : 0;
+    const { parts: split0, remainder } = split(amount - vat, expense.split);
+    const parts = vat
+      ? { ...split0, [`account:${expense.payer.id}`]: (split0[`account:${expense.payer.id}`] || 0) + vat }
+      : split0;
     // An account cannot bear anything — it only holds what people put in — so a
     // remainder on an expense it pays stays undivided until the expense itself
     // says who carries it. Counted here so it can be shown rather than lost.
