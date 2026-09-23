@@ -1205,3 +1205,29 @@ describe('what should be on an account today', () => {
     expect(first.standToday).toBeLessThan(expenses[0].amount);
   });
 });
+
+
+describe('a day past the end of the month, and a tax office paid on its own one', () => {
+  const me = 'p-me';
+  const holding = { id: 'a-hold', name: 'Holding', kind: 'business', ownerId: me, income: 500000 };
+
+  it('treats the last day as the last day February has', () => {
+    const people = [{ id: me, name: 'Ik', isMe: true, income: 300000, withheld: 100000,
+      incomeFrom: 'a-hold', incomeDay: 25, withheldDay: 31 }];
+    const potOn = (today) => forMonth({ people, accounts: [holding], expenses: [] }, '2026-02', today).pots[0];
+
+    // February has 28 days, so "the 31st" is the 28th — not a day that never comes.
+    const tax = potOn('2026-02-28').movements.find((m) => m.key === `tax-${me}`);
+    expect(tax.cents).toBe(-100000);
+    expect(tax.done).toBe(true);
+    expect(potOn('2026-02-27').movements.find((m) => m.key === `tax-${me}`).done).toBe(false);
+  });
+
+  it('keeps salary and payroll tax as one payment when they go on the same day', () => {
+    const people = [{ id: me, name: 'Ik', isMe: true, income: 300000, withheld: 100000,
+      incomeFrom: 'a-hold', incomeDay: 25 }];
+    const pot = forMonth({ people, accounts: [holding], expenses: [] }, '2026-02', '2026-02-26').pots[0];
+    expect(pot.movements.filter((m) => m.key.startsWith('tax-'))).toHaveLength(0);
+    expect(pot.movements.find((m) => m.key === `salary-${me}`).cents).toBe(-400000);
+  });
+});

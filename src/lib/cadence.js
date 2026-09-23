@@ -120,6 +120,23 @@ export const todayISO = () => {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 };
 
+/** How many days this month has — February being the reason to ask. */
+export function daysInMonth(month) {
+  const year = Number(String(month).slice(0, 4));
+  const index = Number(String(month).slice(5, 7));
+  return new Date(year, index, 0).getDate();
+}
+
+/**
+ * The day a charge set to this day really lands on, in this month.
+ *
+ * A charge on the 31st is a charge on the last day: nobody means "skip
+ * February". Clamping here is what banks do too, and without it a day past the
+ * end of a short month would sit as "moet nog" for the whole month and never
+ * happen.
+ */
+export const dayInMonth = (day, month) => Math.min(day, daysInMonth(month));
+
 /**
  * At this point in time, has this month's charge already left the account?
  *
@@ -131,7 +148,7 @@ export function chargePassed(expense, month, today) {
   if (!today || String(today).slice(0, 7) !== String(month)) return true;
   const day = chargeDayOf(expense);
   if (day === null) return true;
-  return Number(String(today).slice(8, 10)) >= day;
+  return Number(String(today).slice(8, 10)) >= dayInMonth(day, month);
 }
 
 /**

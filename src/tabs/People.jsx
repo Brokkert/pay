@@ -193,10 +193,23 @@ function PersonForm({ person, people, accounts = [], cloud, onClaim, onSave, onR
         >
           <AmountInput cents={draft.withheld || 0} onChange={(c) => set({ withheld: c })} />
           {draft.withheld > 0 && (
-            <div className="hint" style={{ marginTop: 8 }}>
-              Kost die rekening dus <strong>{formatMoney(draft.income + draft.withheld)}</strong>{' '}
-              bruto per maand. Dat hoort het brutoloon op je loonstrook te zijn.
-            </div>
+            <>
+              {/* Withheld on the payslip, paid to the tax office later — often
+                  the last day of the month after. One payslip, two dates, so
+                  the day is asked here rather than borrowed from the salary. */}
+              <div style={{ marginTop: 10 }}>
+                <DayPicker
+                  value={draft.withheldDay}
+                  onChange={(day) => set({ withheldDay: day })}
+                  empty="Gaat af op de dag van het salaris"
+                />
+              </div>
+              <div className="hint" style={{ marginTop: 8 }}>
+                Kost die rekening dus <strong>{formatMoney(draft.income + draft.withheld)}</strong>{' '}
+                bruto per maand. Dat hoort het brutoloon op je loonstrook te zijn. Draag je de
+                loonheffing op een andere dag af dan het salaris, zet die dag dan hierboven.
+              </div>
+            </>
           )}
         </Field>
       )}

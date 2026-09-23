@@ -389,7 +389,11 @@ export const DayPicker = ({ value, onChange, empty = 'Dag onbekend' }) => (
   >
     <option value="">{empty}</option>
     {Array.from({ length: 31 }, (_, i) => (
-      <option key={i + 1} value={i + 1}>{`de ${i + 1}e`}</option>
+      <option key={i + 1} value={i + 1}>
+        {/* The last day of the month is the 31st, clamped: in February that is
+            the 28th. Saying so here saves picking a day that never comes. */}
+        {i + 1 === 31 ? 'de laatste dag' : `de ${i + 1}e`}
+      </option>
     ))}
   </select>
 );

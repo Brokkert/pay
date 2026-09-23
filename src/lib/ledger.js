@@ -22,6 +22,7 @@ import {
   chargeDayOf,
   chargePassed,
   shiftMonth,
+  dayInMonth,
 } from './cadence.js';
 import { split, byWeight, isAccountBearer, accountOfBearer } from './split.js';
 import { categoryName } from '../data/categories.js';
@@ -595,7 +596,9 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
   // exactly as it did.
   const { month, today } = when;
   const onDay = today ? Number(String(today).slice(8, 10)) : null;
-  const passed = (day) => day === null || onDay === null || onDay >= day;
+  // The 31st in a thirty-day month is the 30th: a day past the end of the
+  // month would otherwise sit as "still to come" and never arrive.
+  const passed = (day) => day === null || onDay === null || onDay >= dayInMonth(day, month);
   const dayOf = (value) => {
     const day = Number(value);
     return day >= 1 && day <= 31 ? day : null;
@@ -636,12 +639,21 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
     // And what leaves besides the bills: salary, a standing order onwards, the
     // costs of the account itself, money back to whoever fronted something.
     for (const pay of row.salaries) {
-      add(
-        `salary-${pay.person.id}`,
-        `Salaris ${pay.person.name}`,
-        -(pay.cents + pay.withheld),
-        dayOf(pay.person.incomeDay)
-      );
+      // Two movements where the tax office is paid on its own day, one where it
+      // is not — because on the account they really are one payment then.
+      const taxDay = dayOf(pay.person.withheldDay);
+      const salaryDay = dayOf(pay.person.incomeDay);
+      if (pay.withheld && taxDay !== null && taxDay !== salaryDay) {
+        add(`salary-${pay.person.id}`, `Salaris ${pay.person.name}`, -pay.cents, salaryDay);
+        add(`tax-${pay.person.id}`, `Loonheffing ${pay.person.name}`, -pay.withheld, taxDay);
+      } else {
+        add(
+          `salary-${pay.person.id}`,
+          `Salaris ${pay.person.name}`,
+          -(pay.cents + pay.withheld),
+          salaryDay
+        );
+      }
     }
     for (const feed of row.feeds) {
       add(`feed-${feed.account.id}`, `Naar ${feed.account.name}`, -feed.cents, dayOf(feed.account.feedDay));

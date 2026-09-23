@@ -96,6 +96,7 @@ export function readBackup(source) {
       ...(text(p.incomeFrom) ? { incomeFrom: text(p.incomeFrom) } : {}),
       ...(Number.isInteger(p.withheld) && p.withheld !== 0 ? { withheld: p.withheld } : {}),
       ...(day(p.incomeDay) ? { incomeDay: day(p.incomeDay) } : {}),
+      ...(day(p.withheldDay) ? { withheldDay: day(p.withheldDay) } : {}),
     };
   });
 
