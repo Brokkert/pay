@@ -1158,3 +1158,50 @@ describe('what the bank has taken so far this month', () => {
     expect(other.pots[0].due).toBe(0);
   });
 });
+
+
+describe('what should be on an account today', () => {
+  const me = 'p-me';
+  const mate = 'p-mate';
+  const people = [{ id: me, name: 'Ik', isMe: true }, { id: mate, name: 'Maat' }];
+  const account = {
+    id: 'a-bills',
+    name: 'Vaste lasten',
+    kind: 'shared',
+    members: [me, mate],
+    depositDay: 1,
+  };
+  const together = { kind: 'equal', participants: [me, mate], weights: {} };
+  // € 1.200 a year, charged on 27 March: € 100 goes in every month.
+  const expenses = [
+    { id: 'e-1', name: 'Zorgverzekering', amount: 120000, cadence: 'year',
+      chargeMonth: 3, chargeDay: 27,
+      payer: { kind: 'account', id: 'a-bills' }, split: together },
+  ];
+  const potOn = (today) =>
+    forMonth({ people, accounts: [account], expenses }, '2026-03', today).pots[0];
+
+  it('still holds the money on the day before the bank takes it', () => {
+    const before = potOn('2026-03-26');
+    // Eleven months saved, plus the deposit of the first of this month.
+    expect(before.opening).toBe(110000);
+    expect(before.standToday).toBe(120000);
+    // Which is the whole bill, the day before it goes out. That is the point.
+    expect(before.standToday).toBe(expenses[0].amount);
+  });
+
+  it('is empty again the day the charge goes through', () => {
+    expect(potOn('2026-03-27').standToday).toBe(0);
+    expect(potOn('2026-03-31').standToday).toBe(0);
+  });
+
+  it('has not had the deposits yet at the very start of the month', () => {
+    const account2 = { ...account, depositDay: 25 };
+    const first = forMonth({ people, accounts: [account2], expenses }, '2026-03', '2026-03-02')
+      .pots[0];
+    // The deposits land on the 25th, so on the 2nd only last month's savings
+    // stand — and the bill is not covered yet.
+    expect(first.standToday).toBe(110000);
+    expect(first.standToday).toBeLessThan(expenses[0].amount);
+  });
+});

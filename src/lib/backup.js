@@ -23,6 +23,8 @@ const fail = (message) => {
 };
 
 const text = (value) => (typeof value === 'string' ? value.trim() : '');
+/** A day of the month, or nothing — anything else is not a day. */
+const day = (value) => (Number(value) >= 1 && Number(value) <= 31 ? Number(value) : 0);
 
 /**
  * Whole cents only: a backup that carries 12.5 is a backup we do not trust.
@@ -93,6 +95,7 @@ export function readBackup(source) {
       ...(Number.isInteger(p.income) && p.income !== 0 ? { income: p.income } : {}),
       ...(text(p.incomeFrom) ? { incomeFrom: text(p.incomeFrom) } : {}),
       ...(Number.isInteger(p.withheld) && p.withheld !== 0 ? { withheld: p.withheld } : {}),
+      ...(day(p.incomeDay) ? { incomeDay: day(p.incomeDay) } : {}),
     };
   });
 
@@ -123,6 +126,10 @@ export function readBackup(source) {
       ...(text(a.fundedBy) ? { fundedBy: text(a.fundedBy) } : {}),
       ...(a.frontedByOwner === true ? { frontedByOwner: true } : {}),
       ...(Number.isInteger(a.roundTo) && a.roundTo > 0 ? { roundTo: a.roundTo } : {}),
+      ...(day(a.incomeDay) ? { incomeDay: day(a.incomeDay) } : {}),
+      ...(day(a.overheadDay) ? { overheadDay: day(a.overheadDay) } : {}),
+      ...(day(a.depositDay) ? { depositDay: day(a.depositDay) } : {}),
+      ...(day(a.feedDay) ? { feedDay: day(a.feedDay) } : {}),
     };
   });
 

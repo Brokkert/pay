@@ -1,7 +1,7 @@
 // Creating or changing an expense.
 
 import { useMemo, useState } from 'react';
-import { Sheet, Field, Notice, AmountInput, Avatar, Confirm, Icon } from './ui.jsx';
+import { Sheet, Field, Notice, AmountInput, Avatar, Confirm, Icon, DayPicker } from './ui.jsx';
 import SplitPicker from './SplitPicker.jsx';
 import { CADENCES, MONTH_NAMES, cadenceOf, chargeAnchor } from '../lib/cadence.js';
 import { SUGGESTED, categoryName } from '../data/categories.js';
@@ -209,16 +209,7 @@ export default function ExpenseForm({
               : 'Mag leeg. Vul je hem in, dan weet Pay of een afschrijving vandaag al is geweest of nog moet komen.'
           }
         >
-          <select
-            className="select"
-            value={draft.chargeDay || ''}
-            onChange={(e) => set({ chargeDay: e.target.value ? Number(e.target.value) : '' })}
-          >
-            <option value="">Dag onbekend</option>
-            {Array.from({ length: 31 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>{`de ${i + 1}e`}</option>
-            ))}
-          </select>
+          <DayPicker value={draft.chargeDay} onChange={(day) => set({ chargeDay: day })} />
         </Field>
       )}
 

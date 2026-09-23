@@ -423,6 +423,23 @@ describe('tapping your own deposit', () => {
   }, 30000);
 });
 
+describe('what should be on an account today', () => {
+  it('stands on the leftover tab, with the month behind it day by day', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Overhouden/ }));
+
+    const line = [...document.querySelectorAll('.line')]
+      .find((l) => /Hoort er vandaag op te staan/.test(l.textContent));
+    expect(line).toBeTruthy();
+
+    // And it opens the month itself: what stood there, and every movement since.
+    await user.click(line);
+    const sheet = document.querySelector('.sheet');
+    expect(within(sheet).getByText(/Per vandaag, de /)).toBeTruthy();
+  }, 30000);
+});
+
 describe('a transfer between two of your own accounts', () => {
   it('stands on the settle list, with what it has to cover behind it', async () => {
     const set = exampleHousehold();

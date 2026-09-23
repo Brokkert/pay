@@ -21,6 +21,7 @@ import {
   setAside,
   chargeDayOf,
   chargePassed,
+  shiftMonth,
 } from './cadence.js';
 import { split, byWeight, isAccountBearer, accountOfBearer } from './split.js';
 import { categoryName } from '../data/categories.js';
@@ -129,6 +130,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
   const gonePerAccount = {};
   const duePerAccount = {};
   const dayUnknownPerAccount = {};
+  const openingPerAccount = {};
   const unknownCharge = new Set();
   let yearlyTotal = 0;
 
@@ -181,6 +183,11 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
       }
       const aside = setAside(expense, month, live ? today : null);
       if (aside) asidePerAccount[account] = (asidePerAccount[account] || 0) + aside;
+      // What stood on it before this month began. Everything that happens in
+      // the month is rolled forward from there, so a running balance never has
+      // to guess where it started.
+      const opening = setAside(expense, shiftMonth(month, -1));
+      if (opening) openingPerAccount[account] = (openingPerAccount[account] || 0) + opening;
     }
     perCategory[category] = (perCategory[category] || 0) + amount;
 
@@ -250,9 +257,18 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
       transfers,
       accounts,
       perAccount,
-      { realPerAccount, asidePerAccount, gonePerAccount, duePerAccount, dayUnknownPerAccount, unknownCharge },
+      {
+        realPerAccount,
+        asidePerAccount,
+        gonePerAccount,
+        duePerAccount,
+        dayUnknownPerAccount,
+        openingPerAccount,
+        unknownCharge,
+      },
       lines,
-      people
+      people,
+      { month, today: live ? today : null }
     ),
     hub,
     // Whether the figures in here are held against a day inside the month.
@@ -365,7 +381,7 @@ export function net(matrix) {
  * be sitting on it" is the same question there; it was simply never asked,
  * because the panel started life as a view of a shared pot.
  */
-function potOverview(transfers, accounts, perAccount, saving, lines, people) {
+function potOverview(transfers, accounts, perAccount, saving, lines, people, when = {}) {
   const carries = (id) =>
     lines.some((l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === id) ||
     Number(accounts.find((a) => a.id === id)?.income) > 0 ||
@@ -517,6 +533,11 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
         // What really leaves this month, what is being saved for later, and
         // whether some expense could not say which month it goes out.
         drift,
+        // What stood on it when the month began, and the movements that roll
+        // that forward — both filled in below, once every account is known.
+        opening: saving.openingPerAccount[account.id] || 0,
+        movements: [],
+        standToday: 0,
         charged: saving.realPerAccount[account.id] || 0,
         aside: saving.asidePerAccount[account.id] || 0,
         // Of that, what the bank has been past already, what is still coming,
@@ -559,6 +580,86 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
     // only a feed nobody typed is added here.
     const arrives = row.income + row.paidIn + (row.fedBy && !row.fedBy.order ? row.fedBy.cents : 0);
     row.difference = arrives - row.needed - row.drawn - row.overhead;
+  }
+
+  // Third pass: the month as it actually happens, day by day.
+  //
+  // Every figure above is a month at a time, and a month is exactly the thing
+  // your bank app is not. Here the same money is laid out as the movements it
+  // really is — a bill on the 27th, a deposit on the 1st, a salary on the 25th —
+  // so "what should be on this account" can be answered for today instead of
+  // for the month as a whole.
+  //
+  // A movement with no day counts as done. That is what every figure meant
+  // before there were days at all, so an account with nothing filled in reads
+  // exactly as it did.
+  const { month, today } = when;
+  const onDay = today ? Number(String(today).slice(8, 10)) : null;
+  const passed = (day) => day === null || onDay === null || onDay >= day;
+  const dayOf = (value) => {
+    const day = Number(value);
+    return day >= 1 && day <= 31 ? day : null;
+  };
+  for (const row of rows) {
+    const account = row.account;
+    const moves = [];
+    const add = (key, what, cents, day) => {
+      if (!cents) return;
+      moves.push({ key, what, cents, day, done: passed(day) });
+    };
+
+    // What the bank takes off it this month, each on its own day.
+    for (const line of lines) {
+      if (line.expense.payer?.kind !== 'account') continue;
+      if (line.expense.payer.id !== account.id) continue;
+      if (chargedIn(line.expense, month) !== true) continue;
+      add(
+        `post-${line.expense.id}`,
+        line.expense.name,
+        -line.expense.amount,
+        chargeDayOf(line.expense)
+      );
+    }
+    // What arrives: deposits, turnover, a standing order from another account.
+    const depositDay = dayOf(account.depositDay);
+    for (const [id, cents] of Object.entries(row.incoming)) {
+      const person = people.find((p) => p.id === id);
+      add(`in-${id}`, `${person?.name || 'iemand'} stort`, row.rounded[id] || cents, depositDay);
+    }
+    for (const [id, cents] of Object.entries(row.fromAccounts)) {
+      add(`from-${id}`, `Terug van ${accounts.find((a) => a.id === id)?.name || 'een rekening'}`, cents, null);
+    }
+    add('income', 'Wat er binnenkomt', row.income, dayOf(account.incomeDay));
+    if (row.fedBy) {
+      add('fed', `Vanaf ${row.fedBy.account.name}`, row.fedBy.cents, dayOf(account.feedDay));
+    }
+    // And what leaves besides the bills: salary, a standing order onwards, the
+    // costs of the account itself, money back to whoever fronted something.
+    for (const pay of row.salaries) {
+      add(
+        `salary-${pay.person.id}`,
+        `Salaris ${pay.person.name}`,
+        -(pay.cents + pay.withheld),
+        dayOf(pay.person.incomeDay)
+      );
+    }
+    for (const feed of row.feeds) {
+      add(`feed-${feed.account.id}`, `Naar ${feed.account.name}`, -feed.cents, dayOf(feed.account.feedDay));
+    }
+    add('overhead', 'Kosten buiten je posten om', -row.overhead, dayOf(account.overheadDay));
+    for (const [id, cents] of Object.entries(row.outgoing)) {
+      const person = people.find((p) => p.id === id);
+      add(`out-${id}`, `Terug naar ${person?.name || 'iemand'}`, -cents, null);
+    }
+    for (const [id, cents] of Object.entries(row.toAccounts)) {
+      add(`to-${id}`, `Naar ${accounts.find((a) => a.id === id)?.name || 'een rekening'}`, -cents, null);
+    }
+
+    // Undated first — it already happened as far as anyone knows — then the
+    // month in the order it runs.
+    row.movements = moves.sort((a, b) => (a.day ?? 0) - (b.day ?? 0));
+    row.standToday =
+      row.opening + moves.reduce((sum, m) => (m.done ? sum + m.cents : sum), 0);
   }
 
   // The ones other people pay into first: those are the ones with someone else

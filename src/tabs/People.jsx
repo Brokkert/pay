@@ -1,7 +1,7 @@
 // People and accounts. The two things every calculation leans on.
 
 import { useState } from 'react';
-import { Sheet, Field, Notice, Avatar, AmountInput, Confirm, Total, Money, Icon } from '../components/ui.jsx';
+import { Sheet, Field, Notice, Avatar, AmountInput, Confirm, Total, Money, Icon, DayPicker } from '../components/ui.jsx';
 import { ACCOUNT_KINDS, accountKindOf, COLOURS } from '../data/categories.js';
 import { count } from '../lib/words.js';
 import { formatMoney } from '../lib/money.js';
@@ -198,6 +198,15 @@ function PersonForm({ person, people, accounts = [], cloud, onClaim, onSave, onR
               bruto per maand. Dat hoort het brutoloon op je loonstrook te zijn.
             </div>
           )}
+        </Field>
+      )}
+
+      {draft.income > 0 && (
+        <Field
+          label="Salaris komt binnen op"
+          hint="Mag leeg. Vul je hem in, dan weet Pay of het salaris deze maand al is geweest — en klopt wat er vandaag op de rekening hoort te staan."
+        >
+          <DayPicker value={draft.incomeDay} onChange={(day) => set({ incomeDay: day })} />
         </Field>
       )}
 
@@ -479,6 +488,15 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
           hint="Geld dat van buiten Pay binnenkomt, zoals omzet. Daarmee kan Pay zeggen wat er op deze rekening blijft staan."
         >
           <AmountInput cents={draft.income || 0} onChange={(c) => set({ income: c })} />
+          {draft.income > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <DayPicker
+                value={draft.incomeDay}
+                onChange={(day) => set({ incomeDay: day })}
+                empty="Dag onbekend"
+              />
+            </div>
+          )}
         </Field>
       )}
 
@@ -533,12 +551,26 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
         </Field>
       )}
 
+      {shared && (
+        <Field
+          label="Stortingen komen binnen op"
+          hint="Mag leeg. Met een dag erbij weet Pay of de stortingen van deze maand al binnen zijn, en klopt wat er vandaag op hoort te staan."
+        >
+          <DayPicker value={draft.depositDay} onChange={(day) => set({ depositDay: day })} />
+        </Field>
+      )}
+
       {!shared && (
         <Field
           label="Gaat er maandelijks af, buiten je posten om"
           hint="Kosten van deze rekening die je met niemand deelt. Tellen niet mee in je maandlast, alleen bij Overhouden."
         >
           <AmountInput cents={draft.overhead || 0} onChange={(c) => set({ overhead: c })} />
+          {draft.overhead > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <DayPicker value={draft.overheadDay} onChange={(day) => set({ overheadDay: day })} />
+            </div>
+          )}
         </Field>
       )}
 
@@ -600,6 +632,15 @@ function AccountForm({ account, people, accounts, onSave, onRemove, onClose }) {
                 </button>
               ))}
           </div>
+          {draft.fundedBy && (
+            <div style={{ marginTop: 10 }}>
+              <DayPicker
+                value={draft.feedDay}
+                onChange={(day) => set({ feedDay: day })}
+                empty="Dag van die overboeking onbekend"
+              />
+            </div>
+          )}
         </Field>
       )}
 

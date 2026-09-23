@@ -373,3 +373,23 @@ export async function copyText(text) {
 }
 
 export { Icon };
+
+/**
+ * The day of the month something happens on.
+ *
+ * Always allowed to be empty: a day nobody knows is better left blank than
+ * guessed, and everything that reads these treats a missing day as "already
+ * happened" — exactly what every figure meant before there were days at all.
+ */
+export const DayPicker = ({ value, onChange, empty = 'Dag onbekend' }) => (
+  <select
+    className="select"
+    value={value || ''}
+    onChange={(e) => onChange(e.target.value ? Number(e.target.value) : '')}
+  >
+    <option value="">{empty}</option>
+    {Array.from({ length: 31 }, (_, i) => (
+      <option key={i + 1} value={i + 1}>{`de ${i + 1}e`}</option>
+    ))}
+  </select>
+);

@@ -158,6 +158,7 @@ export default function Leftover({ store, month }) {
             <Chain
               pot={item.pot}
               people={people}
+              live={result.live}
               onOpenFeed={(feed) => setOpen({ kind: 'feed', feed })}
               onOpenCosts={() => setOpen({ kind: 'costs', pot: item.pot })}
               onOpenExtra={(kind, pot) => setOpen({ kind, pot })}
@@ -195,10 +196,23 @@ export default function Leftover({ store, month }) {
  * another tab, folded away. So the answer to "how much should be on here" was
  * three screens and a disclosure triangle from the account it was about.
  */
-function Extras({ pot, onOpen }) {
-  if (!pot.aside && !pot.drift) return null;
+function Extras({ pot, live, onOpen }) {
+  // The running balance is only worth showing where Pay knows what comes in.
+  // On an account it has only ever been told the bills of, a balance would be
+  // the sum of the bills with a minus in front — true of nothing.
+  const knowsInflow =
+    pot.account.kind === 'shared' || Boolean(pot.fedBy) || pot.income > 0 || pot.paidIn > 0;
+  if (!pot.aside && !pot.drift && !(live && knowsInflow)) return null;
   return (
     <div className="panel">
+      {live && knowsInflow && (
+        <Line
+          what="Hoort er vandaag op te staan"
+          sub="wat er stond op de 1e, plus alles wat er sindsdien op en af is gegaan"
+          cents={pot.standToday}
+          onClick={() => onOpen('stand', pot)}
+        />
+      )}
       {pot.aside > 0 && (
         <Line
           what="Hoort er nu op te staan"
@@ -216,6 +230,41 @@ function Extras({ pot, onOpen }) {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * The month on this account, day by day.
+ *
+ * Every other figure in the app is a month at a time, and a month is the one
+ * thing your bank app is not. This is the same money as the block above it,
+ * laid out as the movements it really is — so "hoort er vandaag op te staan"
+ * can be checked against what your bank says, instead of taken on faith.
+ */
+function StandBreakdown({ pot, month, today, onClose }) {
+  const day = Number(String(today).slice(8, 10));
+  const rows = [
+    ...(pot.opening
+      ? [{ key: 'opening', what: `Stond er op 1 ${formatMonth(month).split(' ')[0]}`, cents: pot.opening }]
+      : []),
+    ...pot.movements.map((m) => ({
+      key: m.key,
+      what: m.what,
+      sub: m.day ? `de ${m.day}e${m.done ? '' : ' — moet nog'}` : 'dag onbekend',
+      cents: m.cents,
+      tone: m.cents > 0 ? 'credit' : '',
+    })),
+  ];
+  return (
+    <Breakdown
+      title={pot.account.name}
+      label={`Per vandaag, de ${day}e`}
+      cents={pot.standToday}
+      rows={rows}
+      empty={`Er gebeurt deze maand niets op ${pot.account.name}.`}
+      note="Alles zonder dag telt als gebeurd — dat is wat het betekende voordat er dagen waren. Vul de dag in bij een post, een storting of een salaris, en die regel schuift naar de goede kant van vandaag."
+      onClose={onClose}
+    />
   );
 }
 
@@ -389,6 +438,15 @@ function Sheets({ open, setOpen, result, accounts, people, me, month }) {
         />
       )}
 
+      {open?.kind === 'stand' && (
+        <StandBreakdown
+          pot={open.pot}
+          month={month}
+          today={result.today}
+          onClose={() => setOpen(null)}
+        />
+      )}
+
       {open?.kind === 'drift' && (
         <DriftBreakdown pot={open.pot} lines={result.lines} onClose={() => setOpen(null)} />
       )}
@@ -420,7 +478,7 @@ function Sheets({ open, setOpen, result, accounts, people, me, month }) {
 }
 
 /** One account, top to bottom: what comes in, what goes out, what stays. */
-function Chain({ pot, people, onOpenFeed, onOpenCosts, onOpenExtra }) {
+function Chain({ pot, people, live, onOpenFeed, onOpenCosts, onOpenExtra }) {
   const personOf = (id) => people.find((p) => p.id === id) || null;
   const nameOf = (id) => personOf(id)?.name || 'iemand';
 
@@ -474,7 +532,7 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts, onOpenExtra }) {
             tone="credit"
           />
         </div>
-        <Extras pot={pot} onOpen={onOpenExtra} />
+        <Extras pot={pot} live={live} onOpen={onOpenExtra} />
         <div className="hint">
           {pot.closes === 0
             ? 'Erop en eraf zijn gelijk: deze rekening houdt niets van zichzelf.'
@@ -593,7 +651,7 @@ function Chain({ pot, people, onOpenFeed, onOpenCosts, onOpenExtra }) {
         Wat anderen hiervan dragen krijg je privé terug, niet op deze rekening. Tel de blokken dus
         niet bij elkaar op.
       </div>
-      <Extras pot={pot} onOpen={onOpenExtra} />
+      <Extras pot={pot} live={live} onOpen={onOpenExtra} />
     </>
   );
 }
