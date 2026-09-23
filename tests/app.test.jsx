@@ -449,6 +449,27 @@ describe('someone who pays into a pot without being a member of it', () => {
   }, 30000);
 });
 
+describe('someone who settles over the pot for a bill charged elsewhere', () => {
+  it('is asked for a day there too', async () => {
+    const set = exampleHousehold();
+    const hub = set.accounts.find((a) => a.kind === 'shared');
+    set.accounts = set.accounts.map((a) => (a.id === hub.id ? { ...a, settlement: true } : a));
+    await withData(set);
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Mensen/ }));
+
+    const row = [...document.querySelectorAll('.item')]
+      .find((el) => new RegExp(hub.name).test(el.textContent));
+    await user.click(row);
+
+    const panel = [...document.querySelectorAll('.field')]
+      .find((f) => /Wie stort of krijgt, en wanneer/.test(f.textContent));
+    // The friend only shares a subscription paid from a personal account, and
+    // a bill of his own — never one of this pot's. He still settles over it.
+    expect(within(panel).getByText('Vriend')).toBeTruthy();
+  }, 30000);
+});
+
 describe('what should be on an account today', () => {
   it('stands on the leftover tab, with the month behind it day by day', async () => {
     await withData(exampleHousehold());

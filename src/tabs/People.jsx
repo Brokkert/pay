@@ -342,11 +342,17 @@ function AccountForm({ account, people, accounts, expenses = [], onSave, onRemov
           ...Object.keys(e.split?.weights || {}),
         ])
         .filter((key) => !String(key).startsWith('account:')),
-      // On the account everything is settled through, money also goes the other
-      // way: to whoever paid something the rest of you carry. That is the same
-      // one transfer, on the same day, so they belong in this list too.
+      // The account everything is settled through sees more than its own posts.
+      // A debt between two people is routed over it whatever account the bill
+      // came off, so someone can pay into this one for something charged
+      // somewhere else entirely — and money goes back out of it to whoever
+      // fronted. Everyone who settles at all passes through here.
       ...(draft.settlement
-        ? expenses.filter((e) => e.payer?.kind === 'person').map((e) => e.payer.id)
+        ? expenses.flatMap((e) => [
+            ...(e.payer?.kind === 'person' && e.payer.id ? [e.payer.id] : []),
+            ...(e.split?.participants || []),
+            ...Object.keys(e.split?.weights || {}),
+          ])
         : []),
     ]),
   ].filter((id) => people.some((p) => p.id === id));
