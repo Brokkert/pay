@@ -1474,3 +1474,59 @@ describe('one subscription, two kinds of payer', () => {
     expect(late.filter((m) => named(m) === 'Ronde').map((m) => m.day)).toEqual([3, 20]);
   });
 });
+
+
+describe('VAT on a business account', () => {
+  const me = 'p-me';
+  const people = [{ id: me, name: 'Ik', isMe: true }];
+  const mine = { kind: 'equal', participants: [me], weights: {} };
+  // € 4.000 turnover ex VAT a month, returns in January, April, July, October
+  // on the 28th. Two bills: one with VAT in it, one without.
+  const holding = {
+    id: 'a-h', name: 'Holding', kind: 'business', ownerId: me,
+    income: 400000, incomeDay: 20, vatRate: 21, vatMonth: 1, vatDay: 28,
+  };
+  const expenses = [
+    { id: 'e-tel', name: 'Telefoon', amount: 12100, cadence: 'month', chargeDay: 5, vatRate: 21,
+      payer: { kind: 'account', id: 'a-h' }, split: mine },
+    { id: 'e-ins', name: 'Verzekering', amount: 5000, cadence: 'month', chargeDay: 5,
+      payer: { kind: 'account', id: 'a-h' }, split: mine },
+  ];
+  const on = (month, today) => forMonth({ people, accounts: [holding], expenses }, month, today).pots[0];
+
+  it('reserves the VAT on the turnover less the VAT inside its own bills', () => {
+    const feb = on('2026-02', '2026-02-28');
+    // € 840 on the turnover, € 21 inside the phone bill, nothing in the insurance.
+    expect(feb.vat.perMonth).toBe(84000);
+    expect(feb.vat.reclaim).toBe(2100);
+    expect(feb.vat.net).toBe(81900);
+    // February is one month past the January return: one month reserved.
+    expect(feb.vat.aside).toBe(81900);
+    expect(on('2026-03', '2026-03-31').vat.aside).toBe(2 * 81900);
+  });
+
+  it('holds three months of it until the return goes out, then nothing', () => {
+    expect(on('2026-04', '2026-04-27').vat.aside).toBe(3 * 81900);
+    expect(on('2026-04', '2026-04-28').vat.aside).toBe(0);
+    const paid = on('2026-04', '2026-04-28').movements.find((m) => m.key === 'vat');
+    expect(paid.cents).toBe(-3 * 81900);
+    expect(paid.done).toBe(true);
+  });
+
+  it('lets the turnover arrive with its VAT, and starts the month with what was reserved', () => {
+    const april = on('2026-04', '2026-04-01');
+    // Two months of net VAT stood on it when April began.
+    expect(april.opening).toBe(2 * 81900);
+    const turnover = april.movements.find((m) => m.key === 'income');
+    expect(turnover.what).toBe('Omzet incl. btw');
+    expect(turnover.cents).toBe(484000);
+  });
+
+  it('is nothing on an account without a rate, and nothing changes there', () => {
+    const plain = { ...holding, vatRate: 0 };
+    const row = forMonth({ people, accounts: [plain], expenses }, '2026-04', '2026-04-28').pots[0];
+    expect(row.vat.aside).toBe(0);
+    expect(row.movements.find((m) => m.key === 'vat')).toBeUndefined();
+    expect(row.movements.find((m) => m.key === 'income').cents).toBe(400000);
+  });
+});

@@ -143,6 +143,9 @@ export function readBackup(source) {
       ...(a.frontedByOwner === true ? { frontedByOwner: true } : {}),
       ...(Number.isInteger(a.roundTo) && a.roundTo > 0 ? { roundTo: a.roundTo } : {}),
       ...(day(a.incomeDay) ? { incomeDay: day(a.incomeDay) } : {}),
+      ...([9, 21].includes(Number(a.vatRate)) ? { vatRate: Number(a.vatRate) } : {}),
+      ...(Number(a.vatMonth) >= 1 && Number(a.vatMonth) <= 12 ? { vatMonth: Number(a.vatMonth) } : {}),
+      ...(day(a.vatDay) ? { vatDay: day(a.vatDay) } : {}),
       ...(day(a.overheadDay) ? { overheadDay: day(a.overheadDay) } : {}),
       ...(day(a.depositDay) ? { depositDay: day(a.depositDay) } : {}),
       ...(Object.keys(depositDays(a, maybe)).length ? { depositDays: depositDays(a, maybe) } : {}),
@@ -204,6 +207,7 @@ export function readBackup(source) {
         ? { chargeDay: Number(e.chargeDay) }
         : {}),
       ...(day(e.settleDay) ? { settleDay: day(e.settleDay) } : {}),
+      ...([9, 21].includes(Number(e.vatRate)) ? { vatRate: Number(e.vatRate) } : {}),
       ...(text(e.from) ? { from: text(e.from) } : {}),
       ...(text(e.until) ? { until: text(e.until) } : {}),
       payer,

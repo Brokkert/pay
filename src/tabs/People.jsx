@@ -5,6 +5,7 @@ import { Sheet, Field, Notice, Avatar, AmountInput, Confirm, Total, Money, Icon,
 import { ACCOUNT_KINDS, accountKindOf, COLOURS } from '../data/categories.js';
 import { count } from '../lib/words.js';
 import { formatMoney } from '../lib/money.js';
+import { MONTH_NAMES } from '../lib/cadence.js';
 
 export default function People({ store, onBack = null }) {
   const { people, accounts, expenses, save, remove, claim, cloud } = store;
@@ -406,6 +407,7 @@ function AccountForm({ account, people, accounts, expenses = [], onSave, onRemov
         // behind on one that used to be your own — an answer you cannot see is
         // an answer you cannot correct.
         overhead: shared ? 0 : Number(draft.overhead) || 0,
+        vatRate: shared ? 0 : Number(draft.vatRate) || 0,
         fundedBy: shared ? '' : draft.fundedBy || '',
         frontedByOwner:
           !shared && draft.kind === 'business' && Boolean(draft.frontedByOwner),
@@ -576,6 +578,54 @@ function AccountForm({ account, people, accounts, expenses = [], onSave, onRemov
                 onChange={(day) => set({ incomeDay: day })}
                 empty="Dag onbekend"
               />
+            </div>
+          )}
+        </Field>
+      )}
+
+      {/* VAT rides in with the turnover and is not yours: reserved for a
+          quarter, paid in one go. Asked here, next to the turnover it is a
+          percentage of, and nowhere else. */}
+      {!shared && draft.income > 0 && (
+        <Field
+          label="Btw over wat er binnenkomt"
+          hint={
+            Number(draft.vatRate) > 0
+              ? 'Dat geld komt wel binnen maar is niet van jou: Pay zet het klaar en haalt het er op de aangifte in één keer af, min de btw in de posten van deze rekening.'
+              : 'Komt de omzet inclusief btw binnen, kies dan het tarief. Dan weet Pay wat er op de rekening klaarstaat voor de aangifte.'
+          }
+        >
+          <div className="chips">
+            {[0, 9, 21].map((rate) => (
+              <button
+                key={rate}
+                type="button"
+                className={`chip${(Number(draft.vatRate) || 0) === rate ? ' on' : ''}`}
+                onClick={() => set({ vatRate: rate })}
+              >
+                {rate === 0 ? 'Geen' : `${rate}%`}
+              </button>
+            ))}
+          </div>
+          {Number(draft.vatRate) > 0 && (
+            <div className="row" style={{ gap: 8, marginTop: 10 }}>
+              <div className="grow">
+                <select
+                  className="select"
+                  value={draft.vatMonth || 1}
+                  onChange={(e) => set({ vatMonth: Number(e.target.value) })}
+                  aria-label="Aangifte in"
+                >
+                  {MONTH_NAMES.map((name, i) => (
+                    <option key={name} value={i + 1}>
+                      {`aangifte in ${name}, ${MONTH_NAMES[(i + 3) % 12]}, ${MONTH_NAMES[(i + 6) % 12]}, ${MONTH_NAMES[(i + 9) % 12]}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ width: 150 }}>
+                <DayPicker value={draft.vatDay} onChange={(day) => set({ vatDay: day })} />
+              </div>
             </div>
           )}
         </Field>

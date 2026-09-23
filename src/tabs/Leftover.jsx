@@ -202,7 +202,7 @@ function Extras({ pot, live, onOpen }) {
   // the sum of the bills with a minus in front — true of nothing.
   const knowsInflow =
     pot.account.kind === 'shared' || Boolean(pot.fedBy) || pot.income > 0 || pot.paidIn > 0;
-  if (!pot.aside && !pot.drift && !(live && knowsInflow)) return null;
+  if (!pot.aside && !pot.drift && !pot.vat?.aside && !(live && knowsInflow)) return null;
   return (
     <div className="panel">
       {live && knowsInflow && (
@@ -211,6 +211,13 @@ function Extras({ pot, live, onOpen }) {
           sub="wat er stond op de 1e, plus alles wat er sindsdien op en af is gegaan"
           cents={pot.standToday}
           onClick={() => onOpen('stand', pot)}
+        />
+      )}
+      {pot.vat?.aside > 0 && (
+        <Line
+          what="Btw die klaarstaat"
+          sub={`gaat op de aangifte van ${formatMonth(pot.vat.nextReturn).split(' ')[0]} naar de Belastingdienst`}
+          cents={pot.vat.aside}
         />
       )}
       {pot.aside > 0 && (

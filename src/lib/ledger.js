@@ -485,6 +485,12 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
       // monthly load, the categories and everyone's share, and only count
       // where the question is what is left on this account.
       const overhead = Number(account.overhead) || 0;
+      // VAT: money that arrives with the turnover and is not yours. It sits on
+      // the account for a quarter and goes to the tax office in one go, less
+      // the VAT inside what the account paid for in the meantime. So it is a
+      // yearly post turned inside out — income instead of a bill, a rate
+      // instead of an amount — and it is reserved the same way.
+      const vat = vatCycle(account, income, lines, when);
       // A salary costs the account the gross: what lands on the person, plus
       // what is withheld from it and paid to the tax office. Both come off the
       // same account on the same day, and both come from one payslip — so
@@ -563,7 +569,8 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
         drift,
         // What stood on it when the month began, and the movements that roll
         // that forward — both filled in below, once every account is known.
-        opening: saving.openingPerAccount[account.id] || 0,
+        opening: (saving.openingPerAccount[account.id] || 0) + vat.opening,
+        vat,
         movements: [],
         standToday: 0,
         charged: saving.realPerAccount[account.id] || 0,
@@ -703,7 +710,13 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
     for (const [id, cents] of Object.entries(row.fromAccounts)) {
       add(`from-${id}`, `Terug van ${accounts.find((a) => a.id === id)?.name || 'een rekening'}`, cents, null);
     }
-    add('income', 'Wat er binnenkomt', row.income, dayOf(account.incomeDay));
+    add(
+      'income',
+      row.vat.perMonth ? 'Omzet incl. btw' : 'Wat er binnenkomt',
+      row.income + row.vat.perMonth,
+      dayOf(account.incomeDay)
+    );
+    if (row.vat.returnMonth) add('vat', 'Btw-aangifte', -row.vat.due, dayOf(account.vatDay));
     if (row.fedBy && account.kind !== 'shared') {
       add('fed', `Vanaf ${row.fedBy.account.name}`, row.fedBy.cents, dayOf(account.feedDay));
     } else if (row.paidIn && account.kind !== 'shared') {
@@ -750,6 +763,46 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
   return rows.sort(
     (a, b) => Number(b.account.kind === 'shared') - Number(a.account.kind === 'shared')
   );
+}
+
+/** The VAT inside a gross amount at this rate: € 121 at 21% holds € 21. */
+const vatInside = (cents, rate) => Math.round((cents * rate) / (100 + rate));
+
+/**
+ * Where an account stands with the tax office this month.
+ *
+ * Per month: the VAT on the turnover, less the VAT inside what the account
+ * pays for — that is what has to be put by. Once a quarter, on the return
+ * month, three months of it leave. Between returns it is reserved money, and
+ * counts on the account the way a saving for a yearly bill does: until the
+ * day it actually goes.
+ */
+function vatCycle(account, income, lines, { month, today } = {}) {
+  const none = { rate: 0, perMonth: 0, reclaim: 0, net: 0, returnMonth: false, due: 0, aside: 0, opening: 0, nextReturn: null };
+  const rate = Number(account.vatRate) || 0;
+  if (!rate || !income || account.kind === 'shared') return none;
+  const perMonth = Math.round((income * rate) / 100);
+  // The VAT inside this account's own bills, per month, each at its own rate.
+  const reclaim = lines
+    .filter((l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === account.id)
+    .reduce((sum, l) => sum + vatInside(l.amount, Number(l.expense.vatRate) || 0), 0);
+  const net = perMonth - reclaim;
+  // The return months run three apart from the one given; without one, the
+  // usual quarter: January, April, July, October.
+  const first = (Number(account.vatMonth) || 1) - 1;
+  const since = (m) => ((Number(String(m).slice(5, 7)) - 1 - first) % 3 + 3) % 3;
+  const returnMonth = since(month) === 0;
+  const day = Number(account.vatDay) || null;
+  const onDay = today ? Number(String(today).slice(8, 10)) : null;
+  const passed = onDay === null || day === null || onDay >= dayInMonth(day, month);
+  // Reserved right now: three months of it until the return goes out, then
+  // nothing, then one month more each month.
+  const aside = returnMonth ? (passed ? 0 : 3 * net) : since(month) * net;
+  const before = shiftMonth(month, -1);
+  const opening = since(before) === 0 ? 0 : since(before) * net;
+  let nextReturn = month;
+  for (let i = 0; i < 3 && since(nextReturn) !== 0; i += 1) nextReturn = shiftMonth(nextReturn, 1);
+  return { rate, perMonth, reclaim, net, returnMonth, due: 3 * net, aside, opening, nextReturn };
 }
 
 /**

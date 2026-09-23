@@ -7,6 +7,8 @@ import { CADENCES, MONTH_NAMES, cadenceOf, chargeAnchor } from '../lib/cadence.j
 import { SUGGESTED, categoryName } from '../data/categories.js';
 import LabelPicker from './LabelPicker.jsx';
 import { defaultBearers } from '../lib/split.js';
+import { isBusiness } from '../lib/ledger.js';
+import { formatMoney } from '../lib/money.js';
 
 /**
  * Which months a charge actually falls in, named.
@@ -36,6 +38,7 @@ const blank = (meId) => ({
   chargeMonth: '',
   chargeDay: '',
   settleDay: '',
+  vatRate: 0,
   from: '',
   until: '',
   paused: false,
@@ -229,6 +232,33 @@ export default function ExpenseForm({
           }
         >
           <DayPicker value={draft.chargeDay} onChange={(day) => set({ chargeDay: day })} />
+        </Field>
+      )}
+
+      {/* Only on a bill the business pays: the VAT inside it comes back on
+          the return, so it counts against what the account has to put by.
+          A private bill has no VAT to claim, however much is in it. */}
+      {isBusiness(draft, accounts) && (
+        <Field
+          label="Btw in dit bedrag"
+          hint={
+            Number(draft.vatRate) > 0
+              ? `Van dit bedrag is ${formatMoney(Math.round((draft.amount * draft.vatRate) / (100 + draft.vatRate)))} btw. Die krijg je terug op de aangifte.`
+              : 'Verzekeringen, bankkosten, pensioen en wegenbelasting hebben geen btw. Telefoon, software, lease en de boekhouder wel.'
+          }
+        >
+          <div className="chips">
+            {[0, 9, 21].map((rate) => (
+              <button
+                key={rate}
+                type="button"
+                className={`chip${(Number(draft.vatRate) || 0) === rate ? ' on' : ''}`}
+                onClick={() => set({ vatRate: rate })}
+              >
+                {rate === 0 ? 'Geen' : `${rate}%`}
+              </button>
+            ))}
+          </div>
         </Field>
       )}
 
