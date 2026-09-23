@@ -107,3 +107,38 @@ describe('readBackup', () => {
     expect(back.expenses[0].id).toBeTruthy();
   });
 });
+
+
+describe('references that point at a person or an account', () => {
+  it('follow the new ids, whichever comes first in the file', () => {
+    const set = exampleHousehold();
+    const me = set.people.find((p) => p.isMe);
+    const friend = set.people.find((p) => !p.isMe);
+    const [shared, own] = [
+      set.accounts.find((a) => a.kind === 'shared'),
+      set.accounts.find((a) => a.kind !== 'shared'),
+    ];
+    // A person paid from an account further down the file, an account fed by
+    // one further down, and a day per person keyed by the old id.
+    me.income = 300000;
+    me.incomeFrom = own.id;
+    own.fundedBy = shared.id;
+    shared.depositDays = { [friend.id]: 12, 'p-gone': 3 };
+
+    const back = readBackup(backupOf(set));
+    const people = new Set(back.people.map((p) => p.id));
+    const accounts = new Set(back.accounts.map((a) => a.id));
+
+    const backMe = back.people.find((p) => p.isMe);
+    expect(accounts.has(backMe.incomeFrom)).toBe(true);
+    const backOwn = back.accounts.find((a) => a.name === own.name);
+    expect(accounts.has(backOwn.fundedBy)).toBe(true);
+    const backShared = back.accounts.find((a) => a.name === shared.name);
+    const keys = Object.keys(backShared.depositDays);
+    // The friend's day survives under their new id; a key pointing nowhere is
+    // dropped rather than kept as a dead reference.
+    expect(keys).toHaveLength(1);
+    expect(people.has(keys[0])).toBe(true);
+    expect(backShared.depositDays[keys[0]]).toBe(12);
+  });
+});

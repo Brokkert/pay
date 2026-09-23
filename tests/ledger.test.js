@@ -1359,3 +1359,79 @@ describe('two direct debit rounds from the same person', () => {
     expect(laidOut).toBe(owed);
   });
 });
+
+
+describe('what the review turned up', () => {
+  const me = 'p-me';
+  const frans = 'p-frans';
+  const people = [{ id: me, name: 'Ik', isMe: true }, { id: frans, name: 'Frans' }];
+  const both = { kind: 'equal', participants: [me, frans], weights: {} };
+  const mine = { kind: 'equal', participants: [me], weights: {} };
+
+  it('puts nothing by for a post that only starts this month', () => {
+    const pot = { id: 'a-pot', name: 'Pot', kind: 'shared', members: [me], depositDay: 1 };
+    const water = { id: 'e-w', name: 'Water', amount: 30000, cadence: 'quarter', chargeMonth: 10,
+      from: '2026-09-01', payer: { kind: 'account', id: 'a-pot' }, split: mine };
+    const row = forMonth({ people, accounts: [pot], expenses: [water] }, '2026-09', '2026-09-30').pots[0];
+    // It did not exist in August, so nothing stood on the account for it.
+    expect(row.opening).toBe(0);
+    // By the end of September exactly one instalment has arrived.
+    expect(row.standToday).toBe(10000);
+  });
+
+  it('drains a weekly bill by the month, not by one week of it', () => {
+    const pot = { id: 'a-pot', name: 'Pot', kind: 'shared', members: [me], depositDay: 1 };
+    const groceries = { id: 'e-g', name: 'Boodschappen', amount: 10000, cadence: 'week',
+      payer: { kind: 'account', id: 'a-pot' }, split: mine };
+    const row = forMonth({ people, accounts: [pot], expenses: [groceries] }, '2026-03', '2026-03-31').pots[0];
+    // What comes in for it and what goes out for it are the same month's worth.
+    expect(row.standToday).toBe(0);
+    expect(row.charged).toBe(row.out);
+    // And it cannot be placed on a day, so it says so rather than claiming one.
+    expect(row.dayUnknown).toBe(row.charged);
+  });
+
+  it('rounds a deposit up on the day the deposit itself lands', () => {
+    const pot = { id: 'a-pot', name: 'Pot', kind: 'shared', members: [me, frans], roundTo: 500 };
+    const streaming = { id: 'e-s', name: 'Streaming', amount: 1100, cadence: 'month', chargeDay: 28,
+      settleDay: 20, payer: { kind: 'account', id: 'a-pot' }, split: both };
+    const on = (today) => forMonth({ people, accounts: [pot], expenses: [streaming] }, '2026-03', today).pots[0];
+    // Before the twentieth nothing of Frans's has arrived — not the rounding either.
+    expect(on('2026-03-10').movements.find((m) => m.key === `round-${frans}`).done).toBe(false);
+    expect(on('2026-03-10').standToday).toBe(0);
+    // On the twentieth his round € 10,00 is there: € 5,50 owed plus € 4,50 rounding.
+    expect(on('2026-03-20').movements.find((m) => m.key === `round-${frans}`).cents).toBe(450);
+  });
+
+  it('does not let a standing order double what the members already put in', () => {
+    // A shared pot marked as fed by another account — the form forbids it, a
+    // backup may still carry it. The members fill the pot; nothing else does.
+    const holding = { id: 'a-h', name: 'Holding', kind: 'business', ownerId: me };
+    const pot = { id: 'a-pot', name: 'Pot', kind: 'shared', members: [me, frans], fundedBy: 'a-h' };
+    const streaming = { id: 'e-s', name: 'Streaming', amount: 1000, cadence: 'month',
+      payer: { kind: 'account', id: 'a-pot' }, split: both };
+    const rows = forMonth({ people, accounts: [holding, pot], expenses: [streaming] }, '2026-03', '2026-03-31').pots;
+    expect(rows.find((r) => r.account.id === 'a-pot').standToday).toBe(0);
+  });
+
+  it('lets an own standing order from outside Pay arrive', () => {
+    const own = { id: 'a-own', name: 'Eigen', kind: 'personal', ownerId: me, contributions: { [me]: 50000 } };
+    const rent = { id: 'e-r', name: 'Huur', amount: 40000, cadence: 'month',
+      payer: { kind: 'account', id: 'a-own' }, split: mine };
+    const row = forMonth({ people, accounts: [own], expenses: [rent] }, '2026-03', '2026-03-31').pots[0];
+    expect(row.standToday).toBe(10000);
+  });
+
+  it('names a post on its own line even when you also pay something of your own', () => {
+    const hub = { id: 'a-pot', name: 'Pot', kind: 'shared', members: [me], settlement: true };
+    const expenses = [
+      { id: 'e-own', name: 'Eigen', amount: 5000, cadence: 'month',
+        payer: { kind: 'person', id: me }, split: mine },
+      { id: 'e-s', name: 'Streaming', amount: 1000, cadence: 'month',
+        payer: { kind: 'account', id: 'a-pot' }, split: both },
+    ];
+    const row = forMonth({ people, accounts: [hub], expenses }, '2026-03', '2026-03-31').pots[0];
+    const move = row.movements.find((m) => m.key.startsWith(`in-${me}`));
+    expect(move.what).toBe('Ik · Streaming');
+  });
+});

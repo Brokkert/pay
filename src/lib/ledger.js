@@ -23,6 +23,7 @@ import {
   chargePassed,
   shiftMonth,
   dayInMonth,
+  cadenceOf,
 } from './cadence.js';
 import { split, byWeight, isAccountBearer, accountOfBearer } from './split.js';
 import { categoryName } from '../data/categories.js';
@@ -175,21 +176,27 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
       const charged = chargedIn(expense, month);
       if (charged === null) unknownCharge.add(account);
       else if (charged) {
-        realPerAccount[account] = (realPerAccount[account] || 0) + expense.amount;
+        // A weekly bill comes off more than once a month; the month's worth is
+        // what really goes, not one week of it.
+        const goes = cadenceOf(expense.cadence).perYear > 12 ? amount : expense.amount;
+        realPerAccount[account] = (realPerAccount[account] || 0) + goes;
         const bucket =
-          chargeDayOf(expense) === null
+          chargeDayOf(expense) === null || cadenceOf(expense.cadence).perYear > 12
             ? dayUnknownPerAccount
             : chargePassed(expense, month, live ? today : null)
               ? gonePerAccount
               : duePerAccount;
-        bucket[account] = (bucket[account] || 0) + expense.amount;
+        bucket[account] = (bucket[account] || 0) + goes;
       }
       const aside = setAside(expense, month, live ? today : null);
       if (aside) asidePerAccount[account] = (asidePerAccount[account] || 0) + aside;
       // What stood on it before this month began. Everything that happens in
       // the month is rolled forward from there, so a running balance never has
       // to guess where it started.
-      const opening = setAside(expense, shiftMonth(month, -1));
+      // Only for a post that was running then: a post that starts this month
+      // had nothing put by for it, however many months its charge month says.
+      const before = shiftMonth(month, -1);
+      const opening = isActive(expense, before) ? setAside(expense, before) : 0;
       if (opening) openingPerAccount[account] = (openingPerAccount[account] || 0) + opening;
     }
     perCategory[category] = (perCategory[category] || 0) + amount;
@@ -231,7 +238,7 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
       // The same booking, kept per expense. The matrix above is summed and then
       // netted, which is right for "who owes whom" but loses which post the
       // money belonged to — and that is exactly what a day hangs on.
-      bookings.push({ expense, from, to: party, cents: part });
+      if (from !== party) bookings.push({ expense, from, to: party, cents: part });
     }
 
     const line = { expense, amount, party, shares, remainder };
@@ -637,11 +644,15 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
       if (line.expense.payer?.kind !== 'account') continue;
       if (line.expense.payer.id !== account.id) continue;
       if (chargedIn(line.expense, month) !== true) continue;
+      // Something charged more often than monthly leaves the account more
+      // than once, on no single day: the month's worth is what goes, and it
+      // cannot be pinned to a date.
+      const often = cadenceOf(line.expense.cadence).perYear > 12;
       add(
         `post-${line.expense.id}`,
         line.expense.name,
-        -line.expense.amount,
-        chargeDayOf(line.expense)
+        -(often ? line.amount : line.expense.amount),
+        often ? null : chargeDayOf(line.expense)
       );
     }
     // What arrives: deposits, turnover, a standing order from another account.
@@ -677,19 +688,24 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
     for (const [id, cents] of Object.entries(row.rounded)) {
       const extra = cents - (row.incoming[id] || 0);
       const person = people.find((p) => p.id === id);
-      add(
-        `round-${id}`,
-        `${person?.name || 'iemand'} rondt af`,
-        extra,
-        dayOf(account.depositDays?.[id]) ?? depositDay
-      );
+      // With the last of their deposits: the round figure is what the whole
+      // transfer comes to, so the extra is not there before the money is.
+      const theirs = [...perPerson.values()].filter((m) => m.id === id);
+      const last = theirs.some((m) => m.day === null)
+        ? null
+        : theirs.reduce((max, m) => Math.max(max, m.day), 0) || null;
+      add(`round-${id}`, `${person?.name || 'iemand'} rondt af`, extra, last);
     }
     for (const [id, cents] of Object.entries(row.fromAccounts)) {
       add(`from-${id}`, `Terug van ${accounts.find((a) => a.id === id)?.name || 'een rekening'}`, cents, null);
     }
     add('income', 'Wat er binnenkomt', row.income, dayOf(account.incomeDay));
-    if (row.fedBy) {
+    if (row.fedBy && account.kind !== 'shared') {
       add('fed', `Vanaf ${row.fedBy.account.name}`, row.fedBy.cents, dayOf(account.feedDay));
+    } else if (row.paidIn && account.kind !== 'shared') {
+      // The owner's own standing order, from outside Pay. Counted as arriving
+      // everywhere else on this row, so it has to arrive here too.
+      add('paid-in', 'Vaste inleg', row.paidIn, dayOf(account.feedDay));
     }
     // And what leaves besides the bills: salary, a standing order onwards, the
     // costs of the account itself, money back to whoever fronted something.

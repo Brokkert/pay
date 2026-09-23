@@ -1392,10 +1392,13 @@ describe('a bill charged every four weeks', () => {
     await screen.findByText('Jouw deel');
     const pot = [...document.querySelectorAll('.section')]
       .find((el) => el.textContent === 'Doorlopend').nextElementSibling;
-    // 25,00 every four weeks is 27,08 a month...
+    // 25,00 every four weeks is 27,08 a month, and that is what leaves the
+    // account in a month too — thirteen charges a year come off on no fixed
+    // day. The one charge is still named, as the floor to keep for the month
+    // that carries two, and only there.
     expect(within(pot).getByText('Maandlast').closest('.line').textContent).toContain('27,08');
-    // ...and one charge is what has to be able to sit on the account.
-    expect(pot.nextElementSibling.textContent).toContain('€ 25,00');
+    expect(pot.parentElement.textContent).toContain('Houd daarvoor € 25,00 als bodem aan');
+    expect(within(pot).queryByText(/echt af/)).toBe(null);
   }, 30000);
 });
 

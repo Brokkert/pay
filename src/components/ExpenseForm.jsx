@@ -234,7 +234,7 @@ export default function ExpenseForm({
           label="Anderen betalen hiervoor op"
           hint={
             draft.settleDay
-              ? `Op de ${draft.settleDay}e komt het geld van de anderen voor deze post binnen. Los van wanneer de bank de post zelf weghaalt.`
+              ? `Op de ${draft.settleDay}e gaat het geld voor deze post heen en weer: wat de anderen betalen, en wat er terug gaat naar wie het voorschoot. Los van wanneer de bank de post zelf weghaalt.`
               : 'Mag leeg. Incasseer je deze post apart van de rest, zet dan hier die dag — anders rekent Pay met de dag die bij de persoon of de rekening staat.'
           }
         >

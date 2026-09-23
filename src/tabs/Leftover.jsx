@@ -18,7 +18,7 @@ import Breakdown from '../components/Breakdown.jsx';
 import FeedBreakdown, { dot, postRow, needRows } from '../components/FeedBreakdown.jsx';
 import { forMonth } from '../lib/ledger.js';
 import { formatMoney } from '../lib/money.js';
-import { cadenceOf, formatMonth, nextCharge, setAside, perMonth, perYear, todayISO, chargeDayOf } from '../lib/cadence.js';
+import { cadenceOf, formatMonth, nextCharge, setAside, perMonth, perYear, todayISO, chargeDayOf, dayInMonth } from '../lib/cadence.js';
 
 export default function Leftover({ store, month }) {
   const { people, accounts, expenses } = store;
@@ -250,7 +250,10 @@ function StandBreakdown({ pot, month, today, onClose }) {
     ...pot.movements.map((m) => ({
       key: m.key,
       what: m.what,
-      sub: m.day ? `de ${m.day}e${m.done ? '' : ' — moet nog'}` : 'dag onbekend',
+      // The day as it falls this month: "de 31e" in February is the 28th.
+      sub: m.day
+        ? `de ${dayInMonth(m.day, month)}e${m.done ? '' : ' — moet nog'}`
+        : 'dag onbekend',
       cents: m.cents,
       tone: m.cents > 0 ? 'credit' : '',
     })),
@@ -262,7 +265,20 @@ function StandBreakdown({ pot, month, today, onClose }) {
       cents={pot.standToday}
       rows={rows}
       empty={`Er gebeurt deze maand niets op ${pot.account.name}.`}
-      note="Alles zonder dag telt als gebeurd — dat is wat het betekende voordat er dagen waren. Vul de dag in bij een post, een storting of een salaris, en die regel schuift naar de goede kant van vandaag."
+      note={
+        <>
+          Alles zonder dag telt als gebeurd — dat is wat het betekende voordat er dagen waren. Vul
+          de dag in bij een post, een storting of een salaris, en die regel schuift naar de goede
+          kant van vandaag.
+          {pot.chargeUnknown && (
+            <>
+              {' '}
+              <strong>Let op:</strong> er staat een post op deze rekening zonder afschrijfmaand.
+              Daar wordt wel voor gestort, maar hij gaat hier nooit af — dus dit bedrag loopt op.
+            </>
+          )}
+        </>
+      }
       onClose={onClose}
     />
   );

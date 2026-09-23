@@ -26,10 +26,10 @@ const text = (value) => (typeof value === 'string' ? value.trim() : '');
 /** A day of the month, or nothing — anything else is not a day. */
 const day = (value) => (Number(value) >= 1 && Number(value) <= 31 ? Number(value) : 0);
 /** The days per member a shared account's deposits land on, the sound ones only. */
-const depositDays = (account) =>
+const depositDays = (account, remap = text) =>
   Object.fromEntries(
     Object.entries(account?.depositDays || {})
-      .map(([id, value]) => [text(id), day(value)])
+      .map(([id, value]) => [remap(id), day(value)])
       .filter(([id, value]) => id && value)
   );
 
@@ -91,16 +91,24 @@ export function readBackup(source) {
     return ACCOUNT_PREFIX + known(k.slice(ACCOUNT_PREFIX.length), where, 'rekening');
   };
 
+  // Every id first, so a reference to something later in the file resolves —
+  // a person paid from an account, an account filled by another one.
+  raw.people.forEach((p, i) => fresh(p?.id, `Persoon ${i + 1}`));
+  raw.accounts.forEach((a, i) => fresh(a?.id, `Rekening ${i + 1}`));
+  // A reference that points nowhere is dropped, not fatal: an account deleted
+  // long ago should not make the whole backup unreadable.
+  const maybe = (old) => ids.get(text(old)) || '';
+
   const people = raw.people.map((p, i) => {
     const where = `Persoon ${i + 1}`;
     const name = text(p?.name) || fail(`${where}: naam ontbreekt.`);
     return {
-      id: fresh(p.id, where),
+      id: known(p.id, where, 'persoon'),
       name,
       colour: text(p.colour) || '#8a9099',
       isMe: p.isMe === true,
       ...(Number.isInteger(p.income) && p.income !== 0 ? { income: p.income } : {}),
-      ...(text(p.incomeFrom) ? { incomeFrom: text(p.incomeFrom) } : {}),
+      ...(maybe(p.incomeFrom) ? { incomeFrom: maybe(p.incomeFrom) } : {}),
       ...(Number.isInteger(p.withheld) && p.withheld !== 0 ? { withheld: p.withheld } : {}),
       ...(day(p.incomeDay) ? { incomeDay: day(p.incomeDay) } : {}),
       ...(day(p.withheldDay) ? { withheldDay: day(p.withheldDay) } : {}),
@@ -113,7 +121,7 @@ export function readBackup(source) {
     const kind = text(a.kind);
     if (!ACCOUNT_KIND_IDS.has(kind)) fail(`${where}: soort "${kind}" bestaat niet.`);
     return {
-      id: fresh(a.id, where),
+      id: known(a.id, where, 'rekening'),
       name,
       kind,
       ...(a.ownerId ? { ownerId: known(a.ownerId, where, 'persoon') } : {}),
@@ -131,13 +139,13 @@ export function readBackup(source) {
       settlement: a.settlement === true,
       ...(Number.isInteger(a.income) && a.income !== 0 ? { income: a.income } : {}),
       ...(Number.isInteger(a.overhead) && a.overhead !== 0 ? { overhead: a.overhead } : {}),
-      ...(text(a.fundedBy) ? { fundedBy: text(a.fundedBy) } : {}),
+      ...(maybe(a.fundedBy) ? { fundedBy: maybe(a.fundedBy) } : {}),
       ...(a.frontedByOwner === true ? { frontedByOwner: true } : {}),
       ...(Number.isInteger(a.roundTo) && a.roundTo > 0 ? { roundTo: a.roundTo } : {}),
       ...(day(a.incomeDay) ? { incomeDay: day(a.incomeDay) } : {}),
       ...(day(a.overheadDay) ? { overheadDay: day(a.overheadDay) } : {}),
       ...(day(a.depositDay) ? { depositDay: day(a.depositDay) } : {}),
-      ...(Object.keys(depositDays(a)).length ? { depositDays: depositDays(a) } : {}),
+      ...(Object.keys(depositDays(a, maybe)).length ? { depositDays: depositDays(a, maybe) } : {}),
       ...(day(a.feedDay) ? { feedDay: day(a.feedDay) } : {}),
     };
   });
