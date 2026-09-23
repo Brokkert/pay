@@ -167,22 +167,29 @@ export default function ExpenseForm({
         />
       </Field>
 
-      <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
-        <div className="grow">
-          <Field label="Bedrag">
+      {/* Two fields on one line, the same height, and the one hint under both:
+          a hint under only the left one pushed that column down and left the
+          two boxes staggered. */}
+      <div className="field">
+        <div className="row" style={{ gap: 12, alignItems: 'flex-end' }}>
+          <div className="grow">
+            <label className="field-label">Bedrag</label>
             <AmountInput signed cents={draft.amount} onChange={(c) => set({ amount: c })} />
-            <div className="hint" style={{ marginTop: 6 }}>
-              Tik op de <strong>€</strong> voor een min. Voor geld dat terugkomt: hypotheekrente-
-              aftrek, een btw-teruggaaf.
-            </div>
-          </Field>
-        </div>
-        <div style={{ width: 148 }}>
-          <Field label="Hoe vaak">
-            <select className="select" value={draft.cadence} onChange={(e) => set({ cadence: e.target.value })}>
+          </div>
+          <div style={{ width: 148 }}>
+            <label className="field-label">Hoe vaak</label>
+            <select
+              className="select tall"
+              value={draft.cadence}
+              onChange={(e) => set({ cadence: e.target.value })}
+            >
               {CADENCES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
-          </Field>
+          </div>
+        </div>
+        <div className="hint">
+          Tik op de <strong>€</strong> voor een min. Voor geld dat terugkomt: hypotheekrente-aftrek,
+          een btw-teruggaaf.
         </div>
       </div>
 

@@ -556,7 +556,7 @@ describe('what has to be on an account, and the cents that will not fit', () => 
 
     const block = [...document.querySelectorAll('.section')]
       .find((el) => el.textContent === 'Vaste lasten').parentElement;
-    expect(within(block).getByText('Hoort er nu op te staan')).toBeTruthy();
+    expect(within(block).getByText('Gespaard voor later')).toBeTruthy();
     expect(within(block).getByText('Eén keer per jaar bijstorten').closest('.line').textContent)
       .toContain('0,04');
   }, 30000);
@@ -1019,7 +1019,7 @@ describe('saving up for a yearly expense', () => {
     expect(within(checks).getByText(/echt af/).closest('.line').textContent).toContain('141,00');
     // Two instalments in since July: 60,00 — on the tab about the account.
     await user.click(screen.getByRole('button', { name: /Overhouden/ }));
-    expect(screen.getByText('Hoort er nu op te staan').closest('.line').textContent)
+    expect(screen.getByText('Gespaard voor later').closest('.line').textContent)
       .toContain('60,00');
     await user.click(screen.getByRole('button', { name: /Overzicht/ }));
 
@@ -1174,9 +1174,9 @@ describe('taking the overview apart', () => {
 
     await screen.findByText(/Elke maand overmaken/);
     await user.click(screen.getByRole('button', { name: /Overhouden/ }));
-    await user.click(await screen.findByText('Hoort er nu op te staan'));
+    await user.click(await screen.findByText('Gespaard voor later'));
     const sheet = screen
-      .getByRole('heading', { name: 'Hoort er nu op te staan' })
+      .getByRole('heading', { name: 'Gespaard voor later' })
       .closest('.sheet');
     // The yearly one, with the month it goes out next.
     expect(within(sheet).getByText('Aansprakelijkheid')).toBeTruthy();
@@ -1465,7 +1465,7 @@ describe('an account with nothing to save up for', () => {
       .find((el) => el.textContent === 'Samen sparen').nextElementSibling;
     // Everything on it is monthly, so there is nothing being put by — and a
     // nought here would read as a claim about what is on the account.
-    expect(within(pot).queryByText('Hoort er nu op te staan')).toBe(null);
+    expect(within(pot).queryByText('Gespaard voor later')).toBe(null);
     expect(within(pot).getByText('Maandlast').closest('.line').textContent).toContain('200,00');
   }, 30000);
 });

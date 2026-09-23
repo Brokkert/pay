@@ -137,7 +137,7 @@ function PersonForm({ person, people, accounts = [], cloud, onClaim, onSave, onR
         <div className="grow">
           <input
             className="input"
-            autoFocus
+            autoFocus={!draft.id}
             placeholder="Naam"
             aria-label="Naam"
             value={draft.name}
@@ -421,7 +421,7 @@ function AccountForm({ account, people, accounts, expenses = [], onSave, onRemov
       <Field label="Naam">
         <input
           className="input"
-          autoFocus
+          autoFocus={!draft.id}
           placeholder="Vaste lasten, privé, zaak…"
           value={draft.name}
           onChange={(e) => set({ name: e.target.value })}

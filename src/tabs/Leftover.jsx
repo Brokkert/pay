@@ -215,8 +215,12 @@ function Extras({ pot, live, onOpen }) {
       )}
       {pot.aside > 0 && (
         <Line
-          what="Hoort er nu op te staan"
-          sub="gespaard voor posten die niet elke maand afgaan"
+          what="Gespaard voor later"
+          sub={
+            live && knowsInflow
+              ? 'voor posten die niet elke maand afgaan — zit in het bedrag hierboven'
+              : 'voor posten die niet elke maand afgaan'
+          }
           cents={pot.aside}
           onClick={() => onOpen('aside', pot)}
         />
@@ -301,7 +305,7 @@ function AsideBreakdown({ pot, lines, month, today, onClose }) {
   );
   return (
     <Breakdown
-      title="Hoort er nu op te staan"
+      title="Gespaard voor later"
       label={today ? 'Per vandaag' : `Na de afschrijvingen van ${formatMonth(month).split(' ')[0]}`}
       cents={pot.aside}
       rows={saving.map((l) => {
