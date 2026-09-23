@@ -669,7 +669,15 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
     add('overhead', 'Kosten buiten je posten om', -row.overhead, dayOf(account.overheadDay));
     for (const [id, cents] of Object.entries(row.outgoing)) {
       const person = people.find((p) => p.id === id);
-      add(`out-${id}`, `Terug naar ${person?.name || 'iemand'}`, -cents, null);
+      // The same day, both directions. Whether the month nets to you paying
+      // them or them paying you, it is one transfer between this account and
+      // that person — so it happens on the day that transfer is made.
+      add(
+        `out-${id}`,
+        `Terug naar ${person?.name || 'iemand'}`,
+        -cents,
+        dayOf(account.depositDays?.[id]) ?? depositDay
+      );
     }
     for (const [id, cents] of Object.entries(row.toAccounts)) {
       add(`to-${id}`, `Naar ${accounts.find((a) => a.id === id)?.name || 'een rekening'}`, -cents, null);

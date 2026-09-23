@@ -443,7 +443,7 @@ describe('someone who pays into a pot without being a member of it', () => {
     await user.click(row);
 
     const panel = [...document.querySelectorAll('.field')]
-      .find((f) => /Wie stort, en wanneer/.test(f.textContent));
+      .find((f) => /Wie stort of krijgt, en wanneer/.test(f.textContent));
     expect(panel).toBeTruthy();
     expect(within(panel).getByText('Buur')).toBeTruthy();
   }, 30000);

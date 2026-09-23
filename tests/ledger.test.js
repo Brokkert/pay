@@ -1259,3 +1259,31 @@ describe('a deposit that lands on its own day', () => {
     expect(potOn(own, '2026-03-28').standToday).toBe(0);
   });
 });
+
+
+describe('a month that nets to you paying someone back', () => {
+  const me = 'p-me';
+  const frans = 'p-frans';
+  const people = [{ id: me, name: 'Ik', isMe: true }, { id: frans, name: 'Frans' }];
+  const pot = { id: 'a-pot', name: 'Pot', kind: 'shared', members: [me], settlement: true,
+    depositDays: { [frans]: 12 } };
+  const both = { kind: 'equal', participants: [me, frans], weights: {} };
+  const expenses = [
+    // Frans carries part of what the pot pays, and pays something bigger himself
+    // that the pot carries part of. One transfer comes out: pot → Frans.
+    { id: 'e-1', name: 'Streaming', amount: 1000, cadence: 'month', chargeDay: 4,
+      payer: { kind: 'account', id: 'a-pot' }, split: both },
+    { id: 'e-2', name: 'Sport', amount: 5000, cadence: 'month', chargeDay: 4,
+      payer: { kind: 'person', id: frans }, split: both },
+  ];
+  const potOn = (today) => forMonth({ people, accounts: [pot], expenses }, '2026-03', today).pots[0];
+
+  it('pays them on the day set for them, not silently at the start of the month', () => {
+    const move = potOn('2026-03-20').movements.find((m) => m.key === `out-${frans}`);
+    expect(move.cents).toBeLessThan(0);
+    expect(move.day).toBe(12);
+    expect(move.done).toBe(true);
+    // Before that day the money is still on the account.
+    expect(potOn('2026-03-11').movements.find((m) => m.key === `out-${frans}`).done).toBe(false);
+  });
+});

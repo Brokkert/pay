@@ -342,6 +342,12 @@ function AccountForm({ account, people, accounts, expenses = [], onSave, onRemov
           ...Object.keys(e.split?.weights || {}),
         ])
         .filter((key) => !String(key).startsWith('account:')),
+      // On the account everything is settled through, money also goes the other
+      // way: to whoever paid something the rest of you carry. That is the same
+      // one transfer, on the same day, so they belong in this list too.
+      ...(draft.settlement
+        ? expenses.filter((e) => e.payer?.kind === 'person').map((e) => e.payer.id)
+        : []),
     ]),
   ].filter((id) => people.some((p) => p.id === id));
   const paidIn = Object.values(draft.contributions || {}).reduce((s, c) => s + (Number(c) || 0), 0);
@@ -475,8 +481,8 @@ function AccountForm({ account, people, accounts, expenses = [], onSave, onRemov
 
           {depositors.length > 0 && (
             <Field
-              label="Wie stort, en wanneer"
-              hint="Het bedrag is je vaste overboeking bij de bank, alleen om naast het aandeel te leggen. De dag is wanneer het binnenkomt. Allebei leeg mag."
+              label="Wie stort of krijgt, en wanneer"
+              hint="Het bedrag is je vaste overboeking bij de bank, alleen om naast het aandeel te leggen. De dag is wanneer dat geld overgaat — binnen of eruit, het is dezelfde overboeking. Allebei leeg mag."
             >
               <div className="panel" style={{ marginBottom: 0 }}>
                 {depositors.map((id) => {
