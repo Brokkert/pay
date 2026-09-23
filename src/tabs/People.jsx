@@ -509,7 +509,9 @@ function AccountForm({ account, people, accounts, expenses = [], onSave, onRemov
                               set({ depositDays: { ...(draft.depositDays || {}), [id]: day } })
                             }
                             empty={
-                              draft.depositDay ? `de ${draft.depositDay}e, zoals de rekening` : 'Dag onbekend'
+                              draft.depositDay
+                                ? `Geen eigen dag — volgt de post, anders de ${draft.depositDay}e`
+                                : 'Geen eigen dag — volgt de post'
                             }
                           />
                         </div>
