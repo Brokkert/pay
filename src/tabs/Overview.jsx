@@ -90,7 +90,7 @@ export default function Overview({ store, month, onMonth }) {
   if (!expenses.length) {
     return (
       <Empty icon="receipt" title="Nog niets geboekt">
-        Voeg je eerste vaste last toe met de knop rechtsonder. Heb je al een overzicht in Excel of
+        Voeg je eerste vaste last toe met de plus bovenaan bij Lasten. Heb je al een overzicht in Excel of
         Numbers? Plak het dan in één keer via <strong>Meer → Plakken</strong>.
       </Empty>
     );

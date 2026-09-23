@@ -533,24 +533,9 @@ button.line-open:active { background: var(--sunk); }
 .btn.grow { flex: 1; }
 .btn.sm { padding: 7px 13px; font-size: 13px; border-radius: var(--r-sm); }
 .btn.icon { padding: 9px; min-width: 38px; }
+/* As tall as the input beside it, and no wider. */
+.btn.square { width: 44px; height: 44px; padding: 0; justify-content: center; flex-shrink: 0; }
 
-.fab {
-  position: fixed;
-  right: max(20px, calc(50vw - 340px));
-  bottom: calc(92px + var(--safe-b));
-  z-index: 35;
-  width: 54px;
-  height: 54px;
-  border-radius: 18px;
-  background: linear-gradient(160deg, var(--accent-2), var(--accent));
-  color: var(--accent-ink);
-  box-shadow: var(--glow);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.1s;
-}
-.fab:active { transform: scale(0.95); }
 
 /* ---------- input ---------- */
 
@@ -656,9 +641,12 @@ button.line-open:active { background: var(--sunk); }
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 7px 13px;
   font-size: 13px;
   font-weight: 500;
+  /* One line each. "Loopt nu" breaking into two made every chip in the row
+     twice as tall, and the row a block instead of a strip. */
+  white-space: nowrap;
   color: var(--text-2);
   display: inline-flex;
   align-items: center;
@@ -767,7 +755,7 @@ button.line-open:active { background: var(--sunk); }
   display: flex;
   overflow-x: auto;
   gap: 7px;
-  padding: 2px 20px 14px;
+  padding: 2px 20px 10px;
   margin: 0 -20px;
   scrollbar-width: none;
 }

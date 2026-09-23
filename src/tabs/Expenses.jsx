@@ -135,17 +135,25 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
 
   return (
     <>
-      <div style={{ margin: '4px 0 12px', position: 'relative' }}>
-        <span style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-3)' }}>
-          <Icon name="search" size={18} />
-        </span>
-        <input
-          className="input"
-          style={{ paddingLeft: 40 }}
-          placeholder="Zoeken"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+      {/* Search and "new" on one line at the top. The button used to float
+          over the bottom of the list, where it sat on the last rows and right
+          on top of the tab bar — two things stacked where one already was. */}
+      <div className="row" style={{ gap: 8, margin: '4px 0 10px' }}>
+        <div className="grow" style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-3)' }}>
+            <Icon name="search" size={18} />
+          </span>
+          <input
+            className="input"
+            style={{ paddingLeft: 40 }}
+            placeholder="Zoeken"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <button className="btn primary icon square" onClick={onNew} aria-label="Nieuwe post">
+          <Icon name="plus" size={20} />
+        </button>
       </div>
 
       <div className="scroller">
@@ -191,7 +199,7 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
 
       {!listed.length ? (
         <Empty icon="search" title="Niets gevonden">
-          Pas het filter aan, of voeg een post toe met de knop rechtsonder.
+          Pas het filter aan, of voeg een post toe met de plus bovenaan.
         </Empty>
       ) : (
         /* Sorted by category, the list is already in groups — it just does not
@@ -223,9 +231,6 @@ export default function Expenses({ store, month, onOpen, onNew, onSave }) {
         ))
       )}
 
-      <button className="fab" onClick={onNew} aria-label="Nieuwe post">
-        <Icon name="plus" size={22} />
-      </button>
     </>
   );
 }
