@@ -1435,3 +1435,42 @@ describe('what the review turned up', () => {
     expect(move.what).toBe('Ik · Streaming');
   });
 });
+
+
+describe('one subscription, two kinds of payer', () => {
+  const me = 'p-me';
+  const rounds = 'p-rounds';
+  const once = 'p-once';
+  const people = [
+    { id: me, name: 'Ik', isMe: true },
+    { id: rounds, name: 'Ronde' },
+    { id: once, name: 'Eenmaal' },
+  ];
+  // "Eenmaal" pays everything on the 5th. "Ronde" is collected per post.
+  const pot = { id: 'a-pot', name: 'Pot', kind: 'shared', members: [me], depositDays: { [once]: 5 } };
+  const all = { kind: 'equal', participants: [me, rounds, once], weights: {} };
+  const two = { kind: 'equal', participants: [me, rounds], weights: {} };
+  const expenses = [
+    { id: 'e-yt', name: 'YouTube', amount: 3000, cadence: 'month', settleDay: 20,
+      payer: { kind: 'account', id: 'a-pot' }, split: all },
+    { id: 'e-other', name: 'Ander', amount: 2000, cadence: 'month', settleDay: 3,
+      payer: { kind: 'account', id: 'a-pot' }, split: two },
+  ];
+  const on = (today) => forMonth({ people, accounts: [pot], expenses }, '2026-03', today).pots[0];
+
+  it('keeps the one-go payer whole and splits the other into rounds', () => {
+    const named = (m) => m.what.split(' ')[0];
+    // My own share has no day and is not the point here.
+    const others = (ms) => ms.filter((m) => m.key.startsWith('in-') && named(m) !== 'Ik');
+    const on10 = others(on('2026-03-10').movements).filter((m) => m.done);
+    // By the tenth: Eenmaal's whole month (the 5th), Ronde's first round (the 3rd).
+    expect(on10.map((m) => [named(m), m.cents])).toEqual([
+      ['Ronde', 1000],
+      ['Eenmaal', 1000],
+    ]);
+    // Eenmaal's YouTube share did not wait for the post's day.
+    const late = others(on('2026-03-20').movements);
+    expect(late.filter((m) => named(m) === 'Eenmaal')).toHaveLength(1);
+    expect(late.filter((m) => named(m) === 'Ronde').map((m) => m.day)).toEqual([3, 20]);
+  });
+});

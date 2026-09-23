@@ -667,7 +667,11 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
       const outbound = b.from === party && !isAccountParty(b.to);
       if (!inbound && !outbound) continue;
       const id = partyId(inbound ? b.from : b.to);
-      const day = dayOf(b.expense.settleDay) ?? dayOf(account.depositDays?.[id]) ?? depositDay;
+      // A day on the person wins over a day on the post. Someone with a day of
+      // their own pays everything in one go; a day on a post is for whoever
+      // does not — the one you collect from in separate rounds. Both on the
+      // same post is the normal case: one subscription, two kinds of payer.
+      const day = dayOf(account.depositDays?.[id]) ?? dayOf(b.expense.settleDay) ?? depositDay;
       const key = `${id}|${day ?? ''}`;
       const seen = perPerson.get(key) || { id, day, cents: 0, names: new Set() };
       seen.cents += inbound ? b.cents : -b.cents;

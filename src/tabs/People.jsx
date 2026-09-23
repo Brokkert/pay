@@ -488,7 +488,7 @@ function AccountForm({ account, people, accounts, expenses = [], onSave, onRemov
           {depositors.length > 0 && (
             <Field
               label="Wie stort of krijgt, en wanneer"
-              hint="Het bedrag is je vaste overboeking bij de bank, alleen om naast het aandeel te leggen. De dag is wanneer dat geld overgaat — binnen of eruit, het is dezelfde overboeking. Allebei leeg mag."
+              hint="Het bedrag is je vaste overboeking bij de bank, alleen om naast het aandeel te leggen. De dag is wanneer dat geld in één keer overgaat — binnen of eruit, het is dezelfde overboeking. Iemand die per post apart betaalt: laat leeg, en zet de dag op die posten."
             >
               <div className="panel" style={{ marginBottom: 0 }}>
                 {depositors.map((id) => {
