@@ -13,7 +13,15 @@
 // counts fully: it can be owed money (everyone's share of what went out of it)
 // and it can owe money (see routeThrough below).
 
-import { perMonth, perYear, isActive, chargedIn, setAside } from './cadence.js';
+import {
+  perMonth,
+  perYear,
+  isActive,
+  chargedIn,
+  setAside,
+  chargeDayOf,
+  chargePassed,
+} from './cadence.js';
 import { split, byWeight, isAccountBearer, accountOfBearer } from './split.js';
 import { categoryName } from '../data/categories.js';
 
@@ -81,7 +89,9 @@ export const settlementAccount = (accounts) =>
  * or paused) are left out, and one-off expenses do not belong here at all —
  * those live in openSettlements().
  */
-export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
+export function forMonth({ expenses = [], people = [], accounts = [] }, month, today = null) {
+  // A month you page back to has no "now" in it, so nothing in it is live.
+  const live = Boolean(today) && String(today).slice(0, 7) === String(month);
   const running = expenses.filter((e) => isActive(e, month));
 
   const lines = [];
@@ -112,6 +122,13 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
   let unassigned = 0;
   const realPerAccount = {};
   const asidePerAccount = {};
+  // Of what the bank takes this month, what it has already taken and what is
+  // still to come — and what cannot be placed either way because no day was
+  // filled in. Three buckets, because a figure that quietly folds the unknown
+  // into one of the other two is a figure you cannot check.
+  const gonePerAccount = {};
+  const duePerAccount = {};
+  const dayUnknownPerAccount = {};
   const unknownCharge = new Set();
   let yearlyTotal = 0;
 
@@ -152,8 +169,17 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
       // sitting on it waiting for a bill that comes once a year.
       const charged = chargedIn(expense, month);
       if (charged === null) unknownCharge.add(account);
-      else if (charged) realPerAccount[account] = (realPerAccount[account] || 0) + expense.amount;
-      const aside = setAside(expense, month);
+      else if (charged) {
+        realPerAccount[account] = (realPerAccount[account] || 0) + expense.amount;
+        const bucket =
+          chargeDayOf(expense) === null
+            ? dayUnknownPerAccount
+            : chargePassed(expense, month, live ? today : null)
+              ? gonePerAccount
+              : duePerAccount;
+        bucket[account] = (bucket[account] || 0) + expense.amount;
+      }
+      const aside = setAside(expense, month, live ? today : null);
       if (aside) asidePerAccount[account] = (asidePerAccount[account] || 0) + aside;
     }
     perCategory[category] = (perCategory[category] || 0) + amount;
@@ -224,11 +250,14 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month) {
       transfers,
       accounts,
       perAccount,
-      { realPerAccount, asidePerAccount, unknownCharge },
+      { realPerAccount, asidePerAccount, gonePerAccount, duePerAccount, dayUnknownPerAccount, unknownCharge },
       lines,
       people
     ),
     hub,
+    // Whether the figures in here are held against a day inside the month.
+    live,
+    today: live ? today : null,
     warnings: [...new Set(warnings)],
   };
 }
@@ -490,6 +519,11 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people) {
         drift,
         charged: saving.realPerAccount[account.id] || 0,
         aside: saving.asidePerAccount[account.id] || 0,
+        // Of that, what the bank has been past already, what is still coming,
+        // and what has no day to judge it by.
+        gone: saving.gonePerAccount[account.id] || 0,
+        due: saving.duePerAccount[account.id] || 0,
+        dayUnknown: saving.dayUnknownPerAccount[account.id] || 0,
         chargeUnknown: saving.unknownCharge.has(account.id),
       };
     });

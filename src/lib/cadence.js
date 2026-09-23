@@ -107,16 +107,53 @@ export function chargedIn(expense, month) {
   return since === null ? null : since === 0;
 }
 
+/** The day of the month the bank takes it, when that has been filled in. */
+export function chargeDayOf(expense) {
+  const day = Number(expense?.chargeDay);
+  return day >= 1 && day <= 31 ? day : null;
+}
+
+/** Today, as the app writes a date. */
+export const todayISO = () => {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
+
+/**
+ * At this point in time, has this month's charge already left the account?
+ *
+ * Two things make the question unanswerable, and both mean the same as it
+ * always did — the whole month counts as done: no day filled in, and a month
+ * that is not the one we are living in. A month you page back to has no "now".
+ */
+export function chargePassed(expense, month, today) {
+  if (!today || String(today).slice(0, 7) !== String(month)) return true;
+  const day = chargeDayOf(expense);
+  if (day === null) return true;
+  return Number(String(today).slice(8, 10)) >= day;
+}
+
 /**
  * What is set aside for it by this month: one monthly instalment for every
  * month since it was last charged. Nothing in the month it goes out, because
- * that is when the saving is spent.
+ * that is when the saving is spent — but not one day before it actually goes.
+ *
+ * Without the day that is the whole month, and for the twenty-six days before
+ * the bank takes it Pay reported nought while the money was still there. That
+ * is the one answer your bank statement openly contradicts, so where the day is
+ * known a full cycle of instalments stands until it is spent.
  */
-export function setAside(expense, month) {
+export function setAside(expense, month, today = null) {
   const c = cadenceOf(expense.cadence);
   if (c.perYear >= 12 || c.id === 'once') return 0;
   const since = sinceCharge(expense, month);
   if (since === null) return 0;
+  if (since === 0) {
+    return chargePassed(expense, month, today)
+      ? 0
+      : stepOf(expense.cadence) * perMonth(expense.amount, expense.cadence);
+  }
   return since * perMonth(expense.amount, expense.cadence);
 }
 

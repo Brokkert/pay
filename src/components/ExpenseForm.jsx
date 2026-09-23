@@ -34,6 +34,7 @@ const blank = (meId) => ({
   payer: { kind: 'account', id: null },
   split: { kind: 'equal', participants: meId ? [meId] : [], weights: {} },
   chargeMonth: '',
+  chargeDay: '',
   from: '',
   until: '',
   paused: false,
@@ -194,6 +195,28 @@ export default function ExpenseForm({
             <option value="">Kies een maand…</option>
             {MONTH_NAMES.map((name, i) => (
               <option key={name} value={i + 1}>{name}</option>
+            ))}
+          </select>
+        </Field>
+      )}
+
+      {draft.cadence !== 'once' && (
+        <Field
+          label="Op welke dag"
+          hint={
+            draft.chargeDay
+              ? `Rond de ${draft.chargeDay}e van de maand haalt de bank het weg. Daarmee klopt "hoort er nu op te staan" ook halverwege de maand.`
+              : 'Mag leeg. Vul je hem in, dan weet Pay of een afschrijving vandaag al is geweest of nog moet komen.'
+          }
+        >
+          <select
+            className="select"
+            value={draft.chargeDay || ''}
+            onChange={(e) => set({ chargeDay: e.target.value ? Number(e.target.value) : '' })}
+          >
+            <option value="">Dag onbekend</option>
+            {Array.from({ length: 31 }, (_, i) => (
+              <option key={i + 1} value={i + 1}>{`de ${i + 1}e`}</option>
             ))}
           </select>
         </Field>

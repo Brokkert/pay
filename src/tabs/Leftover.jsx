@@ -18,13 +18,13 @@ import Breakdown from '../components/Breakdown.jsx';
 import FeedBreakdown, { dot, postRow, needRows } from '../components/FeedBreakdown.jsx';
 import { forMonth } from '../lib/ledger.js';
 import { formatMoney } from '../lib/money.js';
-import { cadenceOf, formatMonth, nextCharge, setAside, perMonth, perYear } from '../lib/cadence.js';
+import { cadenceOf, formatMonth, nextCharge, setAside, perMonth, perYear, todayISO, chargeDayOf } from '../lib/cadence.js';
 
 export default function Leftover({ store, month }) {
   const { people, accounts, expenses } = store;
   const me = people.find((p) => p.isMe) || null;
   const result = useMemo(
-    () => forMonth({ people, accounts, expenses }, month),
+    () => forMonth({ people, accounts, expenses }, month, todayISO()),
     [people, accounts, expenses, month]
   );
 
@@ -219,8 +219,15 @@ function Extras({ pot, onOpen }) {
   );
 }
 
+/** When a post next comes off: the day too, where it is known. */
+const when = (expense, month) => {
+  const name = formatMonth(month).split(' ')[0];
+  const day = chargeDayOf(expense);
+  return day ? `${day} ${name}` : name;
+};
+
 /** The posts an account is saving up for, and how far along each one is. */
-function AsideBreakdown({ pot, lines, month, onClose }) {
+function AsideBreakdown({ pot, lines, month, today, onClose }) {
   const saving = lines.filter(
     (l) =>
       l.expense.payer?.kind === 'account' &&
@@ -230,7 +237,7 @@ function AsideBreakdown({ pot, lines, month, onClose }) {
   return (
     <Breakdown
       title="Hoort er nu op te staan"
-      label={`Na de afschrijvingen van ${formatMonth(month).split(' ')[0]}`}
+      label={today ? 'Per vandaag' : `Na de afschrijvingen van ${formatMonth(month).split(' ')[0]}`}
       cents={pot.aside}
       rows={saving.map((l) => {
         const c = cadenceOf(l.expense.cadence);
@@ -240,13 +247,17 @@ function AsideBreakdown({ pot, lines, month, onClose }) {
           left: dot(l.expense),
           what: l.expense.name,
           sub: l.expense.chargeMonth || l.expense.from
-            ? `${formatMoney(l.expense.amount)} ${c.short} · volgende keer ${formatMonth(due).split(' ')[0]}`
+            ? `${formatMoney(l.expense.amount)} ${c.short} · volgende keer ${when(l.expense, due)}`
             : `${formatMoney(l.expense.amount)} ${c.short} · afschrijfmaand onbekend`,
-          cents: setAside(l.expense, month),
+          cents: setAside(l.expense, month, today),
         };
       })}
       empty="Alles op deze rekening gaat maandelijks af, dus er hoeft niets op te blijven staan."
-      note="Zet dit bedrag erop en stort daarna elke maand de maandlast. Dan is er genoeg als een jaarpost wordt afgeschreven, en is de rekening daarna weer leeg."
+      note={
+        today
+          ? 'Wat er vandaag op hoort te staan. Een post waarvan de dag nog moet komen telt dus nog mee, en valt weg zodra de bank hem weghaalt. Bij een post zonder dag rekent Pay de hele maand alsof hij al af is.'
+          : 'Zet dit bedrag erop en stort daarna elke maand de maandlast. Dan is er genoeg als een jaarpost wordt afgeschreven, en is de rekening daarna weer leeg.'
+      }
       onClose={onClose}
     />
   );
@@ -373,6 +384,7 @@ function Sheets({ open, setOpen, result, accounts, people, me, month }) {
           pot={open.pot}
           lines={result.lines}
           month={month}
+          today={result.today}
           onClose={() => setOpen(null)}
         />
       )}

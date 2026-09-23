@@ -17,7 +17,7 @@ import {
   partyId,
   partyName,
 } from '../lib/ledger.js';
-import { formatMonth } from '../lib/cadence.js';
+import { formatMonth, todayISO } from '../lib/cadence.js';
 import { categoryOf } from '../data/categories.js';
 import { formatMoney } from '../lib/money.js';
 
@@ -26,7 +26,7 @@ export default function Settle({ store, month }) {
   const [open, setOpen] = useState(null);
 
   const result = useMemo(
-    () => forMonth({ people, accounts, expenses }, month),
+    () => forMonth({ people, accounts, expenses }, month, todayISO()),
     [people, accounts, expenses, month]
   );
   const loose = useMemo(() => openSettlements(expenses, accounts), [expenses, accounts]);

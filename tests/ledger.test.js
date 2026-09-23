@@ -1118,3 +1118,43 @@ describe('rounding a deposit up', () => {
     expect(p.closes).toBe(0);
   });
 });
+
+
+describe('what the bank has taken so far this month', () => {
+  const me = 'p-me';
+  const account = { id: 'a-bills', name: 'Vaste lasten', kind: 'shared', members: [me] };
+  const people = [{ id: me, name: 'Ik', isMe: true }];
+  const mine = { kind: 'equal', participants: [me], weights: {} };
+  const expenses = [
+    { id: 'e-1', name: 'Huur', amount: 100000, cadence: 'month', chargeDay: 1,
+      payer: { kind: 'account', id: 'a-bills' }, split: mine },
+    { id: 'e-2', name: 'Internet', amount: 5000, cadence: 'month', chargeDay: 20,
+      payer: { kind: 'account', id: 'a-bills' }, split: mine },
+    { id: 'e-3', name: 'Netflix', amount: 1000, cadence: 'month',
+      payer: { kind: 'account', id: 'a-bills' }, split: mine },
+  ];
+  const pot = (today) =>
+    forMonth({ people, accounts: [account], expenses }, '2026-03', today).pots[0];
+
+  it('splits the month at today, and says what has no day to place it by', () => {
+    const half = pot('2026-03-10');
+    expect(half.gone).toBe(100000);
+    expect(half.due).toBe(5000);
+    expect(half.dayUnknown).toBe(1000);
+    // The three together are still the whole month, whatever the split.
+    expect(half.gone + half.due + half.dayUnknown).toBe(half.charged);
+
+    // Later in the month the internet has been taken too.
+    const late = pot('2026-03-21');
+    expect(late.gone).toBe(105000);
+    expect(late.due).toBe(0);
+  });
+
+  it('is not live in a month you only paged to', () => {
+    const other = forMonth({ people, accounts: [account], expenses }, '2026-05', '2026-03-10');
+    expect(other.live).toBe(false);
+    expect(other.today).toBe(null);
+    // Everything with a day counts as taken, as it did before there were days.
+    expect(other.pots[0].due).toBe(0);
+  });
+});

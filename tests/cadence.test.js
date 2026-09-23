@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chargedIn, formatMonth, isActive, nextCharge, perMonth, perYear, setAside, shiftMonth } from '../src/lib/cadence.js';
+import { chargePassed, chargedIn, formatMonth, isActive, nextCharge, perMonth, perYear, setAside, shiftMonth } from '../src/lib/cadence.js';
 
 describe('perMonth', () => {
   it('converts every cadence to whole cents per month', () => {
@@ -160,5 +160,34 @@ describe('four-weekly, which is not monthly', () => {
     expect(chargedIn(bill, '2026-09')).toBe(true);
     expect(setAside(bill, '2026-09')).toBe(0);
     expect(nextCharge(bill, '2026-09')).toBe(null);
+  });
+});
+
+
+describe('the day a charge lands on', () => {
+  // € 600 a year, charged in March: fifty euro is put by every month.
+  const yearly = { name: 'Zorgverzekering', amount: 60000, cadence: 'year', chargeMonth: 3 };
+  const onThe27th = { ...yearly, chargeDay: 27 };
+
+  it('keeps the saving standing until the bank actually takes it', () => {
+    // Without a day the whole charge month reads as spent, the way it always did.
+    expect(setAside(yearly, '2026-03')).toBe(0);
+    expect(setAside(yearly, '2026-03', '2026-03-10')).toBe(0);
+
+    // With one, the money is still there on the tenth — because it is.
+    expect(setAside(onThe27th, '2026-03', '2026-03-10')).toBe(60000);
+    expect(setAside(onThe27th, '2026-03', '2026-03-26')).toBe(60000);
+    // And gone on the day itself.
+    expect(setAside(onThe27th, '2026-03', '2026-03-27')).toBe(0);
+    expect(setAside(onThe27th, '2026-03', '2026-03-31')).toBe(0);
+  });
+
+  it('says nothing about a month you are not in', () => {
+    // A month you page back to has no today in it, so the day cannot speak.
+    expect(chargePassed(onThe27th, '2026-03', '2026-05-02')).toBe(true);
+    expect(setAside(onThe27th, '2026-03', '2026-05-02')).toBe(0);
+    // And the months in between are unaffected either way.
+    expect(setAside(onThe27th, '2026-04', '2026-04-01')).toBe(5000);
+    expect(setAside(onThe27th, '2027-02', '2027-02-01')).toBe(55000);
   });
 });

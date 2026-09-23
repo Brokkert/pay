@@ -176,6 +176,9 @@ export function readBackup(source) {
       ...(Number(e.chargeMonth) >= 1 && Number(e.chargeMonth) <= 12
         ? { chargeMonth: Number(e.chargeMonth) }
         : {}),
+      ...(Number(e.chargeDay) >= 1 && Number(e.chargeDay) <= 31
+        ? { chargeDay: Number(e.chargeDay) }
+        : {}),
       ...(text(e.from) ? { from: text(e.from) } : {}),
       ...(text(e.until) ? { until: text(e.until) } : {}),
       payer,

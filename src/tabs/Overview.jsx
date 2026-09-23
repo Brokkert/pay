@@ -24,6 +24,7 @@ import {
   chargedIn,
   setAside,
   nextCharge,
+  todayISO,
 } from '../lib/cadence.js';
 import { categoryOf, categoryName, accountKindOf } from '../data/categories.js';
 import { possibleBearers } from '../lib/split.js';
@@ -74,7 +75,7 @@ const transferDetail = (transfer, context) => ({
 export default function Overview({ store, month, onMonth }) {
   const { people, accounts, expenses } = store;
   const result = useMemo(
-    () => forMonth({ people, accounts, expenses }, month),
+    () => forMonth({ people, accounts, expenses }, month, todayISO()),
     [people, accounts, expenses, month]
   );
   const loose = useMemo(() => openSettlements(expenses, accounts), [expenses, accounts]);
@@ -252,6 +253,7 @@ export default function Overview({ store, month, onMonth }) {
           month={month}
           lines={result.lines}
           transfers={result.transfers}
+          live={result.live}
           context={context}
           onDetail={setDetail}
         />
@@ -540,6 +542,16 @@ function Transfer({ transfer, context, me, explain = false, onOpen = null }) {
   );
 }
 
+/** Of this month's charges, what has been and what is still to come. */
+function chargedSoFar(pot) {
+  const bits = [`${formatMoney(pot.gone)} al af`, `${formatMoney(pot.due)} moet nog`];
+  // A post without a day counts as gone, because that is what it did before
+  // there were days at all. Saying how much of it that is keeps the other two
+  // figures honest.
+  if (pot.dayUnknown > 0) bits.push(`${formatMoney(pot.dayUnknown)} zonder dag`);
+  return bits.join(' · ');
+}
+
 /** The mark that stands for an account where a person would have initials. */
 const AccountMark = () => (
   <span className="avatar sm" style={{ background: 'var(--accent)' }}>
@@ -547,7 +559,7 @@ const AccountMark = () => (
   </span>
 );
 
-function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
+function Pot({ pot, people, hub, month, lines, transfers, live, context, onDetail }) {
   const shared = pot.account.kind === 'shared';
   const hasContributions = Object.values(pot.contributions || {}).some((c) => Number(c) > 0);
   const isHub = hub?.id === pot.account.id;
@@ -705,6 +717,11 @@ function Pot({ pot, people, hub, month, lines, transfers, context, onDetail }) {
           {(pot.charged !== pot.out || pot.aside > 0) && !pot.chargeUnknown && (
           <Line
             what={`Gaat er in ${formatMonth(month).split(' ')[0]} echt af`}
+            /* Only in the month you are in, and only where a day says so: the
+               half of it the bank has been past already, against the half still
+               to come. That is the sentence your bank app gives you, and the
+               one this figure could not say. */
+            sub={live && (pot.gone > 0 || pot.due > 0) ? chargedSoFar(pot) : undefined}
             cents={pot.charged}
             onClick={() =>
               onDetail({
