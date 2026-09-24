@@ -134,6 +134,17 @@ export default function SplitPicker({
         <div className="field">
           <label className="field-label">Komt neer op {cadence === 'once' ? '(eenmalig)' : '(per maand)'}</label>
           <div className="panel">
+            {vat > 0 && (
+              <div className="line" style={{ background: 'var(--sunk)' }}>
+                <div className="what">
+                  <div className="n">Te verdelen</div>
+                  <div className="s">
+                    {formatMoney(shown + vat)} min {formatMoney(vat)} btw — die krijgt de zaak terug
+                  </div>
+                </div>
+                <Money cents={shown} />
+              </div>
+            )}
             {taking.map((key) => {
               const bearer = bearerOf(key);
               return (
@@ -199,7 +210,7 @@ export default function SplitPicker({
                 <BearerAvatar bearer={bearerOf(`${ACCOUNT_PREFIX}${vatAccount}`)} size="sm" />
                 <div className="what">
                   <div className="n truncate">{bearerOf(`${ACCOUNT_PREFIX}${vatAccount}`)?.name || 'de zaak'}</div>
-                  <div className="s">btw — komt terug op de aangifte, dus niet verdeeld</div>
+                  <div className="s">btw — niet verdeeld, komt terug op de aangifte</div>
                 </div>
                 <Money cents={vat} />
               </div>
@@ -217,14 +228,26 @@ export default function SplitPicker({
           )}
           {remainder !== 0 && (
             <div className="hint warn">
-              {remainder > 0 ? (
-                <>Er blijft <Money cents={remainder} /> over, en dat ligt nu bij niemand.</>
+              {s.kind === 'amount' ? (
+                <>
+                  Je bedragen tellen op tot <strong>{formatMoney(shown - remainder)}</strong>, te
+                  verdelen is <strong>{formatMoney(shown)}</strong> —{' '}
+                  {remainder > 0 ? (
+                    <>
+                      <Money cents={remainder} /> te weinig, en dat ligt nu bij niemand.
+                    </>
+                  ) : (
+                    <>
+                      <Money cents={-remainder} /> te veel.
+                    </>
+                  )}
+                </>
               ) : (
-                <>De bedragen zijn samen <Money cents={-remainder} /> te veel.</>
-              )}{' '}
-              {vat > 0
-                ? `Te verdelen is ${formatMoney(shown)}: het bedrag zonder de btw.`
-                : 'Verdelen doe je hier — een rekening kan niets dragen.'}
+                <>
+                  Er blijft <Money cents={remainder} /> over, en dat ligt nu bij niemand. Verdelen
+                  doe je hier — een rekening kan niets dragen.
+                </>
+              )}
               {me && (
                 <>
                   {' '}
