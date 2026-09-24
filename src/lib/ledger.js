@@ -499,7 +499,7 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
       // the VAT inside what the account paid for in the meantime. So it is a
       // yearly post turned inside out — income instead of a bill, a rate
       // instead of an amount — and it is reserved the same way.
-      const vat = vatCycle(account, income, lines, when);
+      const vat = vatCycle(account, income, lines, accounts, when);
       // A salary costs the account the gross: what lands on the person, plus
       // what is withheld from it and paid to the tax office. Both come off the
       // same account on the same day, and both come from one payslip — so
@@ -786,14 +786,25 @@ const vatInside = (cents, rate) => Math.round((cents * rate) / (100 + rate));
  * counts on the account the way a saving for a yearly bill does: until the
  * day it actually goes.
  */
-function vatCycle(account, income, lines, { month, today } = {}) {
+function vatCycle(account, income, lines, accounts, { month, today } = {}) {
   const none = { rate: 0, perMonth: 0, reclaim: 0, net: 0, returnMonth: false, due: 0, aside: 0, opening: 0, nextReturn: null };
   const rate = Number(account.vatRate) || 0;
   if (!rate || !income || account.kind === 'shared') return none;
   const perMonth = Math.round((income * rate) / 100);
-  // The VAT inside this account's own bills, per month, each at its own rate.
+  // The VAT inside the bills of this account and of every account it fills:
+  // one business, whichever of its accounts a bill happens to come off. The
+  // return is paid from the account at the top, so that is where it counts.
+  const own = new Set([account.id]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const a of accounts) {
+      if (own.has(a.id) || !own.has(a.fundedBy)) continue;
+      own.add(a.id);
+      grew = true;
+    }
+  }
   const reclaim = lines
-    .filter((l) => l.expense.payer?.kind === 'account' && l.expense.payer.id === account.id)
+    .filter((l) => l.expense.payer?.kind === 'account' && own.has(l.expense.payer.id))
     .reduce((sum, l) => sum + vatInside(l.amount, Number(l.expense.vatRate) || 0), 0);
   const net = perMonth - reclaim;
   // The return months run three apart from the one given; without one, the

@@ -1562,3 +1562,24 @@ describe('sharing a business bill that has VAT in it', () => {
     expect(r.lines[0].shares['account:a-biz']).toBeUndefined();
   });
 });
+
+
+describe('VAT in the bills of an account the holding fills', () => {
+  const me = 'p-me';
+  const people = [{ id: me, name: 'Ik', isMe: true }];
+  const mine = { kind: 'equal', participants: [me], weights: {} };
+  const holding = { id: 'a-h', name: 'Holding', kind: 'business', ownerId: me,
+    income: 400000, vatRate: 21, vatMonth: 1 };
+  const costs = { id: 'a-c', name: 'Vaste lasten', kind: 'business', ownerId: me, fundedBy: 'a-h' };
+  const phone = { id: 'e-tel', name: 'Telefoon', amount: 12100, cadence: 'month', vatRate: 21,
+    payer: { kind: 'account', id: 'a-c' }, split: mine };
+
+  it('counts against the return paid from the holding', () => {
+    const rows = forMonth({ people, accounts: [holding, costs], expenses: [phone] }, '2026-02').pots;
+    const top = rows.find((r) => r.account.id === 'a-h');
+    expect(top.vat.reclaim).toBe(2100);
+    expect(top.vat.net).toBe(84000 - 2100);
+    // And not twice: the account the bill comes off has no return of its own.
+    expect(rows.find((r) => r.account.id === 'a-c').vat.net).toBe(0);
+  });
+});
