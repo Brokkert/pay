@@ -567,6 +567,8 @@ button.line-open:active { background: var(--sunk); }
 /* Two of them under one panel are two separate things to read, not one
    paragraph with a break in it. */
 .hint + .hint { margin-top: 14px; }
+/* A hint closes the block above it; the next block starts a little further on. */
+.hint + .panel { margin-top: 16px; }
 .hint.warn { color: var(--warn); }
 
 .input, .select, .textarea {
