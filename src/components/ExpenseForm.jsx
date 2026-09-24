@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Sheet, Field, Notice, AmountInput, Avatar, Confirm, Icon, DayPicker } from './ui.jsx';
 import SplitPicker from './SplitPicker.jsx';
-import { CADENCES, MONTH_NAMES, cadenceOf, chargeAnchor } from '../lib/cadence.js';
+import { CADENCES, MONTH_NAMES, cadenceOf, chargeAnchor, perMonth } from '../lib/cadence.js';
 import { SUGGESTED, categoryName } from '../data/categories.js';
 import LabelPicker from './LabelPicker.jsx';
 import { defaultBearers } from '../lib/split.js';
@@ -323,6 +323,12 @@ export default function ExpenseForm({
         people={people}
         accounts={accounts}
         payer={draft.payer}
+        vat={
+          isBusiness(draft, accounts) && Number(draft.vatRate) > 0
+            ? Math.round((perMonth(draft.amount, draft.cadence) * draft.vatRate) / (100 + draft.vatRate))
+            : 0
+        }
+        vatAccount={draft.payer?.id || null}
         onChange={(spec) => set({ split: spec })}
       />
 

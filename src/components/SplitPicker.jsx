@@ -7,6 +7,7 @@
 import { SPLIT_KINDS, split, possibleBearers, ACCOUNT_PREFIX } from '../lib/split.js';
 import { perMonth } from '../lib/cadence.js';
 import { Field, Money, BearerAvatar, AmountInput } from './ui.jsx';
+import { formatMoney } from '../lib/money.js';
 
 export default function SplitPicker({
   amount,
@@ -15,6 +16,11 @@ export default function SplitPicker({
   people,
   accounts = [],
   payer = null,
+  // VAT inside the amount, per month, where the business pays and gets it
+  // back. Not shared: it is the account's own slice, so it comes off before
+  // anyone's part is worked out.
+  vat = 0,
+  vatAccount = null,
   onChange,
 }) {
   const bearers = possibleBearers(people, accounts);
@@ -29,7 +35,7 @@ export default function SplitPicker({
   const taking =
     s.kind === 'equal' ? [...(s.participants || [])] : Object.keys(s.weights || {});
   const inSet = new Set(taking);
-  const shown = cadence === 'once' ? amount : perMonth(amount, cadence);
+  const shown = (cadence === 'once' ? amount : perMonth(amount, cadence)) - vat;
   const { parts, remainder } = split(shown, s);
   const me = people.find((p) => p.isMe);
 
@@ -188,6 +194,16 @@ export default function SplitPicker({
               );
             })}
 
+            {vat > 0 && (
+              <div className="line">
+                <BearerAvatar bearer={bearerOf(`${ACCOUNT_PREFIX}${vatAccount}`)} size="sm" />
+                <div className="what">
+                  <div className="n truncate">{bearerOf(`${ACCOUNT_PREFIX}${vatAccount}`)?.name || 'de zaak'}</div>
+                  <div className="s">btw — komt terug op de aangifte, dus niet verdeeld</div>
+                </div>
+                <Money cents={vat} />
+              </div>
+            )}
             <div className="box tight">
               <SplitBar parts={parts} bearerOf={bearerOf} />
             </div>
@@ -201,8 +217,14 @@ export default function SplitPicker({
           )}
           {remainder !== 0 && (
             <div className="hint warn">
-              Er blijft <Money cents={remainder} /> over, en dat ligt nu bij niemand. Verdelen doe
-              je hier — een rekening kan niets dragen.
+              {remainder > 0 ? (
+                <>Er blijft <Money cents={remainder} /> over, en dat ligt nu bij niemand.</>
+              ) : (
+                <>De bedragen zijn samen <Money cents={-remainder} /> te veel.</>
+              )}{' '}
+              {vat > 0
+                ? `Te verdelen is ${formatMoney(shown)}: het bedrag zonder de btw.`
+                : 'Verdelen doe je hier — een rekening kan niets dragen.'}
               {me && (
                 <>
                   {' '}
