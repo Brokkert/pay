@@ -121,7 +121,9 @@ export default function Leftover({ store, month }) {
 
     // And then what you pay into out of that.
     for (const pot of shared) {
-      const yours = me ? pot.incoming[me.id] || 0 : 0;
+      // What you really transfer — the standing order if you set one above
+      // your share — the same figure as the first row of the block below it.
+      const yours = me ? pot.deposits?.[me.id] || pot.incoming[me.id] || 0 : 0;
       items.push({
         key: `s-${pot.account.id}`,
         kind: 'account',
