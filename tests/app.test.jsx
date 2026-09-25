@@ -1272,14 +1272,15 @@ describe('what is left, on its own tab', () => {
 
     // And the pots you pay into are the last link of that same chain: what
     // everyone really transfers in, the bills off, and what that leaves. The
-    // example's standing orders are set above the shares — 300,00 against
-    // 168,00 needed — so this one keeps 132,00 a month.
+    // example's standing orders are set above the shares: 300,00 from the two
+    // members plus the neighbour's 5,00 and the business's 4,00 come in,
+    // 171,00 of bills and 1,00 back to the friend go off — 137,00 stays.
     const pot = [...document.querySelectorAll('.section')]
       .find((el) => el.textContent === 'Vaste lasten').nextElementSibling;
     // Everyone who pays into it, by name and in their own colour.
     expect(within(pot).getAllByText('stort erop').length).toBeGreaterThan(1);
     expect(within(pot).getByText('Ik')).toBeTruthy();
-    expect(within(pot).getByText('Blijft over').closest('.total').textContent).toContain('132,00');
+    expect(within(pot).getByText('Blijft over').closest('.total').textContent).toContain('137,00');
 
     // Top to bottom, one chain: the account the money comes in on, then the
     // person it pays a salary to, with the link between them named.
