@@ -163,7 +163,10 @@ export default function Settle({ store, month }) {
               const pot = result.pots.find(
                 (p) => p.account.id === partyId(inbound ? t.to : t.from)
               );
-              const up = inbound && person ? pot?.rounded[person.id] : 0;
+              // The figure they really transfer — a standing order set higher
+              // than the share, or a rounded-up one — with the share underneath.
+              const set = inbound && person ? pot?.deposits?.[person.id] : 0;
+              const up = set && set !== t.cents ? set : 0;
               // Neither direction gets a colour. Green reads as "coming your
               // way", and an amount leaving the account is the opposite: you
               // fill that account, so you are the one paying it. The minus and
@@ -175,7 +178,7 @@ export default function Settle({ store, month }) {
                   what={person?.name || '?'}
                   sub={
                     up
-                      ? `stort op ${accountName} · ${formatMoney(t.cents)} nodig`
+                      ? `stort op ${accountName} · ${formatMoney(t.cents)} nodig, de rest blijft staan`
                       : inbound
                         ? `stort op ${accountName}`
                         : `krijgt terug van ${accountName}`
@@ -191,7 +194,7 @@ export default function Settle({ store, month }) {
               cents={withAccounts.reduce((sum, t) => {
                 if (isAccountParty(t.from)) return sum - t.cents;
                 const pot = result.pots.find((p) => p.account.id === partyId(t.to));
-                return sum + (pot?.rounded[partyId(t.from)] || t.cents);
+                return sum + (pot?.deposits?.[partyId(t.from)] || t.cents);
               }, 0)}
               copy
             />

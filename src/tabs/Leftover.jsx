@@ -202,7 +202,8 @@ function Extras({ pot, live, onOpen }) {
   // the sum of the bills with a minus in front — true of nothing.
   const knowsInflow =
     pot.account.kind === 'shared' || Boolean(pot.fedBy) || pot.income > 0 || pot.paidIn > 0;
-  if (!pot.aside && !pot.drift && !pot.vat?.aside && !(live && knowsInflow)) return null;
+  const standing = pot.account.kind === 'shared' && pot.paidIn > 0 && pot.difference !== 0;
+  if (!pot.aside && !pot.drift && !pot.vat?.aside && !standing && !(live && knowsInflow)) return null;
   return (
     <div className="panel">
       {live && knowsInflow && (
@@ -211,6 +212,17 @@ function Extras({ pot, live, onOpen }) {
           sub="wat er stond op de 1e, plus alles wat er sindsdien op en af is gegaan"
           cents={pot.standToday}
           onClick={() => onOpen('stand', pot)}
+        />
+      )}
+      {pot.account.kind === 'shared' && pot.paidIn > 0 && pot.difference !== 0 && (
+        <Line
+          what="Staat als vaste inleg ingesteld"
+          sub={
+            pot.difference > 0
+              ? `${formatMoney(pot.difference)} per maand meer dan nodig — dat blijft staan`
+              : `${formatMoney(-pot.difference)} per maand minder dan nodig`
+          }
+          cents={pot.paidIn}
         />
       )}
       {pot.vat?.aside > 0 && (

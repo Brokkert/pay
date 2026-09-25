@@ -513,6 +513,24 @@ describe('a transfer between two of your own accounts', () => {
   }, 30000);
 });
 
+describe('a standing order set higher than the share', () => {
+  it('is the figure on the settle list, with the share underneath', async () => {
+    const set = exampleHousehold();
+    const me = set.people.find((p) => p.isMe).id;
+    set.accounts = set.accounts.map((a) =>
+      a.name === 'Vaste lasten' ? { ...a, contributions: { ...(a.contributions || {}), [me]: 100000 } } : a
+    );
+    await withData(set);
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Verrekenen/ }));
+    const row = (await screen.findAllByText('Ik'))
+      .map((n) => n.closest('.line'))
+      .find((l) => l && /Vaste lasten/.test(l.textContent));
+    expect(row.textContent).toContain('1.000,00');
+    expect(row.textContent).toMatch(/nodig, de rest blijft staan/);
+  }, 30000);
+});
+
 describe('rounding a deposit up', () => {
   it('asks for the round figure and leaves the rest standing', async () => {
     const set = exampleHousehold();

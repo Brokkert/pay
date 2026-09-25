@@ -467,6 +467,15 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
 
       const contributions = account.contributions || {};
       const paidIn = Object.values(contributions).reduce((sum, c) => sum + (Number(c) || 0), 0);
+      // What each person really transfers: the standing order they typed if
+      // there is one, else the rounded figure where the account rounds, else
+      // exactly what they owe. This is the figure on the list you copy from;
+      // the sums that have to come out at nought keep using what is owed.
+      const deposits = {};
+      for (const [id, owed] of Object.entries(incoming)) {
+        const typed = Number(contributions[id]) || 0;
+        deposits[id] = typed > 0 ? typed : rounded[id] || owed;
+      }
       const out = perAccount[account.id] || 0;
       // Twelve monthly instalments do not always add up to the year: 100,00 a
       // year is 8,33 a month, and twelve of those is 99,96. Four cents that
@@ -564,6 +573,7 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
         roundTo,
         rounded,
         roundingExtra,
+        deposits,
         paidIn,
         income,
         overhead,
