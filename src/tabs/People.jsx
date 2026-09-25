@@ -501,38 +501,39 @@ function AccountForm({ account, people, accounts, expenses = [], onSave, onRemov
                 {depositors.map((id) => {
                   const p = people.find((x) => x.id === id);
                   return (
-                    <div key={id} className="line">
+                    <div key={id} className="line" style={{ flexWrap: 'wrap' }}>
                       <Avatar person={p} size="sm" />
                       <div className="what">
                         <div className="n">{p?.name}</div>
-                        {/* Whose money lands when. Empty means the day set for
-                            the account as a whole — which is the answer for
-                            everyone in one direct debit batch, and wrong only
-                            for whoever transfers it themselves. */}
-                        <div style={{ marginTop: 6 }}>
-                          <DayPicker
-                            value={draft.depositDays?.[id]}
-                            onChange={(day) =>
-                              set({ depositDays: { ...(draft.depositDays || {}), [id]: day } })
-                            }
-                            empty={
-                              draft.depositDay
-                                ? `Geen eigen dag — volgt de post, anders de ${draft.depositDay}e`
-                                : 'Geen eigen dag — volgt de post'
-                            }
-                          />
-                        </div>
                       </div>
                       {/* Only a member has a standing order to hold against the
                           share; anyone else simply transfers what they owe. */}
                       {members.includes(id) && (
-                        <span style={{ width: 132 }}>
+                        <span style={{ width: 140 }}>
                           <AmountInput
                             cents={draft.contributions?.[id] || 0}
                             onChange={(c) => set({ contributions: { ...(draft.contributions || {}), [id]: c } })}
                           />
                         </span>
                       )}
+                      {/* The day on a line of its own underneath: beside the
+                          amount it left the amount no room on a phone. Empty
+                          means the day set for the account as a whole — the
+                          answer for everyone in one direct debit batch, and
+                          wrong only for whoever transfers it themselves. */}
+                      <div style={{ flexBasis: '100%', paddingLeft: 46 }}>
+                        <DayPicker
+                          value={draft.depositDays?.[id]}
+                          onChange={(day) =>
+                            set({ depositDays: { ...(draft.depositDays || {}), [id]: day } })
+                          }
+                          empty={
+                            draft.depositDay
+                              ? `Geen eigen dag — volgt de post, anders de ${draft.depositDay}e`
+                              : 'Geen eigen dag — volgt de post'
+                          }
+                        />
+                      </div>
                     </div>
                   );
                 })}
