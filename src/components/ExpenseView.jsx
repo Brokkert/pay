@@ -191,7 +191,16 @@ export default function ExpenseView({
         {isBusiness(expense, accounts) && (
           <Line what="Zakelijk" sub="loopt op een zakelijke rekening" />
         )}
-        {expense.paused && <Line what="Gepauzeerd" sub="telt nergens in mee" />}
+        {expense.paused && (
+          <Line
+            what="Gepauzeerd"
+            sub={
+              cadenceOf(expense.cadence).perYear < 12
+                ? 'telt nergens in mee — ook wat er al voor gespaard was niet, en na hervatten telt Pay vanaf de vorige afschrijving. Stopt hij echt, zet dan liever Loopt tot.'
+                : 'telt nergens in mee'
+            }
+          />
+        )}
       </div>
 
       <div className="section">Wie draagt het</div>
