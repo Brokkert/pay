@@ -1307,9 +1307,10 @@ describe('the timeline against the settlement it is made of', () => {
         }, 0);
         // And as the day-by-day movements say.
         const laidOut = pot.movements
-          .filter((m) => m.key.startsWith('in-') || m.key.startsWith('round-'))
+          .filter((m) => /^(in|round|order)-/.test(m.key))
           .reduce((sum, m) => sum + m.cents, 0);
-        const rounding = Object.entries(pot.rounded).reduce(
+        // Everything transferred over the share: rounding and standing orders.
+        const rounding = Object.entries(pot.deposits).reduce(
           (sum, [id, cents]) => sum + cents - (pot.incoming[id] || 0),
           0
         );
@@ -1581,5 +1582,31 @@ describe('VAT in the bills of an account the holding fills', () => {
     expect(top.vat.net).toBe(84000 - 2100);
     // And not twice: the account the bill comes off has no return of its own.
     expect(rows.find((r) => r.account.id === 'a-c').vat.net).toBe(0);
+  });
+});
+
+
+describe('a standing order above the share, on the day it lands', () => {
+  const lau = 'p-lau';
+  const mau = 'p-mau';
+  const people = [{ id: lau, name: 'Lau', isMe: true }, { id: mau, name: 'Mau' }];
+  const rabo = { id: 'a-rabo', name: 'RABO', kind: 'shared', members: [lau, mau],
+    contributions: { [lau]: 100000, [mau]: 100000 }, depositDays: { [lau]: 1, [mau]: 1 } };
+  const both = { kind: 'equal', participants: [lau, mau], weights: {} };
+  const expenses = [
+    { id: 'e1', name: 'Hypotheek', amount: 100000, cadence: 'month', chargeDay: 1,
+      payer: { kind: 'account', id: 'a-rabo' }, split: both },
+    { id: 'e2', name: 'Energie', amount: 70915, cadence: 'month', chargeDay: 28,
+      payer: { kind: 'account', id: 'a-rabo' }, split: both },
+  ];
+  const on = (today) => forMonth({ people, accounts: [rabo], expenses }, '2026-09', today).pots[0];
+
+  it('counts what they transfer, not only their share', () => {
+    const mid = on('2026-09-25');
+    // Two thousand in on the first, the mortgage off, the energy still to come.
+    expect(mid.standToday).toBe(200000 - 100000);
+    expect(mid.movements.find((m) => m.key === `order-${lau}`).cents).toBe(100000 - 85458);
+    // By the end of the month what stays is what the column says stays.
+    expect(on('2026-09-30').standToday).toBe(mid.balance);
   });
 });

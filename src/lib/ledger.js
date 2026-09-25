@@ -477,9 +477,13 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
         deposits[id] = typed > 0 ? typed : rounded[id] || owed;
       }
       // A standing order on a pot with nothing to share yet — a groceries pot,
-      // an account just made — still arrives every month.
-      for (const [id, typed] of Object.entries(contributions)) {
-        if (!(id in deposits) && Number(typed) > 0) deposits[id] = Number(typed);
+      // an account just made — still arrives every month. Only on a shared
+      // account: on one of your own the owner's order is `paidIn`, counted on
+      // its own, and counting it here as well would land it twice.
+      if (account.kind === 'shared') {
+        for (const [id, typed] of Object.entries(contributions)) {
+          if (!(id in deposits) && Number(typed) > 0) deposits[id] = Number(typed);
+        }
       }
       const out = perAccount[account.id] || 0;
       // Twelve monthly instalments do not always add up to the year: 100,00 a
@@ -726,18 +730,27 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
         move.what = `${name} · ${[...names][0]}`;
       }
     }
-    // Rounding a deposit up is a choice about the transfer, not about any one
-    // post, so it travels with the person rather than with a post.
-    for (const [id, cents] of Object.entries(row.rounded)) {
-      const extra = cents - (row.incoming[id] || 0);
+    // What someone transfers over their share — a standing order set above
+    // it, or a deposit rounded up — is a choice about the transfer, not about
+    // any one post, so it travels with the person rather than with a post.
+    // With the last of their deposits: the figure they set is what the whole
+    // transfer comes to, so the extra is not there before the money is.
+    for (const [id, transfer] of Object.entries(row.deposits)) {
+      const extra = transfer - (row.incoming[id] || 0);
+      if (!extra) continue;
       const person = people.find((p) => p.id === id);
-      // With the last of their deposits: the round figure is what the whole
-      // transfer comes to, so the extra is not there before the money is.
       const theirs = [...perPerson.values()].filter((m) => m.id === id);
       const last = theirs.some((m) => m.day === null)
         ? null
-        : theirs.reduce((max, m) => Math.max(max, m.day), 0) || null;
-      add(`round-${id}`, `${person?.name || 'iemand'} rondt af`, extra, last);
+        : theirs.reduce((max, m) => Math.max(max, m.day), 0) ||
+          (dayOf(account.depositDays?.[id]) ?? depositDay);
+      const rounds = row.rounded[id] === transfer;
+      add(
+        `${rounds ? 'round' : 'order'}-${id}`,
+        `${person?.name || 'iemand'} ${rounds ? 'rondt af' : extra > 0 ? 'stort meer dan het aandeel' : 'stort minder dan het aandeel'}`,
+        extra,
+        last
+      );
     }
     for (const [id, cents] of Object.entries(row.fromAccounts)) {
       add(`from-${id}`, `Terug van ${accounts.find((a) => a.id === id)?.name || 'een rekening'}`, cents, null);
