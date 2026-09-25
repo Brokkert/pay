@@ -1005,7 +1005,6 @@ button.line-open:active { background: var(--sunk); }
 }
 /* An empty month renders as a blank box in most browsers; give it the height of
    an ordinary field so it does not sit there as a slab. */
-.input[type='month'] { min-height: 46px; }
 .disclose > summary { cursor: pointer; font-size: 13px; color: var(--text-2); list-style: none; font-weight: 500; }
 .disclose > summary::-webkit-details-marker { display: none; }
 .disclose > summary::before { content: '›'; display: inline-block; margin-right: 8px; color: var(--text-3); transition: transform 0.15s; }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { formatMoney, parseMoney, toInput, toPlain } from '../lib/money.js';
+import { formatMonth } from '../lib/cadence.js';
 import Icon from './icons.jsx';
 
 export function Sheet({ title, onClose, children, actions = null }) {
@@ -397,3 +398,31 @@ export const DayPicker = ({ value, onChange, empty = 'Dag onbekend' }) => (
     ))}
   </select>
 );
+
+/**
+ * A month, as a plain select.
+ *
+ * The browser's own month field is a different shape on every phone and
+ * twice the height of everything around it. A list of months two years back
+ * and three ahead is the same control as the rest of the form, and a month
+ * outside that range still shows if it is the one already set.
+ */
+export const MonthPicker = ({ value, onChange, empty = 'Geen' }) => {
+  const now = new Date();
+  const months = [];
+  for (let i = -24; i <= 36; i += 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const current = (value || '').slice(0, 7);
+  if (current && !months.includes(current)) months.push(current);
+  months.sort();
+  return (
+    <select className="select" value={current} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{empty}</option>
+      {months.map((m) => (
+        <option key={m} value={m}>{formatMonth(m)}</option>
+      ))}
+    </select>
+  );
+};

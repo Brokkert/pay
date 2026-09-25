@@ -1,7 +1,7 @@
 // Creating or changing an expense.
 
 import { useMemo, useState } from 'react';
-import { Sheet, Field, Notice, AmountInput, Avatar, Confirm, Icon, DayPicker } from './ui.jsx';
+import { Sheet, Field, Notice, AmountInput, Avatar, Confirm, Icon, DayPicker, MonthPicker } from './ui.jsx';
 import SplitPicker from './SplitPicker.jsx';
 import { CADENCES, MONTH_NAMES, cadenceOf, chargeAnchor, perMonth } from '../lib/cadence.js';
 import { SUGGESTED, categoryName } from '../data/categories.js';
@@ -357,23 +357,25 @@ export default function ExpenseForm({
       <details className="disclose" style={{ marginBottom: 18 }}>
         <summary>Looptijd, sparen, notitie en pauzeren</summary>
         <div style={{ marginTop: 16 }}>
-          {/* Stacked, not side by side: a date field is as wide as the date in
-              it, so two of them in one row on a phone leaves neither room. */}
           {/* Months, not dates. Pay reckons per month and never looked at the
               day in these — asking for one and then throwing it away is a
-              question you can only answer wrong. */}
-          <Field
-            label="Loopt vanaf"
-            hint="Vanaf welke maand hij meetelt. Leeg = loopt al."
-          >
-            <input className="input" type="month" value={(draft.from || '').slice(0, 7)}
-              onChange={(e) => set({ from: e.target.value })} />
-          </Field>
-
-          <Field label="Loopt tot" hint="De laatste maand dat hij meetelt. Leeg = doorlopend.">
-            <input className="input" type="month" value={(draft.until || '').slice(0, 7)}
-              onChange={(e) => set({ until: e.target.value })} />
-          </Field>
+              question you can only answer wrong. Two selects side by side,
+              the same shape as every other field here. */}
+          <div className="field">
+            <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
+              <div className="grow">
+                <label className="field-label">Loopt vanaf</label>
+                <MonthPicker value={draft.from} onChange={(m) => set({ from: m })} empty="Loopt al" />
+              </div>
+              <div className="grow">
+                <label className="field-label">Loopt tot</label>
+                <MonthPicker value={draft.until} onChange={(m) => set({ until: m })} empty="Doorlopend" />
+              </div>
+            </div>
+            <div className="hint">
+              De eerste en de laatste maand dat hij meetelt. Leeg is: loopt al, en blijft lopen.
+            </div>
+          </div>
 
           <Field label="Notitie">
             <textarea
