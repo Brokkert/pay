@@ -256,7 +256,16 @@ function StandBreakdown({ pot, month, today, onClose }) {
   const day = Number(String(today).slice(8, 10));
   const rows = [
     ...(pot.opening
-      ? [{ key: 'opening', what: `Stond er op 1 ${formatMonth(month).split(' ')[0]}`, cents: pot.opening }]
+      ? [
+          {
+            key: 'opening',
+            what: `Stond er op 1 ${formatMonth(month).split(' ')[0]}`,
+            sub: pot.buffer
+              ? `minstens — ${formatMoney(pot.buffer)} gaat er af voordat de stortingen binnen zijn`
+              : undefined,
+            cents: pot.opening,
+          },
+        ]
       : []),
     ...pot.movements.map((m) => ({
       key: m.key,

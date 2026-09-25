@@ -1610,3 +1610,30 @@ describe('a standing order above the share, on the day it lands', () => {
     expect(on('2026-09-30').standToday).toBe(mid.balance);
   });
 });
+
+
+describe('deposits that land at the end of the month', () => {
+  const lau = 'p-lau';
+  const mau = 'p-mau';
+  const people = [{ id: lau, name: 'Lau', isMe: true }, { id: mau, name: 'Mau' }];
+  const rabo = { id: 'a-rabo', name: 'RABO', kind: 'shared', members: [lau, mau],
+    contributions: { [lau]: 100000, [mau]: 100000 }, depositDay: 30 };
+  const both = { kind: 'equal', participants: [lau, mau], weights: {} };
+  const expenses = [
+    { id: 'e1', name: 'Hypotheek', amount: 100000, cadence: 'month', chargeDay: 1,
+      payer: { kind: 'account', id: 'a-rabo' }, split: both },
+    { id: 'e2', name: 'Energie', amount: 70915, cadence: 'month', chargeDay: 15,
+      payer: { kind: 'account', id: 'a-rabo' }, split: both },
+  ];
+  const on = (today) => forMonth({ people, accounts: [rabo], expenses }, '2026-09', today).pots[0];
+
+  it('starts the month from what must have been there, and never goes below nought', () => {
+    // Everything goes off before anything comes in, so a month of bills has
+    // to be there on the first.
+    expect(on('2026-09-25').buffer).toBe(170915);
+    expect(on('2026-09-25').standToday).toBe(0);
+    expect(on('2026-09-10').standToday).toBe(70915);
+    // On the thirtieth the deposits land: the floor plus what stays.
+    expect(on('2026-09-30').standToday).toBe(170915 + 29085);
+  });
+});

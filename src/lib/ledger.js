@@ -606,6 +606,7 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
         // What stood on it when the month began, and the movements that roll
         // that forward — both filled in below, once every account is known.
         opening: (saving.openingPerAccount[account.id] || 0) + vat.opening,
+        buffer: 0,
         vat,
         movements: [],
         standToday: 0,
@@ -797,8 +798,32 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
     }
 
     // Undated first — it already happened as far as anyone knows — then the
-    // month in the order it runs.
-    row.movements = moves.sort((a, b) => (a.day ?? 0) - (b.day ?? 0));
+    // month in the order it runs. Undated counts as the first of the month:
+    // the same day as a deposit that lands on the first, so the two net out
+    // that day instead of the bill dipping the account before the money that
+    // was there to pay it.
+    const dayOrder = (m) => m.day ?? 1;
+    row.movements = moves.sort((a, b) => dayOrder(a) - dayOrder(b));
+    // What has to be on the account when the month begins for it never to
+    // dip below nought: where the bills go off before the deposits land, that
+    // is a month of bills. Pay cannot know what really stood there — only
+    // that it was at least this, or the account went into the red — so it is
+    // the floor the month is read from, and named as a floor.
+    // On top of what is already known to stand there — the savings for the
+    // yearly bills — or those would be counted twice.
+    // Read at the end of each day, not after each movement: what lands and
+    // what goes off on the same day is one day's post, and the order within
+    // it is nobody's to know.
+    let running = row.opening;
+    let lowest = row.opening;
+    row.movements.forEach((m, i) => {
+      running += m.cents;
+      const next = row.movements[i + 1];
+      const sameDay = next && dayOrder(next) === dayOrder(m);
+      if (!sameDay && running < lowest) lowest = running;
+    });
+    row.buffer = lowest < 0 ? -lowest : 0;
+    row.opening += row.buffer;
     row.standToday =
       row.opening + moves.reduce((sum, m) => (m.done ? sum + m.cents : sum), 0);
   }
