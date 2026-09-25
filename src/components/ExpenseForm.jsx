@@ -389,6 +389,14 @@ export default function ExpenseForm({
               onChange={(e) => set({ paused: e.target.checked })} />
             <span className="small">Even gepauzeerd — telt tijdelijk niet mee</span>
           </label>
+          {draft.paused && cadenceOf(draft.cadence).perYear < 12 && (
+            <div className="hint">
+              Bij een kwartaal- of jaarpost: pauzeer in de afschrijfmaand, ná de afschrijving —
+              dan is het potje leeg en raak je niets kwijt. Zet je hem later weer aan, zet dan ook{' '}
+              <strong>Wordt afgeschreven in</strong> opnieuw, op de maand van de eerstvolgende
+              afschrijving. Dan begint het sparen weer vanaf nul.
+            </div>
+          )}
 
           {/* Not a kind of expense but a fact about one: it leaves your account
               like any other, so it stays in the fixed costs where you can hold

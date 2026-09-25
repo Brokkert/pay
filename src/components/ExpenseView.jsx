@@ -182,7 +182,7 @@ export default function ExpenseView({
             what="Gepauzeerd"
             sub={
               cadenceOf(expense.cadence).perYear < 12
-                ? 'telt nergens in mee — ook wat er al voor gespaard was niet, en na hervatten telt Pay vanaf de vorige afschrijving. Stopt hij echt, zet dan liever Loopt tot.'
+                ? 'telt nergens in mee — ook wat er al voor gespaard was niet. Zet je hem weer aan, zet dan ook de afschrijfmaand opnieuw; dan begint het sparen vanaf nul.'
                 : 'telt nergens in mee'
             }
           />
