@@ -202,8 +202,7 @@ function Extras({ pot, live, onOpen }) {
   // the sum of the bills with a minus in front — true of nothing.
   const knowsInflow =
     pot.account.kind === 'shared' || Boolean(pot.fedBy) || pot.income > 0 || pot.paidIn > 0;
-  const standing = pot.account.kind === 'shared' && pot.paidIn > 0 && pot.difference !== 0;
-  if (!pot.aside && !pot.drift && !pot.vat?.aside && !standing && !(live && knowsInflow)) return null;
+  if (!pot.aside && !pot.drift && !pot.vat?.aside && !(live && knowsInflow)) return null;
   return (
     <div className="panel">
       {live && knowsInflow && (
@@ -212,17 +211,6 @@ function Extras({ pot, live, onOpen }) {
           sub="wat er stond op de 1e, plus alles wat er sindsdien op en af is gegaan"
           cents={pot.standToday}
           onClick={() => onOpen('stand', pot)}
-        />
-      )}
-      {pot.account.kind === 'shared' && pot.paidIn > 0 && pot.difference !== 0 && (
-        <Line
-          what="Staat als vaste inleg ingesteld"
-          sub={
-            pot.difference > 0
-              ? `${formatMoney(pot.difference)} per maand meer dan nodig — dat blijft staan`
-              : `${formatMoney(-pot.difference)} per maand minder dan nodig`
-          }
-          cents={pot.paidIn}
         />
       )}
       {pot.vat?.aside > 0 && (
@@ -529,15 +517,24 @@ function Chain({ pot, people, live, onOpenFeed, onOpenCosts, onOpenExtra }) {
       <>
         <div className="section">{pot.account.name}</div>
         <div className="panel">
-          {Object.entries(pot.incoming)
+          {Object.entries(pot.deposits)
             .sort((a, b) => b[1] - a[1])
-            .map(([id, cents]) => (
+            .map(([id, transfer]) => (
               <Line
                 key={`in-${id}`}
                 left={<Avatar person={personOf(id)} size="sm" />}
                 what={nameOf(id)}
-                sub="stort erop"
-                cents={cents}
+                sub={
+                  transfer !== (pot.incoming[id] || 0) && pot.incoming[id] ? (
+                    <>
+                      <span>stort erop</span> · {formatMoney(pot.incoming[id])} is het aandeel, de
+                      rest blijft staan
+                    </>
+                  ) : (
+                    'stort erop'
+                  )
+                }
+                cents={transfer}
               />
             ))}
           {Object.entries(pot.fromAccounts).map(([id, cents]) => (
@@ -566,16 +563,24 @@ function Chain({ pot, people, live, onOpenFeed, onOpenCosts, onOpenExtra }) {
             <Line key={`ta-${id}`} what="Gaat naar een andere rekening" cents={-cents} />
           ))}
           <Total
-            label={pot.closes === 0 ? 'Komt uit op' : pot.closes > 0 ? 'Blijft over' : 'Moet er nog bij'}
-            cents={Math.abs(pot.closes)}
-            tone="credit"
+            label={
+              pot.out === 0
+                ? 'Komt erop'
+                : pot.balance === 0 ? 'Komt uit op' : pot.balance > 0 ? 'Blijft over' : 'Komt tekort'
+            }
+            cents={Math.abs(pot.balance)}
+            tone={pot.out === 0 || pot.balance === 0 ? '' : pot.balance > 0 ? 'credit' : 'debt'}
           />
         </div>
         <Extras pot={pot} live={live} onOpen={onOpenExtra} />
         <div className="hint">
-          {pot.closes === 0
-            ? 'Erop en eraf zijn gelijk: deze rekening houdt niets van zichzelf.'
-            : 'Dit hoort nul te zijn. Er is een post waarvan niet iedereen zijn deel draagt.'}
+          {pot.out === 0
+            ? 'Geen posten op deze rekening, dus wat eraf gaat weet Pay niet. Voor een pot met wisselende uitgaven, zoals boodschappen, is dat prima.'
+            : pot.closes !== 0
+              ? 'De aandelen dekken de posten niet. Er is een post waarvan niet iedereen zijn deel draagt.'
+              : pot.balance === 0
+                ? 'Erop en eraf zijn gelijk: deze rekening houdt niets van zichzelf.'
+                : 'Er komt meer op dan er af gaat. Dat blijft staan en loopt op.'}
         </div>
       </>
     );

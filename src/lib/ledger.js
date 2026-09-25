@@ -476,6 +476,11 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
         const typed = Number(contributions[id]) || 0;
         deposits[id] = typed > 0 ? typed : rounded[id] || owed;
       }
+      // A standing order on a pot with nothing to share yet — a groceries pot,
+      // an account just made — still arrives every month.
+      for (const [id, typed] of Object.entries(contributions)) {
+        if (!(id in deposits) && Number(typed) > 0) deposits[id] = Number(typed);
+      }
       const out = perAccount[account.id] || 0;
       // Twelve monthly instalments do not always add up to the year: 100,00 a
       // year is 8,33 a month, and twelve of those is 99,96. Four cents that
@@ -558,10 +563,18 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
         out -
         total(outgoing) -
         total(toAccounts);
+      // And the same sum with what people really transfer: the standing order
+      // where one is set, the rounded figure where the account rounds. This is
+      // what stays on the account each month — nought only when everyone puts
+      // in exactly their share. `closes` stays the check that the shares cover
+      // the bills; this is the answer to "what is left".
+      const balance =
+        total(deposits) + total(fromAccounts) - out - total(outgoing) - total(toAccounts);
       return {
         account,
         out,
         closes,
+        balance,
         needed,
         incoming,
         outgoing,

@@ -1270,14 +1270,16 @@ describe('what is left, on its own tab', () => {
     expect(within(mine).getByText('Houd je over').closest('.total').textContent)
       .toContain('4.878,50');
 
-    // And the pots you pay into are the last link of that same chain: your
-    // share in, the bills off, nothing of its own left over.
+    // And the pots you pay into are the last link of that same chain: what
+    // everyone really transfers in, the bills off, and what that leaves. The
+    // example's standing orders are set above the shares — 300,00 against
+    // 168,00 needed — so this one keeps 132,00 a month.
     const pot = [...document.querySelectorAll('.section')]
       .find((el) => el.textContent === 'Vaste lasten').nextElementSibling;
     // Everyone who pays into it, by name and in their own colour.
     expect(within(pot).getAllByText('stort erop').length).toBeGreaterThan(1);
     expect(within(pot).getByText('Ik')).toBeTruthy();
-    expect(within(pot).getByText('Komt uit op').closest('.total').textContent).toContain('0,00');
+    expect(within(pot).getByText('Blijft over').closest('.total').textContent).toContain('132,00');
 
     // Top to bottom, one chain: the account the money comes in on, then the
     // person it pays a salary to, with the link between them named.
@@ -1509,13 +1511,11 @@ describe('an account people pay into but nothing runs off', () => {
     await screen.findByText('Jouw deel');
     const pot = [...document.querySelectorAll('.section')]
       .find((el) => el.textContent === 'Boodschappen').nextElementSibling;
-    // The deposit is there...
-    const checks = pot.nextElementSibling;
-    expect(within(checks).getByText('Staat als vaste inleg ingesteld').closest('.line').textContent)
-      .toContain('500,00');
+    // The deposits are there, as what really comes in...
+    expect(within(pot).getByText('Komt erop').closest('.total').textContent).toContain('500,00');
     // ...but nothing claims that 500,00 is left over every month.
-    expect(within(checks).queryByText('Blijft over')).toBe(null);
-    expect(checks.nextElementSibling.textContent).toContain('Geen posten op deze rekening');
+    expect(within(pot).queryByText('Blijft over')).toBe(null);
+    expect(pot.nextElementSibling.textContent).toContain('Geen posten op deze rekening');
   }, 30000);
 
   it('does not call everyone\'s deposit a shortfall on the account it lands on', async () => {
