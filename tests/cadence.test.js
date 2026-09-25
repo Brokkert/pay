@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chargePassed, chargedIn, formatMonth, isActive, nextCharge, perMonth, perYear, setAside, shiftMonth } from '../src/lib/cadence.js';
+import { runsUntil, chargePassed, chargedIn, formatMonth, isActive, nextCharge, perMonth, perYear, setAside, shiftMonth } from '../src/lib/cadence.js';
 
 describe('perMonth', () => {
   it('converts every cadence to whole cents per month', () => {
@@ -189,5 +189,14 @@ describe('the day a charge lands on', () => {
     // And the months in between are unaffected either way.
     expect(setAside(onThe27th, '2026-04', '2026-04-01')).toBe(5000);
     expect(setAside(onThe27th, '2027-02', '2027-02-01')).toBe(55000);
+  });
+});
+
+
+describe('a post with an end', () => {
+  it('says until when, with the year only when it is another one', () => {
+    expect(runsUntil({ until: '2026-12' }, '2026-09')).toBe('tot december');
+    expect(runsUntil({ until: '2027-03-01' }, '2026-09')).toBe('tot maart 2027');
+    expect(runsUntil({}, '2026-09')).toBe(null);
   });
 });

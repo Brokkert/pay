@@ -203,3 +203,17 @@ export function shiftMonth(month, steps) {
   const total = year * 12 + (m - 1) + steps;
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`;
 }
+
+/**
+ * "tot december" — where a post has an end. The year only when it is not the
+ * one you are looking at: "tot december 2027" is a fact, "tot december 2026"
+ * in 2026 is noise.
+ */
+export function runsUntil(expense, month) {
+  if (!expense?.until) return null;
+  const [year, m] = String(expense.until).slice(0, 7).split('-');
+  const name = MONTH_NAMES[Number(m) - 1];
+  if (!name) return null;
+  const seen = String(month || todayISO()).slice(0, 4);
+  return `tot ${name}${seen === year ? '' : ` ${year}`}`;
+}

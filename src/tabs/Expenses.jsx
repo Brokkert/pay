@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { Money, Empty, BearerAvatar, Icon } from '../components/ui.jsx';
-import { perMonth, cadenceOf, isActive } from '../lib/cadence.js';
+import { perMonth, cadenceOf, isActive, runsUntil } from '../lib/cadence.js';
 import { split, possibleBearers } from '../lib/split.js';
 import { isBusiness } from '../lib/ledger.js';
 import { categoryOf } from '../data/categories.js';
@@ -265,6 +265,9 @@ function ExpenseRow({ row, mine, month, people, accounts, onOpen, onSave }) {
           <span className="title truncate">{expense.name}</span>
           {expense.paused && <span className="chip static tiny">gepauzeerd</span>}
           {expense.savings && <span className="chip static tiny">sparen</span>}
+          {runsUntil(expense, month) && (
+            <span className="chip static tiny">{runsUntil(expense, month)}</span>
+          )}
           {expense.cadence === 'once' && expense.settled && (
             <span className="chip static tiny">afgerekend</span>
           )}

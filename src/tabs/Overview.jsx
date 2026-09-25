@@ -25,6 +25,7 @@ import {
   setAside,
   nextCharge,
   todayISO,
+  runsUntil,
 } from '../lib/cadence.js';
 import { categoryOf, categoryName, accountKindOf } from '../data/categories.js';
 import { possibleBearers } from '../lib/split.js';
@@ -33,23 +34,24 @@ import { count } from '../lib/words.js';
 import { runChecks } from '../lib/checks.js';
 
 /** Under an expense in a breakdown: its category, and what it is charged as. */
-const postSub = (expense) => {
+const postSub = (expense, month) => {
   const c = cadenceOf(expense.cadence);
   return [
     categoryName(expense.category),
     c.perYear !== 12 && `${formatMoney(expense.amount)} ${c.short}`,
+    runsUntil(expense, month),
   ]
     .filter(Boolean)
     .join(' · ');
 };
 
 /** Ledger lines as rows for a breakdown, biggest first, nothing that is zero. */
-const postRows = (lines, amountOf = (l) => l.amount) =>
+const postRows = (lines, amountOf = (l) => l.amount, month = null) =>
   lines
     .map((l) => ({
       key: l.expense.id,
       what: l.expense.name,
-      sub: postSub(l.expense),
+      sub: postSub(l.expense, month),
       cents: amountOf(l),
     }))
     .filter((r) => r.cents !== 0)

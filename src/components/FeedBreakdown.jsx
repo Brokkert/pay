@@ -6,7 +6,7 @@
 // copies of it are two answers waiting to drift apart.
 
 import { formatMoney } from '../lib/money.js';
-import { cadenceOf } from '../lib/cadence.js';
+import { cadenceOf, runsUntil } from '../lib/cadence.js';
 import { categoryOf } from '../data/categories.js';
 import Breakdown from './Breakdown.jsx';
 
@@ -38,6 +38,10 @@ export function postRow(line, { showing, me, from = null }) {
     bits.push(share === whole ? 'helemaal van jou' : `jouw deel van ${formatMoney(whole)}`);
     if (from) bits.push(`van ${from}`);
   }
+  // A post with an end says so wherever it turns up: the figure is right for
+  // now, and this is what tells you it will not be next spring.
+  const until = runsUntil(line.expense);
+  if (until) bits.push(until);
   return {
     key: line.expense.id,
     left: dot(line.expense),

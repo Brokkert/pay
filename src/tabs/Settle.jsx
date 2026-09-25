@@ -17,7 +17,7 @@ import {
   partyId,
   partyName,
 } from '../lib/ledger.js';
-import { formatMonth, todayISO } from '../lib/cadence.js';
+import { formatMonth, todayISO, runsUntil } from '../lib/cadence.js';
 import { categoryOf } from '../data/categories.js';
 import { formatMoney } from '../lib/money.js';
 
@@ -235,7 +235,7 @@ export default function Settle({ store, month }) {
       {open?.transfer && (
         <TransferBreakdown
           transfer={open.transfer}
-          context={{ people, accounts, lines: result.lines }}
+          context={{ people, accounts, lines: result.lines, month }}
           onClose={() => setOpen(null)}
         />
       )}
@@ -316,13 +316,16 @@ function BetweenTwo({ person, me, result, loose, accounts, hub, onClose }) {
             key={expense.id}
             left={<span className="cat-dot" style={{ background: categoryOf(expense.category).colour }} />}
             what={expense.name}
-            sub={
+            sub={[
               viaHub
                 ? `gaat van ${hub.name} af, ${person.name} draagt mee`
                 : cents > 0
                   ? `jij betaalt, ${person.name} draagt mee`
-                  : `${person.name} betaalt, jij draagt mee`
-            }
+                  : `${person.name} betaalt, jij draagt mee`,
+              runsUntil(expense, result.month),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             cents={cents}
             tone={cents > 0 ? 'credit' : 'debt'}
           />
@@ -352,7 +355,10 @@ function TransferBreakdown({ transfer, context, onClose }) {
       key: expense.id,
       left: <span className="cat-dot" style={{ background: categoryOf(expense.category).colour }} />,
       what: expense.name,
-      sub: cents < 0 ? 'trekt de andere kant op' : undefined,
+      sub:
+        [cents < 0 && 'trekt de andere kant op', runsUntil(expense, context.month)]
+          .filter(Boolean)
+          .join(' · ') || undefined,
       cents,
       tone: cents < 0 ? 'credit' : '',
     }))
