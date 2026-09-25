@@ -472,6 +472,21 @@ describe('someone who settles over the pot for a bill charged elsewhere', () => 
   }, 30000);
 });
 
+describe('pausing a post from its own sheet', () => {
+  it('takes one tap, and shows at once', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Lasten/ }));
+    const row = (await screen.findAllByText('Energie'))[0].closest('.item');
+    await user.click(row);
+
+    await user.click(await screen.findByRole('button', { name: 'Pauzeren' }));
+    // The sheet says so, and offers the way back.
+    expect(await screen.findByRole('button', { name: 'Hervatten' })).toBeTruthy();
+    expect(screen.getByText('Gepauzeerd')).toBeTruthy();
+  }, 30000);
+});
+
 describe('what should be on an account today', () => {
   it('stands on the leftover tab, with the month behind it day by day', async () => {
     await withData(exampleHousehold());

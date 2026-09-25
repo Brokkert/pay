@@ -40,6 +40,7 @@ export default function ExpenseView({
   accounts,
   month,
   onEdit,
+  onSave = null,
   onClose,
 }) {
   const cadence = cadenceOf(expense.cadence);
@@ -112,9 +113,22 @@ export default function ExpenseView({
       title={expense.name}
       onClose={onClose}
       actions={
-        <button className="btn" onClick={onEdit}>
-          <Icon name="more" size={16} /> Wijzigen
-        </button>
+        <span className="row" style={{ gap: 8 }}>
+          {/* Pausing is the one change you make from here rather than from
+              the form: a subscription on hold for a month should not take
+              opening a form and finding a checkbox in a folded section. */}
+          {onSave && !once && (
+            <button
+              className="btn"
+              onClick={() => onSave({ ...expense, paused: !expense.paused })}
+            >
+              {expense.paused ? 'Hervatten' : 'Pauzeren'}
+            </button>
+          )}
+          <button className="btn" onClick={onEdit}>
+            <Icon name="more" size={16} /> Wijzigen
+          </button>
+        </span>
       }
     >
       <div className="headline">

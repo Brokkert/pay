@@ -165,12 +165,15 @@ export default function App() {
 
       {open && !editing && (
         <ExpenseView
-          expense={open}
+          /* The stored one, so a change made from the sheet itself — pausing it
+             — shows the moment it is saved, instead of the copy opened with. */
+          expense={store.expenses.find((e) => e.id === open.id) || open}
           expenses={store.expenses}
           people={store.people}
           accounts={store.accounts}
           month={month}
-          onEdit={() => setEditing(open)}
+          onEdit={() => setEditing(store.expenses.find((e) => e.id === open.id) || open)}
+          onSave={(expense) => store.save('expenses', expense)}
           onClose={() => setOpen(null)}
         />
       )}
