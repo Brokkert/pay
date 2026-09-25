@@ -173,7 +173,6 @@ export default function App() {
           accounts={store.accounts}
           month={month}
           onEdit={() => setEditing(store.expenses.find((e) => e.id === open.id) || open)}
-          onSave={(expense) => store.save('expenses', expense)}
           onClose={() => setOpen(null)}
         />
       )}
