@@ -297,10 +297,13 @@ function StandBreakdown({ pot, month, today, onClose }) {
       empty={`Er gebeurt deze maand niets op ${pot.account.name}.`}
       note={
         <>
-          Achter elke regel staat wat er daarna op de rekening hoort te staan. Haalt de bank iets
-          een paar dagen eerder of later weg dan je hebt ingevuld, kijk dan niet naar vandaag maar
-          naar dat getal: na die afschrijving hoort dit er te staan. Alles zonder dag telt als
-          gebeurd op de 1e.
+          {/* The one figure that does not depend on which day the bank picked:
+              once everything has gone off and everyone has paid in. */}
+          Eind {formatMonth(month).split(' ')[0]}, als alles is afgeschreven en iedereen heeft
+          gestort, hoort er <strong>{formatMoney(running)}</strong> op te staan. Dat is het
+          bedrag om de bank naast te leggen; de dagen ertussen schuiven wel eens. Achter elke regel
+          staat wat er daarna hoort te staan, voor als het eind van de maand niet klopt en je wilt
+          zien waar het begint. Alles zonder dag telt als gebeurd op de 1e.
           {pot.chargeUnknown && (
             <>
               {' '}
