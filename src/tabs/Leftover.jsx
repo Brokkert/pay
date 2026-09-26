@@ -256,6 +256,7 @@ function Extras({ pot, live, onOpen }) {
  */
 function StandBreakdown({ pot, month, today, onClose }) {
   const day = Number(String(today).slice(8, 10));
+  let running = pot.opening;
   const rows = [
     ...(pot.opening
       ? [
@@ -269,16 +270,23 @@ function StandBreakdown({ pot, month, today, onClose }) {
           },
         ]
       : []),
-    ...pot.movements.map((m) => ({
-      key: m.key,
-      what: m.what,
-      // The day as it falls this month: "de 31e" in February is the 28th.
-      sub: m.day
-        ? `de ${dayInMonth(m.day, month)}e${m.done ? '' : ' — moet nog'}`
-        : 'dag onbekend',
-      cents: m.cents,
-      tone: m.cents > 0 ? 'credit' : '',
-    })),
+    ...pot.movements.map((m) => {
+      // The balance after this line, running down the month in order. A bank
+      // takes things a day or two off the day you gave it, so the figure to
+      // hold against the app is not "what is there today" but "what is there
+      // once this one has gone" — which does not care about the day.
+      running += m.cents;
+      return {
+        key: m.key,
+        what: m.what,
+        // The day as it falls this month: "de 31e" in February is the 28th.
+        sub: `${
+          m.day ? `de ${dayInMonth(m.day, month)}e${m.done ? '' : ' — moet nog'}` : 'dag onbekend'
+        } · daarna ${formatMoney(running)}`,
+        cents: m.cents,
+        tone: m.cents > 0 ? 'credit' : '',
+      };
+    }),
   ];
   return (
     <Breakdown
@@ -289,9 +297,10 @@ function StandBreakdown({ pot, month, today, onClose }) {
       empty={`Er gebeurt deze maand niets op ${pot.account.name}.`}
       note={
         <>
-          Alles zonder dag telt als gebeurd — dat is wat het betekende voordat er dagen waren. Vul
-          de dag in bij een post, een storting of een salaris, en die regel schuift naar de goede
-          kant van vandaag.
+          Achter elke regel staat wat er daarna op de rekening hoort te staan. Haalt de bank iets
+          een paar dagen eerder of later weg dan je hebt ingevuld, kijk dan niet naar vandaag maar
+          naar dat getal: na die afschrijving hoort dit er te staan. Alles zonder dag telt als
+          gebeurd op de 1e.
           {pot.chargeUnknown && (
             <>
               {' '}
