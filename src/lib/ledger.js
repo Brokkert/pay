@@ -802,8 +802,11 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
     // the same day as a deposit that lands on the first, so the two net out
     // that day instead of the bill dipping the account before the money that
     // was there to pay it.
+    // Within a day, what comes in before what goes off: the balance after
+    // each line is read down the list, and a bill listed before the deposit
+    // that pays it that same day shows a dip that never happens.
     const dayOrder = (m) => m.day ?? 1;
-    row.movements = moves.sort((a, b) => dayOrder(a) - dayOrder(b));
+    row.movements = moves.sort((a, b) => dayOrder(a) - dayOrder(b) || b.cents - a.cents);
     // What has to be on the account when the month begins for it never to
     // dip below nought: where the bills go off before the deposits land, that
     // is a month of bills. Pay cannot know what really stood there — only
