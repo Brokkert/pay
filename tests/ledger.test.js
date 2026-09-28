@@ -1637,3 +1637,24 @@ describe('deposits that land at the end of the month', () => {
     expect(on('2026-09-30').standToday).toBe(170915 + 29085);
   });
 });
+
+
+describe('what you put on a pot above your share', () => {
+  const lau = 'p-lau';
+  const mau = 'p-mau';
+  const people = [{ id: lau, name: 'Lau', isMe: true, income: 300000 }, { id: mau, name: 'Mau' }];
+  const rabo = { id: 'a-rabo', name: 'RABO', kind: 'shared', members: [lau, mau],
+    contributions: { [lau]: 100000, [mau]: 90000 } };
+  const both = { kind: 'equal', participants: [lau, mau], weights: {} };
+  const rent = { id: 'e1', name: 'Huur', amount: 170000, cadence: 'month',
+    payer: { kind: 'account', id: 'a-rabo' }, split: both };
+
+  it('is counted per person, only where it is above the share', () => {
+    const r = forMonth({ people, accounts: [rabo], expenses: [rent] }, '2026-09');
+    expect(r.extra[lau]).toBe(100000 - 85000);
+    expect(r.extra[mau]).toBe(90000 - 85000);
+    // And nothing where nobody set an order.
+    const plain = { ...rabo, contributions: {} };
+    expect(forMonth({ people, accounts: [plain], expenses: [rent] }, '2026-09').extra[lau]).toBe(0);
+  });
+});

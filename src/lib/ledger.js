@@ -274,23 +274,11 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
 
   const transfers = net(raw);
 
-  return {
-    month,
-    lines,
-    monthlyTotal,
-    yearlyTotal,
-    borne,
-    fronted,
-    saved,
-    advanced,
-    unassigned,
-    perAccount,
-    perCategory,
-    charges: Object.values(charges)
-      .map((c) => ({ ...c, accounts: [...c.accounts] }))
-      .sort((a, b) => b.month - a.month),
-    transfers,
-    pots: potOverview(
+  // Worked out first: what people put on a shared pot above their share
+  // comes off it. That is not a cost and not a post — it is money that left
+  // their account and is still theirs, the way a savings post is — so it
+  // belongs beside the savings, and comes off what they keep.
+  const pots = potOverview(
       transfers,
       accounts,
       perAccount,
@@ -306,7 +294,36 @@ export function forMonth({ expenses = [], people = [], accounts = [] }, month, t
       lines,
       people,
       { month, today: live ? today : null, bookings: routed }
-    ),
+    );
+  const extra = Object.fromEntries(people.map((p) => [p.id, 0]));
+  for (const pot of pots) {
+    if (pot.account.kind !== 'shared') continue;
+    for (const [id, transfer] of Object.entries(pot.deposits)) {
+      const over = transfer - (pot.incoming[id] || 0);
+      if (over > 0 && id in extra) extra[id] += over;
+    }
+  }
+
+  return {
+    month,
+    lines,
+    monthlyTotal,
+    yearlyTotal,
+    borne,
+    fronted,
+    saved,
+    // Put on a shared pot above the share, per person. Beside `saved`: also
+    // money that left the account and is still theirs.
+    extra,
+    advanced,
+    unassigned,
+    perAccount,
+    perCategory,
+    charges: Object.values(charges)
+      .map((c) => ({ ...c, accounts: [...c.accounts] }))
+      .sort((a, b) => b.month - a.month),
+    transfers,
+    pots,
     hub,
     // Whether the figures in here are held against a day inside the month.
     live,

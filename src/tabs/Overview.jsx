@@ -120,6 +120,9 @@ export default function Overview({ store, month, onMonth }) {
   const businessLines = result.lines.filter((l) => isBusiness(l.expense, accounts));
   const savingLines = result.lines.filter((l) => l.expense.savings);
   const business = businessLines.reduce((sum, l) => sum + share(l), 0);
+  // Plus what you put on a shared pot above your share: not a post, but money
+  // that left your account and is still yours, which is what this strip is.
+  const overShare = me ? result.extra?.[me.id] || 0 : 0;
   const putAway = savingLines.reduce((sum, l) => sum + share(l), 0);
 
   return (
@@ -209,6 +212,34 @@ export default function Overview({ store, month, onMonth }) {
           >
             <span className="grow">Waarvan opzij gezet</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatMoney(putAway)}</span>
+          </button>
+        )}
+        {/* Not part of "jouw deel" — it is above your share — so not a
+            "waarvan": a strip of its own. Money that left your account and is
+            still yours, on a shared pot. */}
+        {overShare > 0 && (
+          <button
+            type="button"
+            className="bare strip"
+            onClick={() =>
+              setDetail({
+                title: 'Boven je aandeel',
+                label: 'Per maand',
+                cents: overShare,
+                rows: result.pots
+                  .filter((p) => p.account.kind === 'shared' && (p.deposits[me.id] || 0) > (p.incoming[me.id] || 0))
+                  .map((p) => ({
+                    key: p.account.id,
+                    what: p.account.name,
+                    sub: `${formatMoney(p.deposits[me.id])} ingesteld, ${formatMoney(p.incoming[me.id] || 0)} is je aandeel`,
+                    cents: p.deposits[me.id] - (p.incoming[me.id] || 0),
+                  })),
+                note: 'Wat je boven je aandeel op een gezamenlijke rekening zet. Het gaat van je rekening af en blijft daar staan — je bent het niet kwijt, en het komt bij Overhouden van wat je overhoudt af.',
+              })
+            }
+          >
+            <span className="grow">Daarbovenop op een gezamenlijke rekening</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatMoney(overShare)}</span>
           </button>
         )}
       </div>

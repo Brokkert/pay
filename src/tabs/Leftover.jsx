@@ -63,10 +63,14 @@ export default function Leftover({ store, month }) {
         fronted,
         // Part of those same fixed costs, and not spending at all.
         saved: result.saved[person.id] || 0,
+        // Put on a shared pot above the share. Leaves the account like a bill,
+        // stays yours like a saving.
+        extra: result.extra?.[person.id] || 0,
         // Paid out of their own pocket for an account of theirs, and owed back.
         // Not a cost, but it does leave their account this month.
         advanced,
-        left: Number(person.income) - borne + fronted - advanced,
+        left:
+          Number(person.income) - borne + fronted - advanced - (result.extra?.[person.id] || 0),
       };
     })
     .sort((a, b) => Number(b.person.isMe) - Number(a.person.isMe) || b.left - a.left);
@@ -403,7 +407,7 @@ const Flows = ({ cents, label }) => (
   </div>
 );
 
-function PersonBlock({ person, income, borne, fronted, saved, advanced, left, from, onOpen }) {
+function PersonBlock({ person, income, borne, fronted, saved, extra, advanced, left, from, onOpen }) {
   return (
     <>
       {from && <Flows {...from} />}
@@ -429,6 +433,13 @@ function PersonBlock({ person, income, borne, fronted, saved, advanced, left, fr
                 sub="dat geld ben je niet kwijt"
                 cents={saved}
                 onClick={() => onOpen('saved', saved)}
+              />
+            )}
+            {extra > 0 && (
+              <Line
+                what="Zet je extra op een gezamenlijke rekening"
+                sub="boven je aandeel — blijft daar staan, dus ook niet kwijt"
+                cents={-extra}
               />
             )}
             {advanced > 0 && (

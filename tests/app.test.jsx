@@ -1264,11 +1264,15 @@ describe('what is left, on its own tab', () => {
       .find((el) => el.textContent === 'Ik').nextElementSibling;
     // 5.000 income, 146,50 of fixed costs — but 25,00 of that is your half of
     // the internet, which the business pays. Your salary never saw it, so it
-    // goes back on: 5.000 − 146,50 + 25,00.
+    // goes back on. And the example's standing order on the pot is 150,00
+    // against a share of 51,50: the 98,50 above it leaves your account too,
+    // and stays yours. 5.000 − 146,50 + 25,00 − 98,50.
     expect(within(mine).getByText('Betaalt je zaak voor je').closest('.line').textContent)
       .toContain('25,00');
+    expect(within(mine).getByText(/Zet je extra op een gezamenlijke rekening/).closest('.line').textContent)
+      .toContain('98,50');
     expect(within(mine).getByText('Houd je over').closest('.total').textContent)
-      .toContain('4.878,50');
+      .toContain('4.780,00');
 
     // And the pots you pay into are the last link of that same chain: what
     // everyone really transfers in, the bills off, and what that leaves. The
