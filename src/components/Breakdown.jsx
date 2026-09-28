@@ -7,7 +7,16 @@
 import { Sheet, Line, Total } from './ui.jsx';
 import { formatMoney } from '../lib/money.js';
 
-export default function Breakdown({ title, label, cents, rows, note = null, empty = null, onClose }) {
+export default function Breakdown({
+  title,
+  label,
+  cents,
+  rows,
+  note = null,
+  empty = null,
+  totalLabel = 'Samen',
+  onClose,
+}) {
   return (
     <Sheet title={title} onClose={onClose}>
       <div className="headline">
@@ -29,7 +38,7 @@ export default function Breakdown({ title, label, cents, rows, note = null, empt
           ))}
           {/* The headline says what the figure is; the row under the list only
               has to say that this is all of it. */}
-          <Total label="Samen" cents={cents} />
+          <Total label={totalLabel} cents={cents} />
         </div>
       ) : (
         <div className="panel">

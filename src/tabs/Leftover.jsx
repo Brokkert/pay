@@ -294,6 +294,10 @@ function StandBreakdown({ pot, month, today, onClose }) {
       label={`Per vandaag, de ${day}e`}
       cents={pot.standToday}
       rows={rows}
+      /* Not the rows added up — that is the whole month, and the note below
+         says what that comes to. This is the balance after the last line
+         that has already been. */
+      totalLabel={`Vandaag, de ${day}e`}
       empty={`Er gebeurt deze maand niets op ${pot.account.name}.`}
       note={
         <>
