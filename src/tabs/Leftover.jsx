@@ -18,7 +18,7 @@ import Breakdown from '../components/Breakdown.jsx';
 import FeedBreakdown, { dot, postRow, needRows } from '../components/FeedBreakdown.jsx';
 import { forMonth } from '../lib/ledger.js';
 import { formatMoney } from '../lib/money.js';
-import { cadenceOf, formatMonth, nextCharge, setAside, perMonth, perYear, todayISO, chargeDayOf, dayInMonth } from '../lib/cadence.js';
+import { cadenceOf, formatMonth, nextCharge, setAside, perMonth, perYear, todayISO, chargeDayOf, dayInMonth, daysInMonth, shiftMonth } from '../lib/cadence.js';
 
 export default function Leftover({ store, month, onEdit = null }) {
   const { people, accounts, expenses } = store;
@@ -270,7 +270,27 @@ function Extras({ pot, live, month, onOpen }) {
 function StandBreakdown({ pot, month, today, onEdit = null, onClose }) {
   const day = today ? Number(String(today).slice(8, 10)) : null;
   const name = formatMonth(month).split(' ')[0];
+  const before = formatMonth(shiftMonth(month, -1)).split(' ')[0];
   let running = pot.opening;
+  const monthEnd = pot.opening + pot.movements.reduce((sum, m) => sum + m.cents, 0);
+  // Bills on the first or the last day: the ones that can land on the other
+  // side of the month line. For each, the month-end figure if it did — and,
+  // in the first days of the month, the figure for today if one on the first
+  // has simply not been taken yet.
+  const last = daysInMonth(month);
+  const edges = [];
+  for (const m of pot.movements) {
+    if (m.cents >= 0 || !m.day) continue;
+    const on = dayInMonth(m.day, month);
+    if (on === last) {
+      edges.push({ key: `${m.key}-late`, cents: monthEnd - m.cents, why: `als ${m.what} pas op de 1e afgaat` });
+    } else if (m.day === 1) {
+      edges.push({ key: `${m.key}-early`, cents: monthEnd + m.cents, why: `als ${m.what} van ${before} pas op de 1e viel` });
+      if (day && day <= 3 && m.done) {
+        edges.push({ key: `${m.key}-pending`, cents: pot.standToday - m.cents, why: `vandaag, als ${m.what} nog niet is afgeschreven` });
+      }
+    }
+  }
   const rows = [
     ...(pot.opening
       ? [
@@ -335,11 +355,27 @@ function StandBreakdown({ pot, month, today, onEdit = null, onClose }) {
         <>
           {/* The one figure that does not depend on which day the bank picked:
               once everything has gone off and everyone has paid in. */}
-          Eind {formatMonth(month).split(' ')[0]}, als alles is afgeschreven en iedereen heeft
-          gestort, hoort er <strong>{formatMoney(running)}</strong> op te staan. Dat is het
-          bedrag om de bank naast te leggen; de dagen ertussen schuiven wel eens. Achter elke regel
-          staat wat er daarna hoort te staan, voor als het eind van de maand niet klopt en je wilt
-          zien waar het begint. Alles zonder dag telt als gebeurd op de 1e.
+          Eind {name}, als alles is afgeschreven en iedereen heeft gestort, hoort er{' '}
+          <strong>{formatMoney(running)}</strong> op te staan. Dat is het bedrag om de bank naast
+          te leggen; de dagen ertussen schuiven wel eens. Achter elke regel staat wat er daarna
+          hoort te staan, voor als het eind van de maand niet klopt en je wilt zien waar het
+          begint. Alles zonder dag telt als gebeurd op de 1e.
+          {/* A charge on the last day or the first can land on the other side
+              of the month line, and Pay cannot see that happen. It can say what
+              the figure becomes if it did, so a difference of exactly that
+              amount is recognised as timing, not as a mistake. */}
+          {edges.length > 0 && (
+            <>
+              <br />
+              <br />
+              Valt een post over de maandgrens, dan wordt het:
+              {edges.map((e) => (
+                <span key={e.key} style={{ display: 'block' }}>
+                  <strong>{formatMoney(e.cents)}</strong> {e.why}
+                </span>
+              ))}
+            </>
+          )}
           {pot.chargeUnknown && (
             <>
               {' '}
