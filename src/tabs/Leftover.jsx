@@ -285,9 +285,23 @@ function StandBreakdown({ pot, month, today, onEdit = null, onClose }) {
         key: m.key,
         what: m.what,
         // The day as it falls this month: "de 31e" in February is the 28th.
-        sub: `${m.names ? `${m.names.join(' + ')} · ` : ''}${
-          m.day ? `de ${dayInMonth(m.day, month)}e${m.done ? '' : ' — moet nog'}` : 'dag onbekend'
-        } · daarna ${formatMoney(running)}`,
+        // The day and the balance on a line of their own under a debit that
+        // carries several posts: six names and a figure in one run of text is
+        // a paragraph, and the figure is the part you came for.
+        sub: (() => {
+          const when = `${
+            m.day ? `de ${dayInMonth(m.day, month)}e${m.done ? '' : ' — moet nog'}` : 'dag onbekend'
+          } · daarna ${formatMoney(running)}`;
+          return m.names ? (
+            <>
+              {m.names.join(' + ')}
+              <br />
+              {when}
+            </>
+          ) : (
+            when
+          );
+        })(),
         cents: m.cents,
         tone: m.cents > 0 ? 'credit' : '',
         // A post's line opens the post: the day or the amount that is off is
