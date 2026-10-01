@@ -495,6 +495,20 @@ describe('what should be on an account today', () => {
   }, 30000);
 });
 
+describe('a post on the timeline', () => {
+  it('opens its own form from the line that shows it', async () => {
+    await withData(exampleHousehold());
+    const user = await start();
+    await user.click(await screen.findByRole('button', { name: /Overhouden/ }));
+    const line = [...document.querySelectorAll('.line')]
+      .find((l) => /Hoort er vandaag op te staan/.test(l.textContent));
+    await user.click(line);
+    const sheet = document.querySelector('.sheet');
+    await user.click(within(sheet).getByText('Energie').closest('.line'));
+    expect(await screen.findByRole('heading', { name: 'Post wijzigen' })).toBeTruthy();
+  }, 30000);
+});
+
 describe('a transfer between two of your own accounts', () => {
   it('stands on the settle list, with what it has to cover behind it', async () => {
     const set = exampleHousehold();

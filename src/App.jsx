@@ -127,7 +127,13 @@ export default function App() {
 
         {tab === 'settle' && <Settle store={store} month={month} />}
 
-        {tab === 'leftover' && <Leftover store={store} month={month} />}
+        {tab === 'leftover' && (
+          <Leftover
+            store={store}
+            month={month}
+            onEdit={(id) => setEditing(store.expenses.find((e) => e.id === id) || null)}
+          />
+        )}
 
         {tab === 'people' && <People store={store} onBack={() => setTab('more')} />}
 

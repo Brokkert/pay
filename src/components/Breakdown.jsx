@@ -34,6 +34,7 @@ export default function Breakdown({
               sub={row.sub}
               cents={row.cents}
               tone={row.tone}
+              onClick={row.onClick || null}
             />
           ))}
           {/* The headline says what the figure is; the row under the list only

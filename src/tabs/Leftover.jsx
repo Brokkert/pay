@@ -20,7 +20,7 @@ import { forMonth } from '../lib/ledger.js';
 import { formatMoney } from '../lib/money.js';
 import { cadenceOf, formatMonth, nextCharge, setAside, perMonth, perYear, todayISO, chargeDayOf, dayInMonth } from '../lib/cadence.js';
 
-export default function Leftover({ store, month }) {
+export default function Leftover({ store, month, onEdit = null }) {
   const { people, accounts, expenses } = store;
   const me = people.find((p) => p.isMe) || null;
   const result = useMemo(
@@ -188,6 +188,7 @@ export default function Leftover({ store, month }) {
         people={people}
         me={me}
         month={month}
+        onEdit={onEdit}
       />
     </>
   );
@@ -258,7 +259,7 @@ function Extras({ pot, live, onOpen }) {
  * laid out as the movements it really is — so "hoort er vandaag op te staan"
  * can be checked against what your bank says, instead of taken on faith.
  */
-function StandBreakdown({ pot, month, today, onClose }) {
+function StandBreakdown({ pot, month, today, onEdit = null, onClose }) {
   const day = Number(String(today).slice(8, 10));
   let running = pot.opening;
   const rows = [
@@ -289,6 +290,10 @@ function StandBreakdown({ pot, month, today, onClose }) {
         } · daarna ${formatMoney(running)}`,
         cents: m.cents,
         tone: m.cents > 0 ? 'credit' : '',
+        // A post's line opens the post: the day or the amount that is off is
+        // one tap from the line that showed it. A debit carrying several
+        // posts has no one post to open.
+        onClick: onEdit && m.expenseId ? () => onEdit(m.expenseId) : null,
       };
     }),
   ];
@@ -479,7 +484,7 @@ function PersonBlock({ person, income, borne, fronted, saved, extra, advanced, l
   );
 }
 
-function Sheets({ open, setOpen, result, accounts, people, me, month }) {
+function Sheets({ open, setOpen, result, accounts, people, me, month, onEdit }) {
   return (
     <>
       {open?.kind === 'feed' && (
@@ -508,6 +513,14 @@ function Sheets({ open, setOpen, result, accounts, people, me, month }) {
           pot={open.pot}
           month={month}
           today={result.today}
+          onEdit={
+            onEdit
+              ? (id) => {
+                  setOpen(null);
+                  onEdit(id);
+                }
+              : null
+          }
           onClose={() => setOpen(null)}
         />
       )}

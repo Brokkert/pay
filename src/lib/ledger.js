@@ -718,19 +718,23 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
       const charge = (line.expense.charge || '').trim();
       if (!charge) {
         add(`post-${line.expense.id}`, line.expense.name, cents, day);
+        moves[moves.length - 1].expenseId = line.expense.id;
         continue;
       }
       const key = `charge-${charge}-${day ?? 'x'}`;
-      const seen = grouped.get(key) || { key, charge, day, cents: 0, names: [] };
+      const seen = grouped.get(key) || { key, charge, day, cents: 0, names: [], ids: [] };
       seen.cents += cents;
       seen.names.push(line.expense.name);
+      seen.ids.push(line.expense.id);
       grouped.set(key, seen);
     }
     for (const g of grouped.values()) {
       // One post under a debit keeps its own name; two or more take the
       // debit's, with the posts named underneath.
-      if (g.names.length === 1) add(g.key, g.names[0], g.cents, g.day);
-      else {
+      if (g.names.length === 1) {
+        add(g.key, g.names[0], g.cents, g.day);
+        moves[moves.length - 1].expenseId = g.ids[0];
+      } else {
         add(g.key, g.charge, g.cents, g.day);
         moves[moves.length - 1].names = g.names;
       }
