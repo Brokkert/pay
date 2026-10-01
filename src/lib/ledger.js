@@ -700,7 +700,11 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
       moves.push({ key, what, cents, day, done: passed(day) });
     };
 
-    // What the bank takes off it this month, each on its own day.
+    // What the bank takes off it this month, each on its own day. Posts that
+    // ride on one direct debit are one line on the statement, so they are one
+    // line here too, named after the debit with the posts underneath — that
+    // is what makes the list something you can hold against the statement.
+    const grouped = new Map();
     for (const line of lines) {
       if (line.expense.payer?.kind !== 'account') continue;
       if (line.expense.payer.id !== account.id) continue;
@@ -709,12 +713,27 @@ function potOverview(transfers, accounts, perAccount, saving, lines, people, whe
       // than once, on no single day: the month's worth is what goes, and it
       // cannot be pinned to a date.
       const often = cadenceOf(line.expense.cadence).perYear > 12;
-      add(
-        `post-${line.expense.id}`,
-        line.expense.name,
-        -(often ? line.amount : line.expense.amount),
-        often ? null : chargeDayOf(line.expense)
-      );
+      const cents = -(often ? line.amount : line.expense.amount);
+      const day = often ? null : chargeDayOf(line.expense);
+      const charge = (line.expense.charge || '').trim();
+      if (!charge) {
+        add(`post-${line.expense.id}`, line.expense.name, cents, day);
+        continue;
+      }
+      const key = `charge-${charge}-${day ?? 'x'}`;
+      const seen = grouped.get(key) || { key, charge, day, cents: 0, names: [] };
+      seen.cents += cents;
+      seen.names.push(line.expense.name);
+      grouped.set(key, seen);
+    }
+    for (const g of grouped.values()) {
+      // One post under a debit keeps its own name; two or more take the
+      // debit's, with the posts named underneath.
+      if (g.names.length === 1) add(g.key, g.names[0], g.cents, g.day);
+      else {
+        add(g.key, g.charge, g.cents, g.day);
+        moves[moves.length - 1].names = g.names;
+      }
     }
     // What arrives: deposits, turnover, a standing order from another account.
     const depositDay = dayOf(account.depositDay);

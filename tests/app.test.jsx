@@ -5,6 +5,12 @@
 // it, and that nothing readable is left behind in the browser.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+// These walk the example household through a fixed month: the figures in them
+// — what is saved up by now, what goes out this month, which month comes next
+// — are all September's. Pin the clock there, or the suite turns red on the
+// first of October for no change in the code.
+globalThis.__payNow = '2026-09-15T12:00:00';
 import { render, screen, within, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';

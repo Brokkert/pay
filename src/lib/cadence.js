@@ -51,7 +51,14 @@ export function isActive(expense, month) {
   return !expense.paused;
 }
 
-export const thisMonth = () => new Date().toISOString().slice(0, 7);
+/**
+ * The clock, in one place. A test pins it by setting `globalThis.__payNow`
+ * to a date, so a suite written against September does not start failing
+ * on the first of October; the app never sets it.
+ */
+const now = () => (globalThis.__payNow ? new Date(globalThis.__payNow) : new Date());
+
+export const thisMonth = () => todayISO().slice(0, 7);
 
 /** Whole months from one 'yyyy-mm' to another. Negative if the second is earlier. */
 export function monthsBetween(from, to) {
@@ -115,9 +122,9 @@ export function chargeDayOf(expense) {
 
 /** Today, as the app writes a date. */
 export const todayISO = () => {
-  const now = new Date();
+  const d = now();
   const pad = (n) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
 /** How many days this month has — February being the reason to ask. */

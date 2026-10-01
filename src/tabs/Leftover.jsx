@@ -284,7 +284,7 @@ function StandBreakdown({ pot, month, today, onClose }) {
         key: m.key,
         what: m.what,
         // The day as it falls this month: "de 31e" in February is the 28th.
-        sub: `${
+        sub: `${m.names ? `${m.names.join(' + ')} · ` : ''}${
           m.day ? `de ${dayInMonth(m.day, month)}e${m.done ? '' : ' — moet nog'}` : 'dag onbekend'
         } · daarna ${formatMoney(running)}`,
         cents: m.cents,

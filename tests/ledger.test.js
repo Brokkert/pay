@@ -1658,3 +1658,31 @@ describe('what you put on a pot above your share', () => {
     expect(forMonth({ people, accounts: [plain], expenses: [rent] }, '2026-09').extra[lau]).toBe(0);
   });
 });
+
+
+describe('posts that ride on one direct debit', () => {
+  const me = 'p-me';
+  const people = [{ id: me, name: 'Ik', isMe: true }];
+  const mine = { kind: 'equal', participants: [me], weights: {} };
+  const pot = { id: 'a-pot', name: 'Pot', kind: 'shared', members: [me] };
+  const expenses = [
+    { id: 'e1', name: 'Zorgverzekering', amount: 15000, cadence: 'month', chargeDay: 27, charge: 'Verzekeraar',
+      payer: { kind: 'account', id: 'a-pot' }, split: mine },
+    { id: 'e2', name: 'Tandarts', amount: 2000, cadence: 'month', chargeDay: 27, charge: 'Verzekeraar',
+      payer: { kind: 'account', id: 'a-pot' }, split: mine },
+    { id: 'e3', name: 'Netflix', amount: 1000, cadence: 'month', chargeDay: 5, charge: 'Netflix',
+      payer: { kind: 'account', id: 'a-pot' }, split: mine },
+  ];
+
+  it('are one line on the timeline, the way they are one line on the statement', () => {
+    const pot1 = forMonth({ people, accounts: [pot], expenses }, '2026-09', '2026-09-28').pots[0];
+    const debit = pot1.movements.find((m) => m.what === 'Verzekeraar');
+    expect(debit.cents).toBe(-17000);
+    expect(debit.names).toEqual(['Zorgverzekering', 'Tandarts']);
+    // A debit carrying one post keeps the post's own name.
+    expect(pot1.movements.find((m) => m.what === 'Netflix').names).toBeUndefined();
+    // And nothing is counted twice.
+    const off = pot1.movements.filter((m) => m.cents < 0).reduce((s, m) => s + m.cents, 0);
+    expect(off).toBe(-18000);
+  });
+});
