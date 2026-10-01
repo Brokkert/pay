@@ -55,7 +55,9 @@ function cents(value, where) {
 export function readBackup(source) {
   let raw;
   try {
-    raw = JSON.parse(source);
+    // A file saved on an iPhone and handed back can start with a byte-order
+    // mark, which JSON.parse refuses. It is the same file.
+    raw = JSON.parse(String(source).replace(/^\uFEFF/, ''));
   } catch {
     fail('Dit is geen geldig JSON-bestand.');
   }

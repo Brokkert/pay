@@ -142,3 +142,12 @@ describe('references that point at a person or an account', () => {
     expect(backShared.depositDays[keys[0]]).toBe(12);
   });
 });
+
+
+describe('a file with a byte-order mark', () => {
+  it('reads like any other', () => {
+    const set = exampleHousehold();
+    const back = readBackup('\uFEFF' + backupOf(set));
+    expect(back.expenses.length).toBe(set.expenses.length);
+  });
+});
