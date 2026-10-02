@@ -273,24 +273,22 @@ function StandBreakdown({ pot, month, today, onEdit = null, onClose }) {
   const before = formatMonth(shiftMonth(month, -1)).split(' ')[0];
   let running = pot.opening;
   const monthEnd = pot.opening + pot.movements.reduce((sum, m) => sum + m.cents, 0);
-  // Bills on the first or the last day: the ones that can land on the other
-  // side of the month line. For each, the month-end figure if it did — and,
-  // in the first days of the month, the figure for today if one on the first
-  // has simply not been taken yet.
+  // Bills on the last day: the ones that land on the other side of the month
+  // line now and then, and the only ones worth a line. One on the first is
+  // nailed down — a direct debit on the first does not drift into the month
+  // before — and a payout to a person is not a bill at all.
   const last = daysInMonth(month);
-  const edges = [];
-  for (const m of pot.movements) {
-    if (m.cents >= 0 || !m.day) continue;
-    const on = dayInMonth(m.day, month);
-    if (on === last) {
-      edges.push({ key: `${m.key}-late`, cents: monthEnd - m.cents, why: `als ${m.what} pas op de 1e afgaat` });
-    } else if (m.day === 1) {
-      edges.push({ key: `${m.key}-early`, cents: monthEnd + m.cents, why: `als ${m.what} van ${before} pas op de 1e viel` });
-      if (day && day <= 3 && m.done) {
-        edges.push({ key: `${m.key}-pending`, cents: pot.standToday - m.cents, why: `vandaag, als ${m.what} nog niet is afgeschreven` });
-      }
-    }
-  }
+  const edges = pot.movements
+    .filter((m) => m.cents < 0 && (m.expenseId || m.names) && m.day && dayInMonth(m.day, month) === last)
+    .map((m) => ({
+      key: m.key,
+      what: m.what,
+      late: monthEnd - m.cents,
+      early: monthEnd + m.cents,
+    }));
+  // In the first days of a month the bills on the first may simply not have
+  // been taken yet. Rather than a figure per bill, say how to read it.
+  const firstDays = Boolean(day && day <= 3);
   const rows = [
     ...(pot.opening
       ? [
@@ -368,12 +366,21 @@ function StandBreakdown({ pot, month, today, onEdit = null, onClose }) {
             <>
               <br />
               <br />
-              Valt een post over de maandgrens, dan wordt het:
               {edges.map((e) => (
                 <span key={e.key} style={{ display: 'block' }}>
-                  <strong>{formatMoney(e.cents)}</strong> {e.why}
+                  {e.what} zit op de maandgrens: <strong>{formatMoney(e.late)}</strong> als hij pas
+                  op de 1e afgaat, <strong>{formatMoney(e.early)}</strong> als die van {before} in
+                  deze maand viel.
                 </span>
               ))}
+            </>
+          )}
+          {firstDays && (
+            <>
+              <br />
+              <br />
+              Is een post van de 1e bij de bank nog niet geweest, tel dan zijn bedrag bij het
+              vandaag-getal op.
             </>
           )}
           {pot.chargeUnknown && (
